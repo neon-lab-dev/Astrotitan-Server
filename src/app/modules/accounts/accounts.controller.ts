@@ -62,9 +62,9 @@ const login = catchAsync(async (req, res) => {
 
 // Verify Login OTP and Login
 const verifyLoginOtp = catchAsync(async (req, res) => {
-  const { email, phoneNumber, otp } = req.body;
+  const { emailOrPhone, otp } = req.body;
 
-  const result = await AuthServices.verifyLoginOtp({ email, phoneNumber, otp });
+  const result = await AuthServices.verifyLoginOtp({ emailOrPhone, otp });
 
   const { refreshToken } = result;
 
@@ -86,9 +86,9 @@ const verifyLoginOtp = catchAsync(async (req, res) => {
 
 // Resend Login OTP
 const resendLoginOtp = catchAsync(async (req, res) => {
-  const { email, phoneNumber } = req.body;
+  const { emailOrPhone } = req.body;
 
-  const result = await AuthServices.resendLoginOtp({ email, phoneNumber });
+  const result = await AuthServices.resendLoginOtp({ emailOrPhone });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -108,22 +108,6 @@ const refreshToken = catchAsync(async (req, res) => {
     success: true,
     message: "New access token generated successfully.",
     data: result,
-  });
-});
-
-// Logout User
-const logout = catchAsync(async (req, res) => {
-  res.clearCookie("refreshToken", {
-    secure: config.node_env === "production",
-    httpOnly: true,
-    sameSite: "strict",
-  });
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Logged out successfully.",
-    data: null,
   });
 });
 
@@ -147,6 +131,5 @@ export const AuthControllers = {
   verifyLoginOtp,
   resendLoginOtp,
   refreshToken,
-  logout,
   changeUserRole,
 };

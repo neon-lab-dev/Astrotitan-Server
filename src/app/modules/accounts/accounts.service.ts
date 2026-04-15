@@ -10,6 +10,7 @@ import axios from "axios";
 import Expo from "expo-server-sdk";
 import { sendEmail } from "../../utils/sendEmail";
 import { User } from "../users/user.model";
+import { generateOtp } from "../../utils/generateOtp";
 
 const signup = async (payload: {
   email?: string;
@@ -46,7 +47,7 @@ const signup = async (payload: {
   }
 
   // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = generateOtp();
 
   // Create temporary signup record (NOT the actual user yet)
   const signupPayload = {
@@ -216,7 +217,7 @@ const resendSignupOtp = async (emailOrPhone: string) => {
   }
 
   // 2. Generate new 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = generateOtp();
 
   // 3. Update account with new OTP
   account.otp = otp;
@@ -282,9 +283,6 @@ const resendSignupOtp = async (emailOrPhone: string) => {
 };
 
 // Login
-// auth.service.ts
-
-// Step 1: Request OTP for login
 const login = async (payload: {
   email?: string;
   phoneNumber?: string;
@@ -337,7 +335,7 @@ const login = async (payload: {
   }
 
   // Generate 6-digit OTP for login
-  const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  const loginOtp = generateOtp();
 
   // Save login OTP to account
   account.loginOtp = loginOtp;
@@ -400,15 +398,14 @@ const login = async (payload: {
 
 // Step 2: Verify OTP and login
 const verifyLoginOtp = async (payload: {
-  email?: string;
-  phoneNumber?: string;
+  emailOrPhone: string;
   otp: string;
 }) => {
   // Find account by email or phone
   const account = await Accounts.findOne({
     $or: [
-      { email: payload.email },
-      { phoneNumber: payload.phoneNumber }
+      { email: payload.emailOrPhone },
+      { phoneNumber: payload.emailOrPhone }
     ]
   });
 
@@ -490,14 +487,13 @@ const verifyLoginOtp = async (payload: {
 
 // Resend login OTP
 const resendLoginOtp = async (payload: {
-  email?: string;
-  phoneNumber?: string;
+  emailOrPhone: string;
 }) => {
   // Find account
   const account = await Accounts.findOne({
     $or: [
-      { email: payload.email },
-      { phoneNumber: payload.phoneNumber }
+      { email: payload.emailOrPhone },
+      { phoneNumber: payload.emailOrPhone }
     ]
   });
 
@@ -513,20 +509,79 @@ const resendLoginOtp = async (payload: {
     );
   }
 
-  // Generate new OTP
-  const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Check if account is verified
+  if (!account.isOtpVerified) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your account is not verified. Please complete signup verification first."
+    );
+  }
 
-  // Update account with new OTP
+  // Generate new 6-digit OTP
+  const loginOtp = generateOtp();
+
+  // Update account with new OTP (2 minutes expiry)
   account.loginOtp = loginOtp;
-  account.loginOtpExpireAt = new Date(Date.now() + 5 * 60 * 1000);
+  account.loginOtpExpireAt = new Date(Date.now() + 2 * 60 * 1000);
   await account.save();
 
-  // Send OTP (same as above)
-  // ... (same OTP sending logic as requestLoginOtp)
+  // Send OTP via appropriate channel
+  if (account.phoneNumber) {
+    // Send via SMS
+    try {
+      const message = `Your Astrotitan login OTP is ${loginOtp}. This code is valid for 2 minutes. Do not share this code with anyone.`;
+
+      const smsUrl = `https://sms.mram.com.bd/smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${account.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
+
+      await axios.get(smsUrl);
+    } catch (error) {
+      console.error("❌ Failed to resend login OTP via SMS:", error);
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to resend OTP. Please try again."
+      );
+    }
+  } else if (account.email) {
+    // Send via Email
+    try {
+      const subject = "Your Login OTP - Astrotitan";
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+          <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+            <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
+            <p style="font-size:16px; color:#333;">Hello,</p>
+            <p style="font-size:15px; color:#555;">
+              You requested a new login OTP. Please use the code below to login to your account.
+            </p>
+            <div style="text-align:center; margin:30px 0;">
+              <p style="font-size:32px; letter-spacing:4px; font-weight:bold; color:#D4AF37;">${loginOtp}</p>
+            </div>
+            <p style="font-size:14px; color:#777;">
+              This OTP is valid for <strong>2 minutes</strong>.
+            </p>
+            <p style="font-size:14px; color:#777;">
+              If you didn't request this, you can safely ignore this email.
+            </p>
+            <p style="font-size:15px; color:#333; margin-top:30px;">Best regards,</p>
+            <p style="font-size:16px; font-weight:bold; color:#D4AF37;">The Astrotitan Team</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail(account.email, subject, htmlBody);
+    } catch (error) {
+      console.error("❌ Failed to resend login OTP via Email:", error);
+      throw new AppError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to resend OTP. Please try again."
+      );
+    }
+  }
 
   return {
     success: true,
     message: "Login OTP resent successfully",
+    identifier: account.email || account.phoneNumber,
   };
 };
 

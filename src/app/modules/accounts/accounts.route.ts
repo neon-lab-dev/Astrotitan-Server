@@ -42,12 +42,6 @@ router.post(
   AuthControllers.refreshToken
 );
 
-router.post(
-  "/logout",
-  auth(),
-  AuthControllers.logout
-);
-
 // Admin Routes
 router.put(
   "/change-role",

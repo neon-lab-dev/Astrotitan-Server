@@ -70,6 +70,15 @@ const userSchema = new Schema<TAccounts, UserModel>(
       type: Boolean,
       default: null,
     },
+    loginOtp: {
+      type: String,
+      default: null,
+
+    },
+    loginOtpExpireAt: {
+      type: Date,
+      default: null,
+    },
     passwordChangedAt: {
       type: Date,
     },
