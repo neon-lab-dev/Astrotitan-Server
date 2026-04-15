@@ -46,6 +46,18 @@ const resendSignupOtp = catchAsync(async (req, res) => {
   });
 });
 
+const completeProfile = catchAsync(async (req, res) => {
+  const { _id } = req.user;
+  const result = await AuthServices.completeProfile(_id, req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile completed successfully",
+    data: result,
+  });
+});
+
 // Request Login OTP
 const login = catchAsync(async (req, res) => {
   const { email, phoneNumber, role } = req.body;
@@ -127,6 +139,7 @@ export const AuthControllers = {
   signup,
   verifySignupOtp,
   resendSignupOtp,
+  completeProfile,
   login,
   verifyLoginOtp,
   resendLoginOtp,

@@ -9,6 +9,7 @@ import { UserRole } from "../accounts/accounts.constants";
 
 export type TUser = {
     _id: string;
+    accountId ?: string;
     profilePicture?: string;
     firstName: string;
     lastName: string;
@@ -18,6 +19,7 @@ export type TUser = {
     timeOfBirth: string;
     placeOfBirth: string;
     intents: string[];
+    isProfileCompleted: boolean;
 };
 
 export interface UserModel extends Model<TUser> {

@@ -20,6 +20,13 @@ router.post(
   AuthControllers.resendSignupOtp
 );
 
+router.put(
+  "/complete-profile",
+  auth(UserRole.user, UserRole.astrologer),
+  AuthControllers.completeProfile
+);
+
+
 // Login Routes (OTP based login)
 router.post(
   "/login",

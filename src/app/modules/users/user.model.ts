@@ -3,6 +3,12 @@ import { TUser, UserModel } from "./user.interface";
 
 const userSchema = new Schema<TUser, UserModel>(
     {
+        accountId: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
         profilePicture: {
             type: String,
             trim: true,
@@ -47,6 +53,10 @@ const userSchema = new Schema<TUser, UserModel>(
             type: [String],
             default: [],
             index: true,
+        },
+        isProfileCompleted: {
+            type: Boolean,
+            default: false,
         },
     },
     {

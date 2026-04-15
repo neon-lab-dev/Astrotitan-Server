@@ -126,13 +126,11 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
   account.otpExpireAt = null;
   await account.save();
 
-  const roleBasedId = "";
-
   // 3. Create role-specific profile if not exists
   if (account.role === "user") {
     const existingUser = await User.findOne({ accountId: account._id });
     if (!existingUser) {
-      const userProfile = await User.create({
+      await User.create({
         accountId: account._id,
       });
     }
@@ -167,7 +165,6 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
     _id: account._id.toString(),
     email: account.email,
     role: account.role,
-    roleBasedId,
   };
 
   // 5. Generate Tokens
@@ -183,6 +180,9 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
     config.jwt_refresh_expires_in as string
   );
 
+  const user = await User.findOne({ accountId: account._id });
+  // const astrologer = await Astrologer.findOne({ accountId: account._id });
+
   return {
     success: true,
     message: "OTP verified successfully. Please complete your profile.",
@@ -193,8 +193,8 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
       email: account.email,
       phoneNumber: account.phoneNumber,
       role: account.role,
-      roleBasedId,
       isOtpVerified: account.isOtpVerified,
+      isProfileCompleted: user ? user.isProfileCompleted : false
     },
   };
 };
@@ -279,6 +279,48 @@ const resendSignupOtp = async (emailOrPhone: string) => {
     success: true,
     message: "OTP resent successfully",
     identifier: account.email || account.phoneNumber,
+  };
+};
+
+const completeProfile = async (
+  accountId: string,
+  payload: any
+) => {
+  // 1. Check if account exists
+  const account = await Accounts.findById(accountId);
+  if (!account) {
+    throw new AppError(httpStatus.NOT_FOUND, "Account not found.");
+  }
+
+  // 2. Check if account is verified
+  if (!account.isOtpVerified) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Please verify your account first."
+    );
+  }
+
+  let profile;
+
+  // 3. Role-based profile creation
+  if (account.role === "user") {
+    profile = await User.findOneAndUpdate(
+      { accountId: accountId },
+      { ...payload, isProfileCompleted: true },
+      { new: true, upsert: true }
+    );
+  }
+  //  else if (account.role === "astrologer") {
+  //   profile = await Astrologer.create({
+  //     accountId: account._id,
+  //     ...payload,
+  //   });
+  // }
+
+  return {
+    success: true,
+    message: "Profile completed successfully",
+    data: profile,
   };
 };
 
@@ -454,7 +496,6 @@ const verifyLoginOtp = async (payload: {
     email: account.email,
     phoneNumber: account.phoneNumber,
     role: account.role,
-    roleBasedId,
   };
 
   // Generate Tokens
@@ -470,6 +511,9 @@ const verifyLoginOtp = async (payload: {
     config.jwt_refresh_expires_in as string
   );
 
+  const user = await User.findOne({ accountId: account._id });
+  // const astrologer = await Astrologer.findOne({ accountId: account._id });
+
   return {
     success: true,
     message: "Login successful",
@@ -480,7 +524,7 @@ const verifyLoginOtp = async (payload: {
       email: account.email,
       phoneNumber: account.phoneNumber,
       role: account.role,
-      roleBasedId,
+      isProfileCompleted: user?.isProfileCompleted || false
     },
   };
 };
@@ -669,6 +713,7 @@ export const AuthServices = {
   signup,
   verifySignupOtp,
   resendSignupOtp,
+  completeProfile,
   login,
   verifyLoginOtp,
   resendLoginOtp,
