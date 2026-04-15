@@ -4,8 +4,8 @@ import config from "./app/config";
 import mongoose from "mongoose";
 import { Server } from "http";
 import { Server as SocketIOServer, Socket } from "socket.io";
-import { registerCrons } from "./cron";
-import { registerOldNotificationCleanupCron } from "./app/utils/cleanOldNotifications";
+// import { registerCrons } from "./cron";
+// import { registerOldNotificationCleanupCron } from "./app/utils/cleanOldNotifications";
 
 let server: Server;
 export let io: SocketIOServer;
@@ -16,8 +16,8 @@ async function main() {
 
     server = http.createServer(app);
 
-    registerCrons();
-    registerOldNotificationCleanupCron();
+    // registerCrons();
+    // registerOldNotificationCleanupCron();
 
     io = new SocketIOServer(server, {
       cors: {

@@ -1,26 +1,17 @@
-export type TLoginAuth = {
-  email: string;
-  role?: string
-  password: string;
-};
 
 import { Model } from "mongoose";
-import { UserRole } from "./auth.constants";
+import { UserRole } from "./accounts.constants";
 
-export type TUser = {
-  _id: string;
-  userId: string;
-  profilePicture?: string;
-  firstName: string;
-  lastName: string;
+export type TLoginAuth = {
   email?: string;
   phoneNumber?: string;
-  gender: string;
-  dateOfBirth: Date;
-  timeOfBirth: string;
-  placeOfBirth: string;
-  intents: string[];
-  password: string;
+  role: "user" | "astrologer";
+};
+
+export type TAccounts = {
+  _id: string;
+  email?: string;
+  phoneNumber?: string;
   role: "user" | "admin" | "astrologer";
   isDeleted?: boolean;
   isSuspended?: boolean;
@@ -29,6 +20,8 @@ export type TUser = {
   otpExpireAt?: Date | null;
   resetOtp?: string | null;
   resetOtpExpireAt?: Date | null;
+  loginOtp ?: string | null;
+  loginOtpExpireAt ?: Date | null;
   isResetOtpVerified?: boolean | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -38,8 +31,8 @@ export type TUser = {
   expoPushToken?: string | null;
 };
 
-export interface UserModel extends Model<TUser> {
-  isUserExists(email: string): Promise<TUser>;
+export interface UserModel extends Model<TAccounts> {
+  isUserExists(email: string): Promise<TAccounts>;
   isPasswordMatched(
     plainTextPassword: string,
     hashedPassword: string

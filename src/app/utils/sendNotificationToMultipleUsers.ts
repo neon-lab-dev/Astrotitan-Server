@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { User } from "../modules/auth/auth.model";
+import { User } from "../modules/accounts/accounts.model";
 import { Notification } from "../modules/notification/notification.model";
 import { io } from "../../server";
 

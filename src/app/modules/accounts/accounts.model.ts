@@ -1,7 +1,6 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
-import config from "../../config";
-import { TUser, UserModel } from "./auth.interface";
+import { TAccounts, UserModel } from "./accounts.interface";
 
 // function generateUserId() {
 //   const prefix = "AST";
@@ -10,32 +9,8 @@ import { TUser, UserModel } from "./auth.interface";
 //   return `${prefix}-${date}-${random}`;
 // }
 
-const userSchema = new Schema<TUser, UserModel>(
+const userSchema = new Schema<TAccounts, UserModel>(
   {
-    userId: {
-      type: String,
-      unique: true,
-      index: true,
-    },
-    profilePicture: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    firstName: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 100,
-      index: true,
-    },
-    lastName: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 100,
-      index: true,
-    },
     email: {
       type: String,
       required: false,
@@ -51,38 +26,6 @@ const userSchema = new Schema<TUser, UserModel>(
       trim: true,
       sparse: true,
       index: true,
-    },
-    gender: {
-      type: String,
-      required: true,
-      enum: ["male", "female", "other"],
-      index: true,
-    },
-    dateOfBirth: {
-      type: Date,
-      required: true,
-      index: true,
-    },
-    timeOfBirth: {
-      type: String,
-      required: true,
-    },
-    placeOfBirth: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
-    },
-    intents: {
-      type: [String],
-      required: true,
-      default: [],
-      index: true,
-    },
-    password: {
-      type: String,
-      required: true,
-      select: false,
     },
     role: {
       type: String,
@@ -189,17 +132,6 @@ userSchema.index(
   { expireAfterSeconds: 0, partialFilterExpression: { isOtpVerified: false } }
 );
 
-// Hashing password before saving
-userSchema.pre("save", async function (next) {
-  if (this.isModified("password")) {
-    this.password = await bcrypt.hash(
-      this.password,
-      Number(config.bcrypt_salt_round)
-    );
-  }
-  next();
-});
-
 // Remove password from response
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
@@ -219,4 +151,4 @@ userSchema.statics.isPasswordMatched = async function (
   return await bcrypt.compare(plainTextPassword, hashedPassword);
 };
 
-export const User = model<TUser, UserModel>("User", userSchema);
+export const Accounts = model<TAccounts, UserModel>("Accounts", userSchema);

@@ -27,16 +27,16 @@ const getSingleUserById = catchAsync(async (req, res) => {
   });
 });
 
-const getMe = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const result = await UserServices.getMe(userId);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Profile retrieved successfully",
-    data: result,
-  });
-});
+// const getMe = catchAsync(async (req, res) => {
+//   const userId = req.user._id;
+//   const result = await UserServices.getMe(userId);
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: "Profile retrieved successfully",
+//     data: result,
+//   });
+// });
 
 // suspend user
 const suspendUser = catchAsync(async (req, res) => {
@@ -86,119 +86,12 @@ const restoreDeletedAccount = catchAsync(async (req, res) => {
   });
 });
 
-const requestToUnlockProfile = catchAsync(async (req, res) => {
-  const userId  = req.user._id;
-
-  const tutor = await UserServices.requestToUnlockProfile(userId, req.body);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Profile unlocked successfully",
-    data: tutor,
-  });
-});
-
-// Lock/unlock profile
-const toggleLockProfile = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const result = await UserServices.toggleLockProfile(userId);
-  sendResponse(res, {
-    success: true,
-    message: "Profile status updated successfully",
-    statusCode: httpStatus.OK,
-    data: result,
-  });
-});
-
-// Update tutor profile
-const updateProfile = catchAsync(async (req, res) => {
-  const file = req.file;
-  const userId = req.user._id
-  const result = await UserServices.updateProfile(userId, req.body, file);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Profile updated successfully",
-    data: result,
-  });
-});
-
-// For admin
-const giveRating = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const { rating } = req.body;
-
-  const result = await UserServices.giveRating(userId, rating);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Rating updated successfully",
-    data: result,
-  });
-});
-
- const addEducation = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const payload = req.body || {};
-
-  const added = await UserServices.addEducation(userId, payload.educationalInformation);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Education added successfully",
-    data: added,
-  });
-});
-
- const updateEducation = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const educationId = req.params.educationId;
-  const payload = req.body?.educationalInformation ?? req.body;
-
-  const updated = await UserServices.updateEducation(userId, educationId, payload);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Education updated successfully",
-    data: updated,
-  });
-});
-
-/**
- * DELETE /api/profile/education/:educationId
- */
- const deleteEducation = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const educationId = req.params.educationId;
-
-  const updated = await UserServices.deleteEducation(userId, educationId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Education removed successfully",
-    data: updated,
-  });
-});
-
 export const UserControllers = {
   getAllUser,
-  getMe,
+  // getMe,
   suspendUser,
   activeUser,
   getSingleUserById,
   deleteAccount,
   restoreDeletedAccount,
-  requestToUnlockProfile,
-  toggleLockProfile,
-  updateProfile,
-  giveRating,
-  addEducation,
-  updateEducation,
-  deleteEducation
 };

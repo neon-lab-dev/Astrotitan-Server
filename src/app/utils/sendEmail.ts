@@ -4,11 +4,11 @@ import config from "../config";
 
 dotenv.config();
 
-export const sendEmail = async (to: string, html: string, subject?: string) => {
+export const sendEmail = async (to: string, subject:string, html: string) => {
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
-      auth: {
+     auth: {
         user: config.smtp_email,
         pass: config.smtp_pass,
       },
@@ -17,7 +17,7 @@ export const sendEmail = async (to: string, html: string, subject?: string) => {
     await transporter.sendMail({
       from: config.smtp_email,
       to,
-      subject: subject || "Reset your password within 10 minutes",
+      subject,
       text: "Reset your password within 10 minutes",
       html,
     });
