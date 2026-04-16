@@ -415,18 +415,34 @@ const login = async (payload: {
     );
   }
 
-  // Find account by email or phone
-  const account = await Accounts.findOne({
-    $or: [
-      { email: payload.email },
-      { phoneNumber: payload.phoneNumber }
-    ]
-  });
+  // Build query dynamically (remove undefined/null values)
+  const query: any = {
+    $or: []
+  };
+
+  if (payload.email) {
+    query.$or.push({ email: payload.email });
+  }
+  if (payload.phoneNumber) {
+    query.$or.push({ phoneNumber: payload.phoneNumber });
+  }
+
+  // If both are provided, find by either
+  // If only one is provided, find by that only
+  const account = await Accounts.findOne(query);
 
   if (!account) {
     throw new AppError(
       httpStatus.NOT_FOUND,
       "No account found. Please sign up first."
+    );
+  }
+
+  // Check role mismatch
+  if (account.role !== payload.role) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `This account is registered as a ${account.role}. Please select the correct account type.`
     );
   }
 
@@ -453,7 +469,7 @@ const login = async (payload: {
     );
   }
 
-  // Generate 6-digit OTP for login
+  // Generate 4-digit OTP for login
   const loginOtp = generateOtp();
 
   // Save login OTP to account
@@ -462,12 +478,12 @@ const login = async (payload: {
   await account.save();
 
   // Send OTP via appropriate channel
-  if (account.phoneNumber) {
+  if (payload.phoneNumber) {
     // Send via SMS
     try {
-      const message = `Your Astrotitan login OTP is ${loginOtp}. Valid for 5 minutes. Do not share this code with anyone.`;
+      const message = `Your Astrotitan login OTP is ${loginOtp}. Valid for 2 minutes. Do not share this code with anyone.`;
 
-      const smsUrl = `https://sms.mram.com.bd/smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${account.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
+      const smsUrl = `https://sms.mram.com.bd/smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
 
       await axios.get(smsUrl);
     } catch (error) {
@@ -477,7 +493,7 @@ const login = async (payload: {
         "Failed to send OTP. Please try again."
       );
     }
-  } else if (account.email) {
+  } else if (payload.email) {
     // Send via Email
     try {
       const subject = "Your Login OTP - Astrotitan";
@@ -490,14 +506,14 @@ const login = async (payload: {
             <div style="text-align:center; margin:30px 0;">
               <p style="font-size:32px; letter-spacing:4px; font-weight:bold; color:#D4AF37;">${loginOtp}</p>
             </div>
-            <p>This OTP is valid for <strong>5 minutes</strong>.</p>
+            <p>This OTP is valid for <strong>2 minutes</strong>.</p>
             <p style="color:#777;">If you didn't request this, please ignore this email.</p>
             <p>Best regards,<br/>The Astrotitan Team</p>
           </div>
         </div>
       `;
 
-      await sendEmail(account.email, subject, htmlBody);
+      await sendEmail(payload.email as string, subject, htmlBody);
     } catch (error) {
       console.error("❌ Failed to send login OTP via Email:", error);
       throw new AppError(
@@ -510,7 +526,7 @@ const login = async (payload: {
   return {
     success: true,
     message: "Login OTP sent successfully",
-    identifier: account.email || account.phoneNumber,
+    identifier: payload.email || payload.phoneNumber,
     role: account.role,
   };
 };
@@ -786,7 +802,7 @@ const changeUserRole = async (payload: { userId: string; role: any }) => {
   return result;
 };
 
-// Suspend user - actual operation on User model
+// Suspend user
 const suspendAccount = async (accountId: string, payload: any) => {
   const user = await Accounts.findById(accountId);
   if (!user) throw new Error("User not found");
