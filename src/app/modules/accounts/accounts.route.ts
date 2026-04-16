@@ -2,6 +2,7 @@ import express from "express";
 import { AuthControllers } from "./accounts.controller";
 import auth from "../../middlewares/auth";
 import { UserRole } from "./accounts.constants";
+import { multerUpload } from "../../config/multer.config";
 
 const router = express.Router();
 
@@ -23,6 +24,11 @@ router.post(
 router.put(
   "/complete-profile",
   auth(UserRole.user, UserRole.astrologer),
+  multerUpload.fields([
+    { name: "profilePicture", maxCount: 1 },
+    { name: "identityFront", maxCount: 1 },
+    { name: "identityBack", maxCount: 1 },
+  ]),
   AuthControllers.completeProfile
 );
 
@@ -54,6 +60,18 @@ router.put(
   "/change-role",
   auth(UserRole.admin),
   AuthControllers.changeUserRole
+);
+
+
+router.patch(
+  "/suspend/:accountId",
+  auth(UserRole.admin),
+  AuthControllers.suspendAccount
+);
+router.patch(
+  "/active/:accountId",
+  auth(UserRole.admin),
+  AuthControllers.activeAccount
 );
 
 export const AccountsRoutes = router;

@@ -1,5 +1,5 @@
 import express from "express";
-import { UserControllers } from "./users.controller";
+import { UserControllers } from "./astrologer.controller";
 import auth from "../../middlewares/auth";
 import { UserRole } from "../accounts/accounts.constants";
 

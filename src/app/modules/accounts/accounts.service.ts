@@ -11,6 +11,8 @@ import Expo from "expo-server-sdk";
 import { sendEmail } from "../../utils/sendEmail";
 import { User } from "../users/user.model";
 import { generateOtp } from "../../utils/generateOtp";
+import { Astrologer } from "../astrologer/astrologer.model";
+import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 
 const signup = async (payload: {
   email?: string;
@@ -135,30 +137,14 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
       });
     }
   }
-
-  // if (account.role === "astrologer") {
-  //   const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
-  //   if (!existingAstrologer) {
-  //     const astrologerProfile = await Astrologer.create({
-  //       accountId: account._id,
-  //       firstName: "",
-  //       lastName: "",
-  //       gender: "",
-  //       dateOfBirth: null,
-  //       timeOfBirth: "",
-  //       placeOfBirth: "",
-  //       expertise: [],
-  //       experience: 0,
-  //       languages: [],
-  //       isVerified: false,
-  //       isProfileComplete: false,
-  //     });
-  //     roleBasedId = astrologerProfile._id.toString();
-  //   } else {
-  //     roleBasedId = existingAstrologer._id.toString();
-  //     isProfileComplete = existingAstrologer.isProfileComplete || false;
-  //   }
-  // }
+  if (account.role === "astrologer") {
+    const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
+    if (!existingAstrologer) {
+      await Astrologer.create({
+        accountId: account._id,
+      });
+    }
+  }
 
   // 4. JWT Payload
   const jwtPayload = {
@@ -284,15 +270,51 @@ const resendSignupOtp = async (emailOrPhone: string) => {
 
 const completeProfile = async (
   accountId: string,
-  payload: any
+  payload: any,
+  files?: {
+    profilePicture?: Express.Multer.File[];
+    identityFront?: Express.Multer.File[];
+    identityBack?: Express.Multer.File[];
+  }
 ) => {
-  // 1. Check if account exists
+
+  // Upload profile picture
+  let profilePictureUrl = "";
+  if (files?.profilePicture?.[0]) {
+    const uploaded = await sendImageToCloudinary(
+      files.profilePicture[0].originalname,
+      files.profilePicture[0].path
+    );
+    profilePictureUrl = uploaded.secure_url;
+  }
+
+  // Upload identity front
+  let frontSideUrl = "";
+  if (files?.identityFront?.[0]) {
+    const uploaded = await sendImageToCloudinary(
+      files.identityFront[0].originalname,
+      files.identityFront[0].path
+    );
+    frontSideUrl = uploaded.secure_url;
+  }
+
+  // Upload identity back
+  let backSideUrl = "";
+  if (files?.identityBack?.[0]) {
+    const uploaded = await sendImageToCloudinary(
+      files.identityBack[0].originalname,
+      files.identityBack[0].path
+    );
+    backSideUrl = uploaded.secure_url;
+  }
+
+  // Checking if account exists
   const account = await Accounts.findById(accountId);
   if (!account) {
     throw new AppError(httpStatus.NOT_FOUND, "Account not found.");
   }
 
-  // 2. Check if account is verified
+  // Checking if account is verified
   if (!account.isOtpVerified) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -300,22 +322,77 @@ const completeProfile = async (
     );
   }
 
+  // Parsing array fields
+  const parseArrayField = (field: any) => {
+    if (!field) return [];
+    if (Array.isArray(field)) return field;
+    if (typeof field === 'string') {
+      try {
+        const parsed = JSON.parse(field);
+        return Array.isArray(parsed) ? parsed : [field];
+      } catch (e) {
+        return [field];
+      }
+    }
+    return [];
+  };
+
+  // Payload
+  const cleanedPayload = {
+    ...payload,
+    consultLanguages: parseArrayField(payload.consultLanguages),
+    areaOfPractice: parseArrayField(payload.areaOfPractice),
+  };
+
   let profile;
 
-  // 3. Role-based profile creation
+  // Role-based profile creation
   if (account.role === "user") {
     profile = await User.findOneAndUpdate(
       { accountId: accountId },
-      { ...payload, isProfileCompleted: true },
+      { ...cleanedPayload, isProfileCompleted: true },
       { new: true, upsert: true }
     );
   }
-  //  else if (account.role === "astrologer") {
-  //   profile = await Astrologer.create({
-  //     accountId: account._id,
-  //     ...payload,
-  //   });
-  // }
+  else if (account.role === "astrologer") {
+    // Astrologer data
+    const astrologerData = {
+      accountId: account._id,
+      identity: {
+        identityType: payload.identityType,
+        frontSide: frontSideUrl || payload.frontSide,
+        backSide: backSideUrl || payload.backSide,
+      },
+      profilePicture: profilePictureUrl || payload.profilePicture || "",
+      isProfileCompleted: true,
+      ...cleanedPayload,
+    };
+
+    // Validating identity for astrologer
+    if (!astrologerData.identity.identityType) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Identity type is required for astrologer");
+    }
+    if (!astrologerData.identity.frontSide) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Front side of identity document is required");
+    }
+    if (!astrologerData.identity.backSide) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Back side of identity document is required");
+    }
+
+    profile = await Astrologer.findOneAndUpdate(
+      { accountId: accountId },
+      astrologerData,
+      { new: true, upsert: true }
+    );
+  }
+
+  await Accounts.findByIdAndUpdate(accountId, {
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phoneNumber: payload.phoneNumber,
+    gender: payload.gender,
+    profilePicture: profilePictureUrl || payload.profilePicture || "",
+  });
 
   return {
     success: true,
@@ -709,6 +786,31 @@ const changeUserRole = async (payload: { userId: string; role: any }) => {
   return result;
 };
 
+// Suspend user - actual operation on User model
+const suspendAccount = async (accountId: string, payload: any) => {
+  const user = await Accounts.findById(accountId);
+  if (!user) throw new Error("User not found");
+
+  user.isSuspended = true;
+  user.suspensionReason = payload.suspensionReason;
+  await user.save();
+
+  return user;
+};
+
+// Activate user back
+const activeAccount = async (accountId: string) => {
+  const user = await Accounts.findById(accountId);
+  if (!user) throw new Error("User not found");
+
+  user.isSuspended = false;
+  user.suspensionReason = null;
+  await user.save();
+
+  return user;
+};
+
+
 export const AuthServices = {
   signup,
   verifySignupOtp,
@@ -719,4 +821,6 @@ export const AuthServices = {
   resendLoginOtp,
   refreshToken,
   changeUserRole,
+  suspendAccount,
+  activeAccount
 };

@@ -48,7 +48,12 @@ const resendSignupOtp = catchAsync(async (req, res) => {
 
 const completeProfile = catchAsync(async (req, res) => {
   const { _id } = req.user;
-  const result = await AuthServices.completeProfile(_id, req.body);
+  const files = req.files as { 
+    profilePicture?: Express.Multer.File[];
+    identityFront?: Express.Multer.File[];
+    identityBack?: Express.Multer.File[];
+  };
+  const result = await AuthServices.completeProfile(_id, req.body, files as any);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -135,6 +140,30 @@ const changeUserRole = catchAsync(async (req, res) => {
   });
 });
 
+// suspend user
+const suspendAccount = catchAsync(async (req, res) => {
+  const { accountId } = req.params;
+  const result = await AuthServices.suspendAccount(accountId, req.body);
+  sendResponse(res, {
+    success: true,
+    message: "User suspended successfully",
+    statusCode: httpStatus.OK,
+    data: result,
+  });
+});
+
+// activate user
+const activeAccount = catchAsync(async (req, res) => {
+  const { accountId } = req.params;
+  const result = await AuthServices.activeAccount(accountId);
+  sendResponse(res, {
+    success: true,
+    message: "User activated successfully",
+    statusCode: httpStatus.OK,
+    data: result,
+  });
+});
+
 export const AuthControllers = {
   signup,
   verifySignupOtp,
@@ -145,4 +174,6 @@ export const AuthControllers = {
   resendLoginOtp,
   refreshToken,
   changeUserRole,
+  suspendAccount,
+  activeAccount
 };

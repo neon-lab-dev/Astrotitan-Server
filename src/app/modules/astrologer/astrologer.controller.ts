@@ -1,5 +1,5 @@
 // users.controller.ts
-import { UserServices } from "./users.services";
+import { UserServices } from "./astrologer.services";
 import sendResponse from "../../utils/sendResponse";
 import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";

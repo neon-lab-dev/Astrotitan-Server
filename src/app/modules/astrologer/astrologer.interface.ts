@@ -7,24 +7,30 @@ export type TLoginAuth = {
 import { Model } from "mongoose";
 import { UserRole } from "../accounts/accounts.constants";
 
-export type TUser = {
+export type TAstrologer = {
     _id: string;
-    accountId ?: string;
+    accountId?: string;
     profilePicture?: string;
     firstName: string;
     lastName: string;
+    displayName?: string;
     phoneNumber?: string;
     gender: string;
-    dateOfBirth: Date;
-    timeOfBirth: string;
-    placeOfBirth: string;
-    intents: string[];
+    consultLanguages: string[];
+    areaOfPractice: string[];
+    experience: string;
+    bio?: string;
     country: string;
+    identity: {
+        identityType: "aadharCard" | "panCard";
+        frontSide: string;
+        backSide: string;
+    }
     isProfileCompleted: boolean;
 };
 
-export interface UserModel extends Model<TUser> {
-    isUserExists(email: string): Promise<TUser>;
+export interface AstrologerModel extends Model<TAstrologer> {
+    isUserExists(email: string): Promise<TAstrologer>;
 }
 
 export type TUserRole = keyof typeof UserRole;

@@ -5,9 +5,10 @@ const userSchema = new Schema<TUser, UserModel>(
     {
         accountId: {
             type: String,
+            required: true,
             unique: true,
-            sparse: true,
             index: true,
+            ref: "Accounts",
         },
         profilePicture: {
             type: String,
@@ -52,6 +53,11 @@ const userSchema = new Schema<TUser, UserModel>(
         intents: {
             type: [String],
             default: [],
+            index: true,
+        },
+        country: {
+            type: String,
+            trim: true,
             index: true,
         },
         isProfileCompleted: {
