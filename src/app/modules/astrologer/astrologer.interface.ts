@@ -25,7 +25,10 @@ export type TAstrologer = {
         identityType: "aadharCard" | "panCard";
         frontSide: string;
         backSide: string;
+        status: "pending" | "approved" | "rejected";
+        rejectedReason?: string;
     }
+    isIdentityVerified: boolean;
     isProfileCompleted: boolean;
 };
 

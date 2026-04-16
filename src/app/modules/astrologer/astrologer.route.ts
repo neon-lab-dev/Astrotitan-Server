@@ -1,55 +1,33 @@
 import express from "express";
-import { UserControllers } from "./astrologer.controller";
+import { AstrologerControllers } from "./astrologer.controller";
 import auth from "../../middlewares/auth";
 import { UserRole } from "../accounts/accounts.constants";
 
 const router = express.Router();
 
+// Admin routes
 router.get(
   "/",
   auth(UserRole.admin),
-  UserControllers.getAllUser
+  AstrologerControllers.getAllAstrologer
 );
-// router.get(
-//   "/me",
-//   auth(
-//     UserRole.user,
-//     UserRole.admin,
-//     UserRole.astrologer
-//   ),
-//   UserControllers.getMe
-// );
 
 router.get(
-  "/:userId",
+  "/pending-identity",
   auth(UserRole.admin),
-  UserControllers.getSingleUserById
+  AstrologerControllers.getPendingIdentityRequests
 );
 
-// router.patch(
-//   "/update-profile",
-//   auth(
-//     UserRole.user,
-//     UserRole.admin,
-//     UserRole.staff,
-//     UserRole.tutor,
-//     UserRole.guardian
-//   ),
-//   multerUpload.single("file"),
-//   UserControllers.updateProfile
-// );
+router.get(
+  "/:astrologerId",
+  auth(UserRole.admin),
+  AstrologerControllers.getSingleAstrologerById
+);
 
 router.patch(
-  "/delete-account",
-  auth(UserRole.user, UserRole.astrologer),
-  UserControllers.deleteAccount
-);
-
-// For admin and staff only
-router.patch(
-  "/account/restore/:userId",
+  "/update-identity-status/:astrologerId",
   auth(UserRole.admin),
-  UserControllers.restoreDeletedAccount
+  AstrologerControllers.updateIdentityStatus
 );
 
-export const userRoutes = router;
+export const AstrologerRoutes = router;

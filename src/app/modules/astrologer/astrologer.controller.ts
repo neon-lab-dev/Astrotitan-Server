@@ -1,73 +1,95 @@
-// users.controller.ts
-import { UserServices } from "./astrologer.services";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { AstrologerServices } from "./astrologer.services";
 import sendResponse from "../../utils/sendResponse";
 import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
 
-const getAllUser = catchAsync(async (req, res) => {
-  const result = await UserServices.getAllUser();
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "User retrieved successfully",
-    data: result,
-  });
-});
+const getAllAstrologer = catchAsync(async (req, res) => {
+  const {
+    keyword,
+    isIdentityVerified,
+    isProfileCompleted,
+    country,
+    gender,
+    areaOfPractice,
+    consultLanguages,
+    skip = "0",
+    limit = "10",
+  } = req.query;
 
-// Get single post by ID
-const getSingleUserById = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const result = await UserServices.getSingleUserById(userId);
+  const filters = {
+    keyword: keyword as string,
+    isIdentityVerified: isIdentityVerified as string,
+    isProfileCompleted: isProfileCompleted as string,
+    country: country as string,
+    gender: gender as string,
+    areaOfPractice: areaOfPractice as string,
+    consultLanguages: consultLanguages as string,
+  };
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "User data fetched successfully.",
-    data: result,
-  });
-});
-
-// const getMe = catchAsync(async (req, res) => {
-//   const userId = req.user._id;
-//   const result = await UserServices.getMe(userId);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Profile retrieved successfully",
-//     data: result,
-//   });
-// });
-
-
-// Delete account
-const deleteAccount = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const result = await UserServices.deleteAccount(userId, req.body);
+  const result = await AstrologerServices.getAllAstrologer(
+    filters,
+    Number(skip),
+    Number(limit)
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Account deleted successfully!",
-    data: result,
+    message: "Astrologers retrieved successfully",
+    data: {
+      astrologers: result.data,
+      meta: result.meta,
+    },
   });
 });
-// Restore Deleted account
-const restoreDeletedAccount = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const result = await UserServices.restoreDeletedAccount(userId);
+
+const getSingleAstrologerById = catchAsync(async (req, res) => {
+  const { astrologerId } = req.params;
+  const result = await AstrologerServices.getSingleAstrologerById(astrologerId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Account restored successfully!",
+    message: "Astrologer data fetched successfully.",
     data: result,
   });
 });
 
-export const UserControllers = {
-  getAllUser,
-  // getMe,
-  getSingleUserById,
-  deleteAccount,
-  restoreDeletedAccount,
+const updateIdentityStatus = catchAsync(async (req, res) => {
+  const { astrologerId } = req.params;
+  const result = await AstrologerServices.updateIdentityStatus(astrologerId, req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result.message,
+    data: result.data,
+  });
+});
+
+const getPendingIdentityRequests = catchAsync(async (req, res) => {
+  const { skip = "0", limit = "10" } = req.query;
+  
+  const result = await AstrologerServices.getPendingIdentityRequests(
+    Number(skip),
+    Number(limit)
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Pending identity requests retrieved successfully",
+    data: {
+      astrologers: result.data,
+      meta: result.meta,
+    },
+  });
+});
+
+export const AstrologerControllers = {
+  getAllAstrologer,
+  getSingleAstrologerById,
+  updateIdentityStatus,
+  getPendingIdentityRequests,
 };

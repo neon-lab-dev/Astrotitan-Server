@@ -7,7 +7,6 @@ import config from "../../config";
 import { createToken } from "./accounts.utils";
 import { Accounts } from "./accounts.model";
 import axios from "axios";
-import Expo from "expo-server-sdk";
 import { sendEmail } from "../../utils/sendEmail";
 import { User } from "../users/user.model";
 import { generateOtp } from "../../utils/generateOtp";
@@ -17,8 +16,15 @@ import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 const signup = async (payload: {
   email?: string;
   phoneNumber?: string;
-  role: "user" | "astrologer";
+  role: "user" | "astrologer" | "admin";
 }) => {
+  // Validating for admin registration
+  if(payload.role === "admin"){
+    const admin = await Accounts.findOne({ role: "admin" });
+    if (admin) {
+      throw new AppError(httpStatus.CONFLICT, "Something has been wrong. Please avoid registering again.");
+    }
+  }
   // Validate input
   if (!payload.email && !payload.phoneNumber) {
     throw new AppError(

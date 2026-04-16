@@ -91,6 +91,21 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
         required: false,
         trim: true,
       },
+      status: {
+        type: String,
+        required: false,
+        enum: ["pending", "approved", "rejected"],
+      },
+      rejectedReason: {
+        type: String,
+        required: false,
+        trim: true,
+      }
+    },
+    isIdentityVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     isProfileCompleted: {
       type: Boolean,
