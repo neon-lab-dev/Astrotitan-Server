@@ -19,6 +19,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      "https://astro-titan-admin-panel.vercel.app"
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

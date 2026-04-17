@@ -19,6 +19,7 @@ app.use(express_1.default.urlencoded({ extended: true, limit: "10mb" }));
 app.use((0, cors_1.default)({
     origin: [
         "http://localhost:5173",
+        "https://astro-titan-admin-panel.vercel.app"
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

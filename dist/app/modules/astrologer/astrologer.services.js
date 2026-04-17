@@ -30,12 +30,9 @@ const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, f
             { bio: { $regex: filters.keyword, $options: "i" } },
         ];
     }
-    // Filter by identity verification status
-    if (filters.isIdentityVerified === "true") {
-        query.isIdentityVerified = true;
-    }
-    else if (filters.isIdentityVerified === "false") {
-        query.isIdentityVerified = false;
+    // Filter by identity status (pending, approved, rejected)
+    if (filters.identityStatus) {
+        query["identity.status"] = filters.identityStatus;
     }
     // Filter by country
     if (filters.country) {

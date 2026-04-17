@@ -7,7 +7,7 @@ import catchAsync from "../../utils/catchAsync";
 const getAllAstrologer = catchAsync(async (req, res) => {
   const {
     keyword,
-    isIdentityVerified,
+    identityStatus,
     isProfileCompleted,
     country,
     gender,
@@ -19,7 +19,7 @@ const getAllAstrologer = catchAsync(async (req, res) => {
 
   const filters = {
     keyword: keyword as string,
-    isIdentityVerified: isIdentityVerified as string,
+    identityStatus: identityStatus as string,
     isProfileCompleted: isProfileCompleted as string,
     country: country as string,
     gender: gender as string,

@@ -8,7 +8,7 @@ import httpStatus from "http-status";
 const getAllAstrologer = async (
   filters: {
     keyword?: string;
-    isIdentityVerified?: string;
+    identityStatus?: string;
     country?: string;
     gender?: string;
     areaOfPractice?: string;
@@ -29,11 +29,9 @@ const getAllAstrologer = async (
     ];
   }
 
-  // Filter by identity verification status
-  if (filters.isIdentityVerified === "true") {
-    query.isIdentityVerified = true;
-  } else if (filters.isIdentityVerified === "false") {
-    query.isIdentityVerified = false;
+  // Filter by identity status (pending, approved, rejected)
+  if (filters.identityStatus) {
+    query["identity.status"] = filters.identityStatus;
   }
 
   // Filter by country
