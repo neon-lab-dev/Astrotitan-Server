@@ -5,7 +5,8 @@ import { UserRole } from "./accounts.constants";
 export type TLoginAuth = {
   email?: string;
   phoneNumber?: string;
-  role: "user" | "astrologer";
+  role: "user" | "astrologer" | "admin";
+  password?: string;
 };
 
 export type TAccounts = {
@@ -29,6 +30,7 @@ export type TAccounts = {
   suspensionReason?: string | null;
   accountDeleteReason?: string | null;
   expoPushToken?: string | null;
+  password?: string; // Password will be just for admin
 };
 
 export interface UserModel extends Model<TAccounts> {

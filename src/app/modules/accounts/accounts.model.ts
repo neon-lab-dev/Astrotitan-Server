@@ -1,6 +1,7 @@
 import { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
 import { TAccounts, UserModel } from "./accounts.interface";
+import config from "../../config";
 
 // function generateUserId() {
 //   const prefix = "AST";
@@ -96,11 +97,44 @@ const userSchema = new Schema<TAccounts, UserModel>(
       type: String,
       default: null,
     },
+    password: {
+      type: String,
+      select: false,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Hashing password before saving
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(
+      this.password as string,
+      Number(config.bcrypt_salt_round)
+    );
+  }
+  next();
+});
+
+// Hide password after saving
+userSchema.post("save", function (doc, next) {
+  doc.password = "";
+  next();
+});
+
+// Static methods
+userSchema.statics.isUserExists = async function (email: string) {
+  return await this.findOne({ email }).select("+password");
+};
+
+userSchema.statics.isPasswordMatched = async function (
+  plainTextPassword: string,
+  hashedPassword: string
+) {
+  return await bcrypt.compare(plainTextPassword, hashedPassword);
+};
 
 // Compound indexes for common query patterns
 userSchema.index({ role: 1, isDeleted: 1 });

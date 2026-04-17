@@ -49,6 +49,11 @@ router.post(
   AuthControllers.resendLoginOtp
 );
 
+router.post(
+  "/admin/login",
+  AuthControllers.loginAdmin
+);
+
 // Token Routes
 router.post(
   "/refresh-token",

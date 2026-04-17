@@ -48,7 +48,7 @@ const resendSignupOtp = catchAsync(async (req, res) => {
 
 const completeProfile = catchAsync(async (req, res) => {
   const { _id } = req.user;
-  const files = req.files as { 
+  const files = req.files as {
     profilePicture?: Express.Multer.File[];
     identityFront?: Express.Multer.File[];
     identityBack?: Express.Multer.File[];
@@ -91,6 +91,26 @@ const verifyLoginOtp = catchAsync(async (req, res) => {
     httpOnly: true,
     sameSite: "strict",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Logged in successfully.",
+    data: result,
+  });
+});
+
+// Admin Login
+const loginAdmin = catchAsync(async (req, res) => {
+  const result = await AuthServices.loginAdmin(req.body);
+
+  const { refreshToken } = result;
+
+  res.cookie("refreshToken", refreshToken, {
+    secure: config.node_env === "production",
+    httpOnly: true,
+    sameSite: "strict",
   });
 
   sendResponse(res, {
@@ -172,6 +192,7 @@ export const AuthControllers = {
   login,
   verifyLoginOtp,
   resendLoginOtp,
+  loginAdmin,
   refreshToken,
   changeUserRole,
   suspendAccount,

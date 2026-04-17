@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Accounts = void 0;
 const mongoose_1 = require("mongoose");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const config_1 = __importDefault(require("../../config"));
 // function generateUserId() {
 //   const prefix = "AST";
 //   const date = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // YYYYMMDD
@@ -106,9 +107,38 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         default: null,
     },
+    password: {
+        type: String,
+        select: false,
+    },
 }, {
     timestamps: true,
 });
+// Hashing password before saving
+userSchema.pre("save", function (next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (this.isModified("password")) {
+            this.password = yield bcrypt_1.default.hash(this.password, Number(config_1.default.bcrypt_salt_round));
+        }
+        next();
+    });
+});
+// Hide password after saving
+userSchema.post("save", function (doc, next) {
+    doc.password = "";
+    next();
+});
+// Static methods
+userSchema.statics.isUserExists = function (email) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield this.findOne({ email }).select("+password");
+    });
+};
+userSchema.statics.isPasswordMatched = function (plainTextPassword, hashedPassword) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield bcrypt_1.default.compare(plainTextPassword, hashedPassword);
+    });
+};
 // Compound indexes for common query patterns
 userSchema.index({ role: 1, isDeleted: 1 });
 userSchema.index({ role: 1, isSuspended: 1 });

@@ -60,25 +60,27 @@ const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         phoneNumber: payload.phoneNumber || null,
         role: payload.role,
         otp,
-        otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes
+        otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes,
+        password: payload.password || null
     };
-    // Send OTP
-    if (payload.phoneNumber) {
-        // Send SMS
-        try {
-            const message = `Your OTP for Astrotitan is ${otp}. Valid for 2 minutes.`;
-            const smsUrl = `https://smsapi?api_key=${config_1.default.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config_1.default.sms_sender_id}&msg=${encodeURIComponent(message)}`;
-            yield axios_1.default.get(smsUrl);
+    if (payload.role !== "admin") {
+        // Send OTP
+        if (payload.phoneNumber) {
+            // Send SMS
+            try {
+                const message = `Your OTP for Astrotitan is ${otp}. Valid for 2 minutes.`;
+                const smsUrl = `https://smsapi?api_key=${config_1.default.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config_1.default.sms_sender_id}&msg=${encodeURIComponent(message)}`;
+                yield axios_1.default.get(smsUrl);
+            }
+            catch (error) {
+                console.error("❌ Failed to send OTP SMS:", error);
+                throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, "Failed to send OTP SMS");
+            }
         }
-        catch (error) {
-            console.error("❌ Failed to send OTP SMS:", error);
-            throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, "Failed to send OTP SMS");
-        }
-    }
-    else if (payload.email) {
-        // Send Email
-        const subject = "Verify Your OTP - Astrotitan";
-        const htmlBody = `
+        else if (payload.email) {
+            // Send Email
+            const subject = "Verify Your OTP - Astrotitan";
+            const htmlBody = `
       <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
         <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
           <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
@@ -88,7 +90,8 @@ const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
         </div>
       </div>
     `;
-        yield (0, sendEmail_1.sendEmail)(payload.email, subject, htmlBody);
+            yield (0, sendEmail_1.sendEmail)(payload.email, subject, htmlBody);
+        }
     }
     yield accounts_model_1.Accounts.create(signupPayload);
     return {};
@@ -547,6 +550,38 @@ const resendLoginOtp = (payload) => __awaiter(void 0, void 0, void 0, function* 
         identifier: account.email || account.phoneNumber,
     };
 });
+const loginAdmin = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    // Check if user exists
+    const user = yield accounts_model_1.Accounts.isUserExists(payload.email || "");
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "No account found with this email address. Please sign up first.");
+    }
+    // 7️Password validation
+    const isPasswordMatched = yield accounts_model_1.Accounts.isPasswordMatched(payload.password, user.password);
+    if (!isPasswordMatched) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "Incorrect password. Please try again.");
+    }
+    // JWT Payload
+    const jwtPayload = {
+        _id: user._id.toString(),
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+    };
+    // Tokens
+    const accessToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_access_secret, config_1.default.jwt_access_expires_in);
+    const refreshToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_refresh_secret, config_1.default.jwt_refresh_expires_in);
+    return {
+        accessToken,
+        refreshToken,
+        user: {
+            _id: user._id,
+            email: user.email,
+            phoneNumber: user.phoneNumber,
+            role: user.role,
+        },
+    };
+});
 const refreshToken = (token) => __awaiter(void 0, void 0, void 0, function* () {
     // Checking if there is any token sent from the client or not.
     if (!token) {
@@ -628,6 +663,7 @@ exports.AuthServices = {
     login,
     verifyLoginOtp,
     resendLoginOtp,
+    loginAdmin,
     refreshToken,
     changeUserRole,
     suspendAccount,

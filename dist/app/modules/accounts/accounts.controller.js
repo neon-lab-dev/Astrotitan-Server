@@ -93,6 +93,22 @@ const verifyLoginOtp = (0, catchAsync_1.default)((req, res) => __awaiter(void 0,
         data: result,
     });
 }));
+// Admin Login
+const loginAdmin = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield accounts_service_1.AuthServices.loginAdmin(req.body);
+    const { refreshToken } = result;
+    res.cookie("refreshToken", refreshToken, {
+        secure: config_1.default.node_env === "production",
+        httpOnly: true,
+        sameSite: "strict",
+    });
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Logged in successfully.",
+        data: result,
+    });
+}));
 // Resend Login OTP
 const resendLoginOtp = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { emailOrPhone } = req.body;
@@ -155,6 +171,7 @@ exports.AuthControllers = {
     login,
     verifyLoginOtp,
     resendLoginOtp,
+    loginAdmin,
     refreshToken,
     changeUserRole,
     suspendAccount,

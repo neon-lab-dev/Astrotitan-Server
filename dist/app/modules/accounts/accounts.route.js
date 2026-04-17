@@ -22,6 +22,7 @@ router.put("/complete-profile", (0, auth_1.default)(accounts_constants_1.UserRol
 router.post("/login", accounts_controller_1.AuthControllers.login);
 router.post("/verify-login-otp", accounts_controller_1.AuthControllers.verifyLoginOtp);
 router.post("/resend-login-otp", accounts_controller_1.AuthControllers.resendLoginOtp);
+router.post("/admin/login", accounts_controller_1.AuthControllers.loginAdmin);
 // Token Routes
 router.post("/refresh-token", accounts_controller_1.AuthControllers.refreshToken);
 // Admin Routes

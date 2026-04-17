@@ -12,14 +12,16 @@ import { User } from "../users/user.model";
 import { generateOtp } from "../../utils/generateOtp";
 import { Astrologer } from "../astrologer/astrologer.model";
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
+import { TLoginAuth } from "./accounts.interface";
 
 const signup = async (payload: {
   email?: string;
   phoneNumber?: string;
   role: "user" | "astrologer" | "admin";
+  password?: string;
 }) => {
   // Validating for admin registration
-  if(payload.role === "admin"){
+  if (payload.role === "admin") {
     const admin = await Accounts.findOne({ role: "admin" });
     if (admin) {
       throw new AppError(httpStatus.CONFLICT, "Something has been wrong. Please avoid registering again.");
@@ -63,29 +65,29 @@ const signup = async (payload: {
     phoneNumber: payload.phoneNumber || null,
     role: payload.role,
     otp,
-    otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes
+    otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes,
+    password : payload.password || null
   };
 
-
-
-  // Send OTP
-  if (payload.phoneNumber) {
-    // Send SMS
-    try {
-      const message = `Your OTP for Astrotitan is ${otp}. Valid for 2 minutes.`;
-      const smsUrl = `https://smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
-      await axios.get(smsUrl);
-    } catch (error) {
-      console.error("❌ Failed to send OTP SMS:", error);
-      throw new AppError(
-        httpStatus.INTERNAL_SERVER_ERROR,
-        "Failed to send OTP SMS"
-      );
-    }
-  } else if (payload.email) {
-    // Send Email
-    const subject = "Verify Your OTP - Astrotitan";
-    const htmlBody = `
+  if (payload.role !== "admin") {
+    // Send OTP
+    if (payload.phoneNumber) {
+      // Send SMS
+      try {
+        const message = `Your OTP for Astrotitan is ${otp}. Valid for 2 minutes.`;
+        const smsUrl = `https://smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
+        await axios.get(smsUrl);
+      } catch (error) {
+        console.error("❌ Failed to send OTP SMS:", error);
+        throw new AppError(
+          httpStatus.INTERNAL_SERVER_ERROR,
+          "Failed to send OTP SMS"
+        );
+      }
+    } else if (payload.email) {
+      // Send Email
+      const subject = "Verify Your OTP - Astrotitan";
+      const htmlBody = `
       <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
         <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
           <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
@@ -95,7 +97,8 @@ const signup = async (payload: {
         </div>
       </div>
     `;
-    await sendEmail(payload.email, subject, htmlBody);
+      await sendEmail(payload.email, subject, htmlBody);
+    }
   }
 
   await Accounts.create(signupPayload);
@@ -411,7 +414,7 @@ const completeProfile = async (
 const login = async (payload: {
   email?: string;
   phoneNumber?: string;
-  role: "user" | "astrologer";
+  role: "user" | "astrologer" | "admin";
 }) => {
   // Validate input
   if (!payload.email && !payload.phoneNumber) {
@@ -728,6 +731,63 @@ const resendLoginOtp = async (payload: {
   };
 };
 
+const loginAdmin = async (payload: TLoginAuth) => {
+  // Check if user exists
+  const user = await Accounts.isUserExists(payload.email || "");
+
+  if (!user) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "No account found with this email address. Please sign up first."
+    );
+  }
+
+  // 7️Password validation
+  const isPasswordMatched = await Accounts.isPasswordMatched(
+    payload.password as string,
+    user.password as string
+  );
+
+  if (!isPasswordMatched) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Incorrect password. Please try again."
+    );
+  }
+
+  // JWT Payload
+  const jwtPayload = {
+    _id: user._id.toString(),
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    role: user.role,
+  };
+
+  // Tokens
+  const accessToken = createToken(
+    jwtPayload as any,
+    config.jwt_access_secret as string,
+    config.jwt_access_expires_in as string
+  );
+
+  const refreshToken = createToken(
+    jwtPayload as any,
+    config.jwt_refresh_secret as string,
+    config.jwt_refresh_expires_in as string
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      _id: user._id,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+    },
+  };
+};
+
 const refreshToken = async (token: string) => {
   // Checking if there is any token sent from the client or not.
   if (!token) {
@@ -841,6 +901,7 @@ export const AuthServices = {
   login,
   verifyLoginOtp,
   resendLoginOtp,
+  loginAdmin,
   refreshToken,
   changeUserRole,
   suspendAccount,
