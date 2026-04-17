@@ -13,6 +13,7 @@ import { generateOtp } from "../../utils/generateOtp";
 import { Astrologer } from "../astrologer/astrologer.model";
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import { TLoginAuth } from "./accounts.interface";
+import bcrypt from 'bcrypt';
 
 const signup = async (payload: {
   email?: string;
@@ -20,22 +21,31 @@ const signup = async (payload: {
   role: "user" | "astrologer" | "admin";
   password?: string;
 }) => {
-  // Validating for admin registration
+  // Validating for admin registration (only one admin allowed)
   if (payload.role === "admin") {
-    const admin = await Accounts.findOne({ role: "admin" });
-    if (admin) {
-      throw new AppError(httpStatus.CONFLICT, "Something has been wrong. Please avoid registering again.");
+    const existingAdmin = await Accounts.findOne({ role: "admin" });
+    if (existingAdmin) {
+      throw new AppError(httpStatus.CONFLICT, "Admin already exists. Only one admin can be registered.");
+    }
+
+    // Admin must have password
+    if (!payload.password) {
+      throw new AppError(
+        httpStatus.BAD_REQUEST,
+        "Password is required for admin registration"
+      );
     }
   }
-  // Validate input
-  if (!payload.email && !payload.phoneNumber) {
+
+  // Validate input for non-admin users
+  if (payload.role !== "admin" && !payload.email && !payload.phoneNumber) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
       "Either email or phone number is required"
     );
   }
 
-  // Check if user already exists in Auth collection
+  // Check if user already exists in Accounts collection
   if (payload.email) {
     const existingUser = await Accounts.findOne({ email: payload.email });
     if (existingUser) {
@@ -56,21 +66,33 @@ const signup = async (payload: {
     }
   }
 
-  // Generate 6-digit OTP
-  const otp = generateOtp();
+  // Generate OTP (only for non-admin users)
+  const otp = payload.role !== "admin" ? generateOtp() : null;
 
-  // Create temporary signup record (NOT the actual user yet)
-  const signupPayload = {
+  // Prepare account data
+  const accountData: any = {
     email: payload.email || null,
     phoneNumber: payload.phoneNumber || null,
     role: payload.role,
-    otp,
-    otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes,
-    password : payload.password || null
+    isOtpVerified: payload.role === "admin" ? true : false, // Admin is auto-verified
+    otp: otp,
+    otpExpireAt: payload.role !== "admin" ? new Date(Date.now() + 2 * 60 * 1000) : null,
   };
 
+  // Hash password for admin
+  if (payload.role === "admin" && payload.password) {
+    const hashedPassword = await bcrypt.hash(
+      payload.password,
+      Number(config.bcrypt_salt_round)
+    );
+    accountData.password = hashedPassword;
+  }
+
+  // Create account
+  const account = await Accounts.create(accountData);
+
+  // Send OTP only for non-admin users
   if (payload.role !== "admin") {
-    // Send OTP
     if (payload.phoneNumber) {
       // Send SMS
       try {
@@ -88,22 +110,25 @@ const signup = async (payload: {
       // Send Email
       const subject = "Verify Your OTP - Astrotitan";
       const htmlBody = `
-      <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
-        <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
-          <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
-          <p>Your OTP for verification is: <strong style="font-size:24px;">${otp}</strong></p>
-          <p>This OTP is valid for <strong>2 minutes</strong>.</p>
-          <p>Best regards,<br/>The Astrotitan Team</p>
+        <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+          <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
+            <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
+            <p>Your OTP for verification is: <strong style="font-size:24px;">${otp}</strong></p>
+            <p>This OTP is valid for <strong>2 minutes</strong>.</p>
+            <p>Best regards,<br/>The Astrotitan Team</p>
+          </div>
         </div>
-      </div>
-    `;
+      `;
       await sendEmail(payload.email, subject, htmlBody);
     }
   }
 
-  await Accounts.create(signupPayload);
-
-  return {};
+  return {
+    success: true,
+    message: payload.role === "admin"
+      ? "Admin account created successfully"
+      : "OTP sent successfully. Please verify your account."
+  };
 };
 
 const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
@@ -871,6 +896,7 @@ const changeUserRole = async (payload: { userId: string; role: any }) => {
 // Suspend user
 const suspendAccount = async (accountId: string, payload: any) => {
   const user = await Accounts.findById(accountId);
+  console.log(user);
   if (!user) throw new Error("User not found");
 
   user.isSuspended = true;

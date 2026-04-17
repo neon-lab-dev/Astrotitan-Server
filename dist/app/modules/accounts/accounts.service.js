@@ -27,19 +27,24 @@ const user_model_1 = require("../users/user.model");
 const generateOtp_1 = require("../../utils/generateOtp");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // Validating for admin registration
+    // Validating for admin registration (only one admin allowed)
     if (payload.role === "admin") {
-        const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
-        if (admin) {
-            throw new AppError_1.default(http_status_1.default.CONFLICT, "Something has been wrong. Please avoid registering again.");
+        const existingAdmin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+        if (existingAdmin) {
+            throw new AppError_1.default(http_status_1.default.CONFLICT, "Admin already exists. Only one admin can be registered.");
+        }
+        // Admin must have password
+        if (!payload.password) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Password is required for admin registration");
         }
     }
-    // Validate input
-    if (!payload.email && !payload.phoneNumber) {
+    // Validate input for non-admin users
+    if (payload.role !== "admin" && !payload.email && !payload.phoneNumber) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Either email or phone number is required");
     }
-    // Check if user already exists in Auth collection
+    // Check if user already exists in Accounts collection
     if (payload.email) {
         const existingUser = yield accounts_model_1.Accounts.findOne({ email: payload.email });
         if (existingUser) {
@@ -52,19 +57,26 @@ const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
             throw new AppError_1.default(http_status_1.default.CONFLICT, "User already exists with this phone number");
         }
     }
-    // Generate 6-digit OTP
-    const otp = (0, generateOtp_1.generateOtp)();
-    // Create temporary signup record (NOT the actual user yet)
-    const signupPayload = {
+    // Generate OTP (only for non-admin users)
+    const otp = payload.role !== "admin" ? (0, generateOtp_1.generateOtp)() : null;
+    // Prepare account data
+    const accountData = {
         email: payload.email || null,
         phoneNumber: payload.phoneNumber || null,
         role: payload.role,
-        otp,
-        otpExpireAt: new Date(Date.now() + 2 * 60 * 1000), // 2 minutes,
-        password: payload.password || null
+        isOtpVerified: payload.role === "admin" ? true : false, // Admin is auto-verified
+        otp: otp,
+        otpExpireAt: payload.role !== "admin" ? new Date(Date.now() + 2 * 60 * 1000) : null,
     };
+    // Hash password for admin
+    if (payload.role === "admin" && payload.password) {
+        const hashedPassword = yield bcrypt_1.default.hash(payload.password, Number(config_1.default.bcrypt_salt_round));
+        accountData.password = hashedPassword;
+    }
+    // Create account
+    const account = yield accounts_model_1.Accounts.create(accountData);
+    // Send OTP only for non-admin users
     if (payload.role !== "admin") {
-        // Send OTP
         if (payload.phoneNumber) {
             // Send SMS
             try {
@@ -81,20 +93,24 @@ const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
             // Send Email
             const subject = "Verify Your OTP - Astrotitan";
             const htmlBody = `
-      <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
-        <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
-          <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
-          <p>Your OTP for verification is: <strong style="font-size:24px;">${otp}</strong></p>
-          <p>This OTP is valid for <strong>2 minutes</strong>.</p>
-          <p>Best regards,<br/>The Astrotitan Team</p>
+        <div style="font-family: Arial, sans-serif; background:#f9f9f9; padding:20px;">
+          <div style="max-width:600px; margin:auto; background:#fff; border-radius:8px; padding:30px;">
+            <h2 style="color:#D4AF37; text-align:center;">Astrotitan</h2>
+            <p>Your OTP for verification is: <strong style="font-size:24px;">${otp}</strong></p>
+            <p>This OTP is valid for <strong>2 minutes</strong>.</p>
+            <p>Best regards,<br/>The Astrotitan Team</p>
+          </div>
         </div>
-      </div>
-    `;
+      `;
             yield (0, sendEmail_1.sendEmail)(payload.email, subject, htmlBody);
         }
     }
-    yield accounts_model_1.Accounts.create(signupPayload);
-    return {};
+    return {
+        success: true,
+        message: payload.role === "admin"
+            ? "Admin account created successfully"
+            : "OTP sent successfully. Please verify your account."
+    };
 });
 const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Find account by email or phone number
@@ -638,6 +654,7 @@ const changeUserRole = (payload) => __awaiter(void 0, void 0, void 0, function* 
 // Suspend user
 const suspendAccount = (accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield accounts_model_1.Accounts.findById(accountId);
+    console.log(user);
     if (!user)
         throw new Error("User not found");
     user.isSuspended = true;

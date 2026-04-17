@@ -99,6 +99,7 @@ const userSchema = new Schema<TAccounts, UserModel>(
     },
     password: {
       type: String,
+      required: false,
       select: false,
     },
   },
