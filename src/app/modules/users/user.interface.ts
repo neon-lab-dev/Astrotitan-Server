@@ -13,7 +13,7 @@ export type TUser = {
     profilePicture?: string;
     firstName: string;
     lastName: string;
-    phoneNumber?: string;
+    fullName: string;
     gender: string;
     dateOfBirth: Date;
     timeOfBirth: string;

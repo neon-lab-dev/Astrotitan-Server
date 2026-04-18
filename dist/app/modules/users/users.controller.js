@@ -19,12 +19,21 @@ const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_1 = __importDefault(require("http-status"));
 const catchAsync_1 = __importDefault(require("../../utils/catchAsync"));
 const getAllUser = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield users_services_1.UserServices.getAllUser();
+    const { keyword, gender, country, skip = "0", limit = "10", } = req.query;
+    const filters = {
+        keyword: keyword,
+        gender: gender,
+        country: country,
+    };
+    const result = yield users_services_1.UserServices.getAllUser(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
-        message: "User retrieved successfully",
-        data: result,
+        message: "Users retrieved successfully",
+        data: {
+            users: result.data,
+            meta: result.meta,
+        },
     });
 }));
 // Get single post by ID
@@ -38,42 +47,8 @@ const getSingleUserById = (0, catchAsync_1.default)((req, res) => __awaiter(void
         data: result,
     });
 }));
-// const getMe = catchAsync(async (req, res) => {
-//   const userId = req.user._id;
-//   const result = await UserServices.getMe(userId);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Profile retrieved successfully",
-//     data: result,
-//   });
-// });
-// Delete account
-const deleteAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user._id;
-    const result = yield users_services_1.UserServices.deleteAccount(userId, req.body);
-    (0, sendResponse_1.default)(res, {
-        statusCode: http_status_1.default.OK,
-        success: true,
-        message: "Account deleted successfully!",
-        data: result,
-    });
-}));
-// Restore Deleted account
-const restoreDeletedAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { userId } = req.params;
-    const result = yield users_services_1.UserServices.restoreDeletedAccount(userId);
-    (0, sendResponse_1.default)(res, {
-        statusCode: http_status_1.default.OK,
-        success: true,
-        message: "Account restored successfully!",
-        data: result,
-    });
-}));
 exports.UserControllers = {
     getAllUser,
     // getMe,
     getSingleUserById,
-    deleteAccount,
-    restoreDeletedAccount,
 };

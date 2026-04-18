@@ -376,6 +376,7 @@ const completeProfile = async (
     ...payload,
     consultLanguages: parseArrayField(payload.consultLanguages),
     areaOfPractice: parseArrayField(payload.areaOfPractice),
+    fullName : payload.firstName + " " + payload.lastName
   };
 
   let profile;
@@ -896,7 +897,6 @@ const changeUserRole = async (payload: { userId: string; role: any }) => {
 // Suspend user
 const suspendAccount = async (accountId: string, payload: any) => {
   const user = await Accounts.findById(accountId);
-  console.log(user);
   if (!user) throw new Error("User not found");
 
   user.isSuspended = true;

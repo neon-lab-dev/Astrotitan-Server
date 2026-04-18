@@ -26,11 +26,9 @@ const userSchema = new mongoose_1.Schema({
         maxlength: 100,
         index: true,
     },
-    phoneNumber: {
+    fullName: {
         type: String,
         trim: true,
-        unique: true,
-        sparse: true,
         index: true,
     },
     gender: {

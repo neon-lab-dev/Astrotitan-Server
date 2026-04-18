@@ -1,39 +1,72 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { infinitePaginate } from "../../utils/infinitePaginate";
 import { Accounts } from "../accounts/accounts.model";
+import { User } from "./user.model";
 
-const getAllUser = async () => {
-  const result = await Accounts.find();
-  return result;
+const getAllUser = async (
+  filters: {
+    keyword?: string;
+    gender?: string;
+    country?: string;
+  } = {},
+  skip = 0,
+  limit = 10
+) => {
+  const query: any = {};
+
+  // Search functionality (search on firstName and lastName)
+  if (filters.keyword) {
+    query.$or = [
+      { firstName: { $regex: filters.keyword, $options: "i" } },
+      { lastName: { $regex: filters.keyword, $options: "i" } },
+    ];
+  }
+
+  // Filter by gender
+  if (filters.gender) {
+    query.gender = filters.gender;
+  }
+
+  // Filter by country
+  if (filters.country) {
+    query.country = { $regex: filters.country, $options: "i" };
+  }
+
+  // Get paginated results
+  const result = await infinitePaginate(
+    User,
+    query,
+    skip,
+    limit,
+    []
+  );
+
+  // Populate account details for each user
+  const usersWithAccount = await Promise.all(
+    result.data.map(async (user: any) => {
+      const account = await Accounts.findById(user.accountId).select(
+        "-otp -loginOtp -resetOtp -password"
+      );
+      return {
+        ...user.toObject(),
+        accountDetails: account,
+      };
+    })
+  );
+
+  return {
+    data: usersWithAccount,
+    meta: result.meta,
+  };
 };
+
 
 const getSingleUserById = async (userId: string) => {
-  const result = await Accounts.findById(userId);
+  const result = await User.findById(userId).populate("accountId");
   return result;
-};
-
-// Activate user back
-const deleteAccount = async (userId: string, payload: any) => {
-  const user = await Accounts.findById(userId);
-  if (!user) throw new Error("User not found");
-
-  user.isDeleted = true;
-  user.accountDeleteReason = payload.accountDeleteReason || null;
-  await user.save();
-
-  return user;
-};
-
-// Activate user back
-const restoreDeletedAccount = async (userId: string) => {
-  const user = await Accounts.findByIdAndUpdate(userId, { isDeleted: false });
-  if (!user) throw new Error("User not found");
-
-  return user;
 };
 
 export const UserServices = {
   getAllUser,
   getSingleUserById,
-  deleteAccount,
-  restoreDeletedAccount,
 };

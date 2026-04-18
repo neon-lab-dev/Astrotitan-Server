@@ -32,7 +32,6 @@ const signup = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0,
 // User Verify OTP for Signup
 const verifySignupOtp = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { emailOrPhone, otp } = req.body;
-    console.log(req.body);
     const result = yield accounts_service_1.AuthServices.verifySignupOtp(emailOrPhone, otp);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,

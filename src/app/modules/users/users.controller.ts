@@ -5,12 +5,34 @@ import httpStatus from "http-status";
 import catchAsync from "../../utils/catchAsync";
 
 const getAllUser = catchAsync(async (req, res) => {
-  const result = await UserServices.getAllUser();
+  const {
+    keyword,
+    gender,
+    country,
+    skip = "0",
+    limit = "10",
+  } = req.query;
+
+  const filters = {
+    keyword: keyword as string,
+    gender: gender as string,
+    country: country as string,
+  };
+
+  const result = await UserServices.getAllUser(
+    filters,
+    Number(skip),
+    Number(limit)
+  );
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "User retrieved successfully",
-    data: result,
+    message: "Users retrieved successfully",
+    data: {
+      users: result.data,
+      meta: result.meta,
+    },
   });
 });
 
@@ -27,47 +49,8 @@ const getSingleUserById = catchAsync(async (req, res) => {
   });
 });
 
-// const getMe = catchAsync(async (req, res) => {
-//   const userId = req.user._id;
-//   const result = await UserServices.getMe(userId);
-//   sendResponse(res, {
-//     statusCode: httpStatus.OK,
-//     success: true,
-//     message: "Profile retrieved successfully",
-//     data: result,
-//   });
-// });
-
-
-// Delete account
-const deleteAccount = catchAsync(async (req, res) => {
-  const userId = req.user._id;
-  const result = await UserServices.deleteAccount(userId, req.body);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Account deleted successfully!",
-    data: result,
-  });
-});
-// Restore Deleted account
-const restoreDeletedAccount = catchAsync(async (req, res) => {
-  const { userId } = req.params;
-  const result = await UserServices.restoreDeletedAccount(userId);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Account restored successfully!",
-    data: result,
-  });
-});
-
 export const UserControllers = {
   getAllUser,
   // getMe,
   getSingleUserById,
-  deleteAccount,
-  restoreDeletedAccount,
 };

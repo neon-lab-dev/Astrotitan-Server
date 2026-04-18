@@ -20,7 +20,6 @@ const signup = catchAsync(async (req, res) => {
 // User Verify OTP for Signup
 const verifySignupOtp = catchAsync(async (req, res) => {
   const { emailOrPhone, otp } = req.body;
-  console.log(req.body);
 
   const result = await AuthServices.verifySignupOtp(emailOrPhone, otp);
 

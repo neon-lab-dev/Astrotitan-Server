@@ -297,7 +297,7 @@ const completeProfile = (accountId, payload, files) => __awaiter(void 0, void 0,
         return [];
     };
     // Payload
-    const cleanedPayload = Object.assign(Object.assign({}, payload), { consultLanguages: parseArrayField(payload.consultLanguages), areaOfPractice: parseArrayField(payload.areaOfPractice) });
+    const cleanedPayload = Object.assign(Object.assign({}, payload), { consultLanguages: parseArrayField(payload.consultLanguages), areaOfPractice: parseArrayField(payload.areaOfPractice), fullName: payload.firstName + " " + payload.lastName });
     let profile;
     // Role-based profile creation
     if (account.role === "user") {
@@ -654,7 +654,6 @@ const changeUserRole = (payload) => __awaiter(void 0, void 0, void 0, function* 
 // Suspend user
 const suspendAccount = (accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield accounts_model_1.Accounts.findById(accountId);
-    console.log(user);
     if (!user)
         throw new Error("User not found");
     user.isSuspended = true;
