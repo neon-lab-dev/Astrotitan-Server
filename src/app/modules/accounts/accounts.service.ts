@@ -376,7 +376,7 @@ const completeProfile = async (
     ...payload,
     consultLanguages: parseArrayField(payload.consultLanguages),
     areaOfPractice: parseArrayField(payload.areaOfPractice),
-    fullName : payload.firstName + " " + payload.lastName
+    fullName: payload.firstName + " " + payload.lastName
   };
 
   let profile;
