@@ -6,6 +6,7 @@ const users_route_1 = require("../modules/users/users.route");
 const astrologer_route_1 = require("../modules/astrologer/astrologer.route");
 const product_route_1 = require("../modules/product/product.route");
 const puja_route_1 = require("../modules/puja/puja.route");
+const categories_route_1 = require("../modules/categories/categories.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -27,6 +28,10 @@ const moduleRoutes = [
     {
         path: "/puja",
         route: puja_route_1.PujaRoutes,
+    },
+    {
+        path: "/category",
+        route: categories_route_1.CategoryRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
