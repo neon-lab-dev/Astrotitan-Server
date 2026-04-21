@@ -72,13 +72,11 @@ const getSinglePujaById = catchAsync(async (req, res) => {
 /* Update Puja */
 const updatePuja = catchAsync(async (req, res) => {
   const { pujaId } = req.params;
-  const userId = req.user._id;
   const files = req.files as Express.Multer.File[];
   const { imagesToDelete, ...payload } = req.body;
 
   const result = await PujaServices.updatePuja(
     pujaId,
-    userId,
     payload,
     files,
     imagesToDelete ? JSON.parse(imagesToDelete) : undefined
@@ -95,9 +93,8 @@ const updatePuja = catchAsync(async (req, res) => {
 /* Delete Puja */
 const deletePuja = catchAsync(async (req, res) => {
   const { pujaId } = req.params;
-  const userId = req.user._id;
 
-  const result = await PujaServices.deletePuja(pujaId, userId);
+  const result = await PujaServices.deletePuja(pujaId);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

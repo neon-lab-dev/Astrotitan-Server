@@ -67,11 +67,6 @@ const pujaSchema = new mongoose_1.Schema({
         type: String,
         required: true,
     },
-    addedBy: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: "Accounts",
-        required: true,
-    },
 }, {
     timestamps: true,
 });

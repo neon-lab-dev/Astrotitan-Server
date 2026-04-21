@@ -64,15 +64,10 @@ const getSinglePujaById = (pujaId) => __awaiter(void 0, void 0, void 0, function
     return puja;
 });
 /* Update Puja */
-const updatePuja = (pujaId, userId, payload, files, imagesToDelete) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const updatePuja = (pujaId, payload, files, imagesToDelete) => __awaiter(void 0, void 0, void 0, function* () {
     const puja = yield puja_model_1.default.findById(pujaId);
     if (!puja) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Puja not found");
-    }
-    // Check authorization (only admin or creator can update)
-    if (((_a = puja.addedBy) === null || _a === void 0 ? void 0 : _a.toString()) !== userId.toString()) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "You are not authorized to update this puja");
     }
     let imageUrls = puja.imageUrls || [];
     // Delete specified images from Cloudinary
@@ -100,18 +95,14 @@ const updatePuja = (pujaId, userId, payload, files, imagesToDelete) => __awaiter
     return updatedPuja;
 });
 /* Delete Puja */
-const deletePuja = (pujaId, userId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
+const deletePuja = (pujaId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     const puja = yield puja_model_1.default.findById(pujaId);
     if (!puja) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Puja not found");
     }
-    // Check authorization
-    if (((_a = puja.addedBy) === null || _a === void 0 ? void 0 : _a.toString()) !== userId.toString()) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "You are not authorized to delete this puja");
-    }
     // Delete all puja images from Cloudinary
-    if ((_b = puja.imageUrls) === null || _b === void 0 ? void 0 : _b.length) {
+    if ((_a = puja.imageUrls) === null || _a === void 0 ? void 0 : _a.length) {
         yield Promise.all(puja.imageUrls.map((url) => __awaiter(void 0, void 0, void 0, function* () {
             var _a;
             const publicId = (_a = url.split("/").pop()) === null || _a === void 0 ? void 0 : _a.split(".")[0];
@@ -121,9 +112,9 @@ const deletePuja = (pujaId, userId) => __awaiter(void 0, void 0, void 0, functio
         })));
     }
     // Delete all review images from Cloudinary
-    if ((_c = puja.reviews) === null || _c === void 0 ? void 0 : _c.length) {
+    if ((_b = puja.reviews) === null || _b === void 0 ? void 0 : _b.length) {
         for (const review of puja.reviews) {
-            if ((_d = review.images) === null || _d === void 0 ? void 0 : _d.length) {
+            if ((_c = review.images) === null || _c === void 0 ? void 0 : _c.length) {
                 yield Promise.all(review.images.map((imageUrl) => __awaiter(void 0, void 0, void 0, function* () {
                     var _a;
                     const publicId = (_a = imageUrl.split("/").pop()) === null || _a === void 0 ? void 0 : _a.split(".")[0];

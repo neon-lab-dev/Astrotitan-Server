@@ -14,7 +14,7 @@ router.post("/add", (0, auth_1.default)(accounts_constants_1.UserRole.admin), mu
 router.get("/", product_controller_1.ProductControllers.getAllProducts);
 router.get("/:productId", product_controller_1.ProductControllers.getSingleProductById);
 router.patch("/update/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), multer_config_1.multerUpload.array("files", 4), product_controller_1.ProductControllers.updateProduct);
-router.delete("/delete/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.user), product_controller_1.ProductControllers.deleteProduct);
+router.delete("/delete/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), product_controller_1.ProductControllers.deleteProduct);
 // Review Routes
 router.post("/add-review/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), multer_config_1.multerUpload.array("files", 5), // Max 5 images per review
 product_controller_1.ProductControllers.addReview);

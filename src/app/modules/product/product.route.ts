@@ -33,7 +33,7 @@ router.patch(
 
 router.delete(
   "/delete/:productId",
-  auth(UserRole.user),
+  auth(UserRole.admin),
   ProductControllers.deleteProduct
 );
 

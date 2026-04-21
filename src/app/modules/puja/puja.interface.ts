@@ -20,7 +20,6 @@ export type TPuja = {
   discountedPrice?: number;
   targetAudience: string;
   howThisPujaPerformed: string;
-  addedBy?: ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
 };

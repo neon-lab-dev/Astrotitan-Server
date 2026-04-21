@@ -72,11 +72,6 @@ const pujaSchema = new Schema<TPuja>(
       type: String,
       required: true,
     },
-    addedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "Accounts",
-      required: true,
-    },
   },
   {
     timestamps: true,

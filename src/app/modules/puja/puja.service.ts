@@ -81,7 +81,6 @@ const getSinglePujaById = async (pujaId: string) => {
 /* Update Puja */
 const updatePuja = async (
   pujaId: string,
-  userId: any,
   payload: any,
   files: Express.Multer.File[],
   imagesToDelete?: string[]
@@ -90,11 +89,6 @@ const updatePuja = async (
 
   if (!puja) {
     throw new AppError(httpStatus.NOT_FOUND, "Puja not found");
-  }
-
-  // Check authorization (only admin or creator can update)
-  if (puja.addedBy?.toString() !== userId.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to update this puja");
   }
 
   let imageUrls = puja.imageUrls || [];
@@ -139,16 +133,11 @@ const updatePuja = async (
 };
 
 /* Delete Puja */
-const deletePuja = async (pujaId: string, userId: any) => {
+const deletePuja = async (pujaId: string) => {
   const puja = await Puja.findById(pujaId);
 
   if (!puja) {
     throw new AppError(httpStatus.NOT_FOUND, "Puja not found");
-  }
-
-  // Check authorization
-  if (puja.addedBy?.toString() !== userId.toString()) {
-    throw new AppError(httpStatus.FORBIDDEN, "You are not authorized to delete this puja");
   }
 
   // Delete all puja images from Cloudinary

@@ -76,10 +76,9 @@ const getSinglePujaById = (0, catchAsync_1.default)((req, res) => __awaiter(void
 /* Update Puja */
 const updatePuja = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { pujaId } = req.params;
-    const userId = req.user._id;
     const files = req.files;
     const _a = req.body, { imagesToDelete } = _a, payload = __rest(_a, ["imagesToDelete"]);
-    const result = yield puja_service_1.PujaServices.updatePuja(pujaId, userId, payload, files, imagesToDelete ? JSON.parse(imagesToDelete) : undefined);
+    const result = yield puja_service_1.PujaServices.updatePuja(pujaId, payload, files, imagesToDelete ? JSON.parse(imagesToDelete) : undefined);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -90,8 +89,7 @@ const updatePuja = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
 /* Delete Puja */
 const deletePuja = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { pujaId } = req.params;
-    const userId = req.user._id;
-    const result = yield puja_service_1.PujaServices.deletePuja(pujaId, userId);
+    const result = yield puja_service_1.PujaServices.deletePuja(pujaId);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
