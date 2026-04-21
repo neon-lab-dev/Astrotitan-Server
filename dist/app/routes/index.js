@@ -5,6 +5,7 @@ const accounts_route_1 = require("../modules/accounts/accounts.route");
 const users_route_1 = require("../modules/users/users.route");
 const astrologer_route_1 = require("../modules/astrologer/astrologer.route");
 const product_route_1 = require("../modules/product/product.route");
+const puja_route_1 = require("../modules/puja/puja.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -22,7 +23,11 @@ const moduleRoutes = [
     {
         path: "/product",
         route: product_route_1.ProductRoutes,
-    }
+    },
+    {
+        path: "/puja",
+        route: puja_route_1.PujaRoutes,
+    },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
 exports.default = router;
