@@ -185,7 +185,7 @@ const activeAccount = catchAsync(async (req, res) => {
 
 /* Get My Profile */
 const getMe = catchAsync(async (req, res) => {
-  const { _id } = req.user; // Account ID from auth middleware
+  const { _id } = req.user;
   const result = await AuthServices.getMe(_id);
 
   sendResponse(res, {

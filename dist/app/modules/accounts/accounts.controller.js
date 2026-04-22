@@ -164,7 +164,7 @@ const activeAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
 }));
 /* Get My Profile */
 const getMe = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { _id } = req.user; // Account ID from auth middleware
+    const { _id } = req.user;
     const result = yield accounts_service_1.AuthServices.getMe(_id);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,

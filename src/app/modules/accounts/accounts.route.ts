@@ -6,6 +6,12 @@ import { multerUpload } from "../../config/multer.config";
 
 const router = express.Router();
 
+router.get(
+  "/me",
+  auth(UserRole.user, UserRole.astrologer),
+  AuthControllers.getMe
+);
+
 router.post(
   "/signup",
   AuthControllers.signup
@@ -58,13 +64,6 @@ router.post(
 router.post(
   "/refresh-token",
   AuthControllers.refreshToken
-);
-
-// Admin Routes
-router.put(
-  "/me",
-  auth(UserRole.user, UserRole.astrologer),
-  AuthControllers.getMe
 );
 
 // Admin Routes
