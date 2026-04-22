@@ -918,6 +918,59 @@ const activeAccount = async (accountId: string) => {
   return user;
 };
 
+/* Get My Profile (works for both user and astrologer) */
+const getMe = async (accountId: string) => {
+  // Find the account
+  const account = await Accounts.findById(accountId).select(
+    "-otp -loginOtp -resetOtp -password"
+  );
+
+  if (!account) {
+    throw new AppError(httpStatus.NOT_FOUND, "Account not found");
+  }
+
+  // Check if account is active
+  if (account.isDeleted) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your account has been deleted. Please contact support."
+    );
+  }
+
+  let profileData = null;
+  let isProfileComplete = false;
+
+  // Fetch role-specific profile
+  if (account.role === "user") {
+    const userProfile = await User.findOne({ accountId: account._id });
+    if (userProfile) {
+      profileData = userProfile;
+      isProfileComplete = userProfile.isProfileCompleted || false;
+    }
+  } else if (account.role === "astrologer") {
+    const astrologerProfile = await Astrologer.findOne({ accountId: account._id });
+    if (astrologerProfile) {
+      profileData = astrologerProfile;
+      isProfileComplete = astrologerProfile.isProfileCompleted || false;
+    }
+  }
+
+  // Combine account and profile data
+  return {
+    account: {
+      _id: account._id,
+      email: account.email,
+      phoneNumber: account.phoneNumber,
+      role: account.role,
+      isOtpVerified: account.isOtpVerified,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+    },
+    profile: profileData,
+    isProfileComplete,
+  };
+};
+
 
 export const AuthServices = {
   signup,
@@ -931,5 +984,6 @@ export const AuthServices = {
   refreshToken,
   changeUserRole,
   suspendAccount,
-  activeAccount
+  activeAccount,
+  getMe
 };

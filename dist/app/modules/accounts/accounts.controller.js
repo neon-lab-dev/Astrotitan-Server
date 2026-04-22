@@ -162,6 +162,17 @@ const activeAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
         data: result,
     });
 }));
+/* Get My Profile */
+const getMe = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { _id } = req.user; // Account ID from auth middleware
+    const result = yield accounts_service_1.AuthServices.getMe(_id);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Profile retrieved successfully",
+        data: result,
+    });
+}));
 exports.AuthControllers = {
     signup,
     verifySignupOtp,
@@ -174,5 +185,6 @@ exports.AuthControllers = {
     refreshToken,
     changeUserRole,
     suspendAccount,
-    activeAccount
+    activeAccount,
+    getMe,
 };

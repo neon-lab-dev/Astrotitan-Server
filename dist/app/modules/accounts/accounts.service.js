@@ -671,6 +671,49 @@ const activeAccount = (accountId) => __awaiter(void 0, void 0, void 0, function*
     yield user.save();
     return user;
 });
+/* Get My Profile (works for both user and astrologer) */
+const getMe = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    // Find the account
+    const account = yield accounts_model_1.Accounts.findById(accountId).select("-otp -loginOtp -resetOtp -password");
+    if (!account) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Account not found");
+    }
+    // Check if account is active
+    if (account.isDeleted) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "Your account has been deleted. Please contact support.");
+    }
+    let profileData = null;
+    let isProfileComplete = false;
+    // Fetch role-specific profile
+    if (account.role === "user") {
+        const userProfile = yield user_model_1.User.findOne({ accountId: account._id });
+        if (userProfile) {
+            profileData = userProfile;
+            isProfileComplete = userProfile.isProfileCompleted || false;
+        }
+    }
+    else if (account.role === "astrologer") {
+        const astrologerProfile = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
+        if (astrologerProfile) {
+            profileData = astrologerProfile;
+            isProfileComplete = astrologerProfile.isProfileCompleted || false;
+        }
+    }
+    // Combine account and profile data
+    return {
+        account: {
+            _id: account._id,
+            email: account.email,
+            phoneNumber: account.phoneNumber,
+            role: account.role,
+            isOtpVerified: account.isOtpVerified,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt,
+        },
+        profile: profileData,
+        isProfileComplete,
+    };
+});
 exports.AuthServices = {
     signup,
     verifySignupOtp,
@@ -683,5 +726,6 @@ exports.AuthServices = {
     refreshToken,
     changeUserRole,
     suspendAccount,
-    activeAccount
+    activeAccount,
+    getMe
 };

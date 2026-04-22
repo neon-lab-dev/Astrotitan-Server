@@ -62,6 +62,13 @@ router.post(
 
 // Admin Routes
 router.put(
+  "/me",
+  auth(UserRole.user, UserRole.astrologer),
+  AuthControllers.getMe
+);
+
+// Admin Routes
+router.put(
   "/change-role",
   auth(UserRole.admin),
   AuthControllers.changeUserRole

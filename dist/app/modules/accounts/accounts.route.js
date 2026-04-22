@@ -26,6 +26,8 @@ router.post("/admin/login", accounts_controller_1.AuthControllers.loginAdmin);
 // Token Routes
 router.post("/refresh-token", accounts_controller_1.AuthControllers.refreshToken);
 // Admin Routes
+router.put("/me", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), accounts_controller_1.AuthControllers.getMe);
+// Admin Routes
 router.put("/change-role", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.changeUserRole);
 router.patch("/suspend/:accountId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.suspendAccount);
 router.patch("/active/:accountId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.activeAccount);

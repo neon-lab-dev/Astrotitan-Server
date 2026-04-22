@@ -183,6 +183,19 @@ const activeAccount = catchAsync(async (req, res) => {
   });
 });
 
+/* Get My Profile */
+const getMe = catchAsync(async (req, res) => {
+  const { _id } = req.user; // Account ID from auth middleware
+  const result = await AuthServices.getMe(_id);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile retrieved successfully",
+    data: result,
+  });
+});
+
 export const AuthControllers = {
   signup,
   verifySignupOtp,
@@ -195,5 +208,6 @@ export const AuthControllers = {
   refreshToken,
   changeUserRole,
   suspendAccount,
-  activeAccount
+  activeAccount,
+  getMe,
 };
