@@ -18,6 +18,7 @@ const productSchema = new Schema<TProduct>(
       type: String,
       required: true,
     },
+    quantity: { type: Number, required: true },
     imageUrls: {
       type: [String],
       default: [],

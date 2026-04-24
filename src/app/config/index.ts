@@ -16,6 +16,9 @@ export default {
   reset_password_ui_url: process.env.RESET_PASSWORD_UI_URL,
   smtp_email: process.env.SMTP_EMAIL,
   smtp_pass: process.env.SMTP_PASS,
-  sms_sender_id : process.env.SMS_SENDER_ID,
-  sms_provider_api_key : process.env.SMS_PROVIDER_API_KEY,
+  sms_sender_id: process.env.SMS_SENDER_ID,
+  sms_provider_api_key: process.env.SMS_PROVIDER_API_KEY,
+  razorpay_api_key: process.env.RAZORPAY_API_KEY,
+  razorpay_api_secret: process.env.RAZORPAY_API_SECRET,
+  payment_redirect_url: process.env.PAYMENT_REDIRECT_URL,
 };
