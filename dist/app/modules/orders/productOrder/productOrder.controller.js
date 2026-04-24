@@ -45,15 +45,19 @@ const createProductOrder = (0, catchAsync_1.default)((req, res) => __awaiter(voi
 }));
 // Get all orders (Admin/Moderator)
 const getAllProductOrders = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { keyword, status, page = "1", limit = "10" } = req.query;
-    const result = yield productOrder_service_1.ProductOrderService.getAllProductOrders(keyword, status, Number(page), Number(limit));
+    const { keyword, status, skip = "0", limit = "10", } = req.query;
+    const filters = {
+        keyword: keyword,
+        status: status,
+    };
+    const result = yield productOrder_service_1.ProductOrderService.getAllProductOrders(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
         message: "All Orders fetched successfully",
         data: {
             productOrders: result.data,
-            pagination: result.meta,
+            meta: result.meta,
         },
     });
 }));

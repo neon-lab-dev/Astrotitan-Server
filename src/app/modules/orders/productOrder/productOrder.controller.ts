@@ -38,12 +38,21 @@ const createProductOrder = catchAsync(async (req, res) => {
 
 // Get all orders (Admin/Moderator)
 const getAllProductOrders = catchAsync(async (req, res) => {
-  const { keyword, status, page = "1", limit = "10" } = req.query;
+  const {
+    keyword,
+    status,
+    skip = "0",
+    limit = "10",
+  } = req.query;
+
+  const filters = {
+    keyword: keyword as string,
+    status: status as string,
+  };
 
   const result = await ProductOrderService.getAllProductOrders(
-    keyword as string,
-    status as string,
-    Number(page),
+    filters,
+    Number(skip),
     Number(limit)
   );
 
@@ -53,7 +62,7 @@ const getAllProductOrders = catchAsync(async (req, res) => {
     message: "All Orders fetched successfully",
     data: {
       productOrders: result.data,
-      pagination: result.meta,
+      meta: result.meta,
     },
   });
 });

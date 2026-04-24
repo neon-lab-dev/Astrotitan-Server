@@ -1,11 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const infinitePaginate = async (
-  model: any,
-  query: any,
-  skip: number,
-  limit: number,
-  populate: any[] = []
-) => {
+model: any, query: any, skip: number, limit: number, populate: any[] = [], p0?: ({ $sort: { createdAt: number; }; $skip?: undefined; $limit?: undefined; } | { $skip: number; $sort?: undefined; $limit?: undefined; } | { $limit: number; $sort?: undefined; $skip?: undefined; })[]) => {
   const baseQuery = {};
 
   let dbQuery = model.find(query);

@@ -5,6 +5,7 @@ import { TProductOrder } from "./productOrder.interface";
 import { ProductOrder } from "./productOrder.model";
 import { razorpay } from "../../../utils/razorpay";
 import Product from "../../product/product.model";
+import { infinitePaginate } from "../../../utils/infinitePaginate";
 
 const checkout = async (amount: number) => {
   if (!amount || amount <= 0) {
@@ -70,56 +71,40 @@ const createProductOrder = async (user: any, payload: TProductOrder) => {
 
 // Get all orders
 const getAllProductOrders = async (
-  keyword?: string,
-  status?: string,
-  page = 1,
+  filters: {
+    keyword?: string;
+    status?: string;
+  } = {},
+  skip = 0,
   limit = 10
 ) => {
   const query: any = {};
 
   // Status filter
-  if (status && status !== "all") {
-    query.status = { $regex: status, $options: "i" };
+  if (filters.status && filters.status !== "all") {
+    query.status = { $regex: `^${filters.status}$`, $options: "i" };
   }
 
-  // Pagination
-  const skip = (page - 1) * limit;
-
-  // Base query
-  let mongooseQuery = ProductOrder.find(query)
-    .populate(
-      "userId",
-      "name email phoneNumber pinCode city addressLine1 addressLine2"
-    )
-    .skip(skip)
-    .limit(limit);
-
-  // Apply keyword search (orderId + user fields)
-  if (keyword) {
-    mongooseQuery = mongooseQuery.find({
-      $or: [
-        { orderId: { $regex: keyword, $options: "i" } },
-        { "userId.name": { $regex: keyword, $options: "i" } },
-        { "userId.email": { $regex: keyword, $options: "i" } },
-        { "userId.phoneNumber": { $regex: keyword, $options: "i" } },
-      ],
-    });
+  // Keyword search (orderId)
+  if (filters.keyword) {
+    query.orderId = { $regex: filters.keyword, $options: "i" };
   }
 
-  const [orders, total] = await Promise.all([
-    mongooseQuery.sort({ createdAt: -1 }),
-    ProductOrder.countDocuments(query),
-  ]);
+  // Get paginated results with populate
+  const result = await infinitePaginate(
+    ProductOrder,
+    query,
+    skip,
+    limit,
+    ["userId"],
+    [
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]
+  );
 
-  return {
-    meta: {
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    },
-    data: orders,
-  };
+  return result;
 };
 
 // Get single order by ID

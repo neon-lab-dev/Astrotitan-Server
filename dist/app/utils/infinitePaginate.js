@@ -10,8 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.infinitePaginate = void 0;
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const infinitePaginate = (model_1, query_1, skip_1, limit_1, ...args_1) => __awaiter(void 0, [model_1, query_1, skip_1, limit_1, ...args_1], void 0, function* (model, query, skip, limit, populate = []) {
+const infinitePaginate = (model_1, query_1, skip_1, limit_1, ...args_1) => __awaiter(void 0, [model_1, query_1, skip_1, limit_1, ...args_1], void 0, function* (model, query, skip, limit, populate = [], p0) {
     const baseQuery = {};
     let dbQuery = model.find(query);
     populate.forEach((pop) => {

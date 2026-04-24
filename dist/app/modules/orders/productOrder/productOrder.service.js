@@ -19,6 +19,7 @@ const http_status_1 = __importDefault(require("http-status"));
 const productOrder_model_1 = require("./productOrder.model");
 const razorpay_1 = require("../../../utils/razorpay");
 const product_model_1 = __importDefault(require("../../product/product.model"));
+const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const checkout = (amount) => __awaiter(void 0, void 0, void 0, function* () {
     if (!amount || amount <= 0) {
         throw new Error("Invalid payment amount");
@@ -63,43 +64,23 @@ const createProductOrder = (user, payload) => __awaiter(void 0, void 0, void 0, 
     return order;
 });
 // Get all orders
-const getAllProductOrders = (keyword_1, status_1, ...args_1) => __awaiter(void 0, [keyword_1, status_1, ...args_1], void 0, function* (keyword, status, page = 1, limit = 10) {
+const getAllProductOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
     const query = {};
     // Status filter
-    if (status && status !== "all") {
-        query.status = { $regex: status, $options: "i" };
+    if (filters.status && filters.status !== "all") {
+        query.status = { $regex: `^${filters.status}$`, $options: "i" };
     }
-    // Pagination
-    const skip = (page - 1) * limit;
-    // Base query
-    let mongooseQuery = productOrder_model_1.ProductOrder.find(query)
-        .populate("userId", "name email phoneNumber pinCode city addressLine1 addressLine2")
-        .skip(skip)
-        .limit(limit);
-    // Apply keyword search (orderId + user fields)
-    if (keyword) {
-        mongooseQuery = mongooseQuery.find({
-            $or: [
-                { orderId: { $regex: keyword, $options: "i" } },
-                { "userId.name": { $regex: keyword, $options: "i" } },
-                { "userId.email": { $regex: keyword, $options: "i" } },
-                { "userId.phoneNumber": { $regex: keyword, $options: "i" } },
-            ],
-        });
+    // Keyword search (orderId)
+    if (filters.keyword) {
+        query.orderId = { $regex: filters.keyword, $options: "i" };
     }
-    const [orders, total] = yield Promise.all([
-        mongooseQuery.sort({ createdAt: -1 }),
-        productOrder_model_1.ProductOrder.countDocuments(query),
+    // Get paginated results with populate
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(productOrder_model_1.ProductOrder, query, skip, limit, ["userId"], [
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit }
     ]);
-    return {
-        meta: {
-            total,
-            page,
-            limit,
-            pages: Math.ceil(total / limit),
-        },
-        data: orders,
-    };
+    return result;
 });
 // Get single order by ID
 const getSingleProductOrderById = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
