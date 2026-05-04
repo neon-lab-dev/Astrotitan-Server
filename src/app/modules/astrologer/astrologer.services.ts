@@ -16,9 +16,9 @@ const getAllAstrologer = async (
     gender?: string;
     areaOfPractice?: string | string[];
     consultLanguages?: string | string[];
-    minRating?: string; // For rating filter (1,2,3,4,5)
+    minRating?: string;
     sortBy?: "topRated" | "mostExperienced" | "relevance";
-    userId?: string; // For relevance sorting
+    userId?: string;
   } = {},
   skip = 0,
   limit = 10
@@ -79,7 +79,7 @@ const getAllAstrologer = async (
     if (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
       query.rating = {
         $gte: ratingValue,
-        $lt: ratingValue + 1 // So 3 gives 3.0 to 3.999...
+        $lt: ratingValue + 1
       };
     }
   }
@@ -93,13 +93,20 @@ const getAllAstrologer = async (
     []
   );
 
-  // Handleling relevance sorting (requires user's intents)
+  // Convert all documents to plain objects first to remove Mongoose internal properties
+  let astrologersList = result.data.map((astrologer: any) => {
+    // Convert to plain object and remove internal fields
+    const plain = astrologer.toObject ? astrologer.toObject() : { ...astrologer };
+    return plain;
+  });
+
+  // Handle relevance sorting (requires user's intents)
   if (filters.sortBy === "relevance" && filters.userId) {
-    const userAccount = await User.findOne({ accountId: filters.userId });
-    const userIntents = (userAccount as any)?.intents || [];
+    const userAccount = await User.findOne({ accountId: filters.userId }).select("intents");
+    const userIntents = userAccount?.intents || [];
     
     if (userIntents.length > 0) {
-      const astrologersWithScore = result.data.map((astrologer: any) => {
+      astrologersList = astrologersList.map((astrologer: any) => {
         let relevanceScore = 0;
         
         userIntents.forEach((intent: string) => {
@@ -111,39 +118,38 @@ const getAllAstrologer = async (
         });
         
         return {
-          ...astrologer.toObject(),
+          ...astrologer,
           relevanceScore
         };
       });
       
-      astrologersWithScore.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
-      result.data = astrologersWithScore;
+      astrologersList.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
     }
   }
   
   // Sort by top rated (highest rating first)
   else if (filters.sortBy === "topRated") {
-    result.data.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+    astrologersList.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
   }
   
   // Sort by most experienced (parse experience string to number)
   else if (filters.sortBy === "mostExperienced") {
-    result.data.sort((a: any, b: any) => {
+    astrologersList.sort((a: any, b: any) => {
       const expA = parseInt(a.experience) || 0;
       const expB = parseInt(b.experience) || 0;
       return expB - expA;
     });
   }
 
-  // Populating account details for each astrologer
+  // Populate account details for each astrologer
   const astrologersWithAccount = await Promise.all(
-    result.data.map(async (astrologer: any) => {
+    astrologersList.map(async (astrologer: any) => {
       const account = await Accounts.findById(astrologer.accountId).select(
         "_id email phoneNumber profilePicture role isSuspended suspensionReason"
       );
       return {
         ...astrologer,
-        accountDetails: account,
+        accountDetails: account ? account.toObject() : null,
       };
     })
   );
