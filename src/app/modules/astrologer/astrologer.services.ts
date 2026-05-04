@@ -5,15 +5,20 @@ import { infinitePaginate } from "../../utils/infinitePaginate";
 import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
 import { TAstrologerReview } from "./astrologer.interface";
+import { User } from "../users/user.model";
 
 const getAllAstrologer = async (
   filters: {
     keyword?: string;
     identityStatus?: string;
+    isProfileCompleted?: string;
     country?: string;
     gender?: string;
-    areaOfPractice?: string;
-    consultLanguages?: string;
+    areaOfPractice?: string | string[];
+    consultLanguages?: string | string[];
+    minRating?: string; // For rating filter (1,2,3,4,5)
+    sortBy?: "topRated" | "mostExperienced" | "relevance";
+    userId?: string; // For relevance sorting
   } = {},
   skip = 0,
   limit = 10
@@ -35,6 +40,13 @@ const getAllAstrologer = async (
     query["identity.status"] = filters.identityStatus;
   }
 
+  // Filter by profile completion
+  if (filters.isProfileCompleted === "true") {
+    query.isProfileCompleted = true;
+  } else if (filters.isProfileCompleted === "false") {
+    query.isProfileCompleted = false;
+  }
+
   // Filter by country
   if (filters.country) {
     query.country = { $regex: filters.country, $options: "i" };
@@ -45,14 +57,31 @@ const getAllAstrologer = async (
     query.gender = filters.gender;
   }
 
-  // Filter by area of practice
+  // Filter by area of practice (supports array from frontend)
   if (filters.areaOfPractice) {
-    query.areaOfPractice = { $in: [filters.areaOfPractice] };
+    const areas = Array.isArray(filters.areaOfPractice) 
+      ? filters.areaOfPractice 
+      : [filters.areaOfPractice];
+    query.areaOfPractice = { $in: areas };
   }
 
-  // Filter by consult languages
+  // Filter by consult languages (supports array from frontend)
   if (filters.consultLanguages) {
-    query.consultLanguages = { $in: [filters.consultLanguages] };
+    const languages = Array.isArray(filters.consultLanguages) 
+      ? filters.consultLanguages 
+      : [filters.consultLanguages];
+    query.consultLanguages = { $in: languages };
+  }
+
+  // Rating filter (e.g., rating >= 3 and rating < 4)
+  if (filters.minRating) {
+    const ratingValue = parseInt(filters.minRating);
+    if (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+      query.rating = {
+        $gte: ratingValue,
+        $lt: ratingValue + 1 // So 3 gives 3.0 to 3.999...
+      };
+    }
   }
 
   // Get paginated results
@@ -64,14 +93,56 @@ const getAllAstrologer = async (
     []
   );
 
-  // Populate account details for each astrologer
+  // Handleling relevance sorting (requires user's intents)
+  if (filters.sortBy === "relevance" && filters.userId) {
+    const userAccount = await User.findOne({ accountId: filters.userId });
+    const userIntents = (userAccount as any)?.intents || [];
+    
+    if (userIntents.length > 0) {
+      const astrologersWithScore = result.data.map((astrologer: any) => {
+        let relevanceScore = 0;
+        
+        userIntents.forEach((intent: string) => {
+          if (astrologer.areaOfPractice?.some((practice: string) => 
+            practice.toLowerCase().includes(intent.toLowerCase())
+          )) {
+            relevanceScore++;
+          }
+        });
+        
+        return {
+          ...astrologer.toObject(),
+          relevanceScore
+        };
+      });
+      
+      astrologersWithScore.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
+      result.data = astrologersWithScore;
+    }
+  }
+  
+  // Sort by top rated (highest rating first)
+  else if (filters.sortBy === "topRated") {
+    result.data.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
+  }
+  
+  // Sort by most experienced (parse experience string to number)
+  else if (filters.sortBy === "mostExperienced") {
+    result.data.sort((a: any, b: any) => {
+      const expA = parseInt(a.experience) || 0;
+      const expB = parseInt(b.experience) || 0;
+      return expB - expA;
+    });
+  }
+
+  // Populating account details for each astrologer
   const astrologersWithAccount = await Promise.all(
     result.data.map(async (astrologer: any) => {
       const account = await Accounts.findById(astrologer.accountId).select(
         "_id email phoneNumber profilePicture role isSuspended suspensionReason"
       );
       return {
-        ...astrologer.toObject(),
+        ...astrologer,
         accountDetails: account,
       };
     })

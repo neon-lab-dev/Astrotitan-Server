@@ -13,9 +13,23 @@ const getAllAstrologer = catchAsync(async (req, res) => {
     gender,
     areaOfPractice,
     consultLanguages,
+    minRating,
+    sortBy,
     skip = "0",
     limit = "10",
   } = req.query;
+
+  // Parse areaOfPractice if it's a string (can be comma-separated or multiple values)
+  let areaOfPracticeArray: string | string[] | undefined = areaOfPractice as string;
+  if (areaOfPracticeArray && areaOfPracticeArray.includes(',')) {
+    areaOfPracticeArray = (areaOfPracticeArray as string).split(',');
+  }
+
+  // Parse consultLanguages if it's a string
+  let consultLanguagesArray: string | string[] | undefined = consultLanguages as string;
+  if (consultLanguagesArray && consultLanguagesArray.includes(',')) {
+    consultLanguagesArray = (consultLanguagesArray as string).split(',');
+  }
 
   const filters = {
     keyword: keyword as string,
@@ -23,8 +37,11 @@ const getAllAstrologer = catchAsync(async (req, res) => {
     isProfileCompleted: isProfileCompleted as string,
     country: country as string,
     gender: gender as string,
-    areaOfPractice: areaOfPractice as string,
-    consultLanguages: consultLanguages as string,
+    areaOfPractice: areaOfPracticeArray,
+    consultLanguages: consultLanguagesArray,
+    minRating: minRating as string,
+    sortBy: sortBy as "topRated" | "mostExperienced" | "relevance",
+    userId: req.user?._id, // For relevance sorting
   };
 
   const result = await AstrologerServices.getAllAstrologer(

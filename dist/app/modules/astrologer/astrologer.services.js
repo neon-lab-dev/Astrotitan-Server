@@ -19,6 +19,7 @@ const astrologer_model_1 = require("./astrologer.model");
 const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const http_status_1 = __importDefault(require("http-status"));
+const user_model_1 = require("../users/user.model");
 const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
     const query = {};
     // Search functionality (text search on name fields)
@@ -34,6 +35,13 @@ const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, f
     if (filters.identityStatus) {
         query["identity.status"] = filters.identityStatus;
     }
+    // Filter by profile completion
+    if (filters.isProfileCompleted === "true") {
+        query.isProfileCompleted = true;
+    }
+    else if (filters.isProfileCompleted === "false") {
+        query.isProfileCompleted = false;
+    }
     // Filter by country
     if (filters.country) {
         query.country = { $regex: filters.country, $options: "i" };
@@ -42,20 +50,67 @@ const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, f
     if (filters.gender) {
         query.gender = filters.gender;
     }
-    // Filter by area of practice
+    // Filter by area of practice (supports array from frontend)
     if (filters.areaOfPractice) {
-        query.areaOfPractice = { $in: [filters.areaOfPractice] };
+        const areas = Array.isArray(filters.areaOfPractice)
+            ? filters.areaOfPractice
+            : [filters.areaOfPractice];
+        query.areaOfPractice = { $in: areas };
     }
-    // Filter by consult languages
+    // Filter by consult languages (supports array from frontend)
     if (filters.consultLanguages) {
-        query.consultLanguages = { $in: [filters.consultLanguages] };
+        const languages = Array.isArray(filters.consultLanguages)
+            ? filters.consultLanguages
+            : [filters.consultLanguages];
+        query.consultLanguages = { $in: languages };
+    }
+    // Rating filter (e.g., rating >= 3 and rating < 4)
+    if (filters.minRating) {
+        const ratingValue = parseInt(filters.minRating);
+        if (!isNaN(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+            query.rating = {
+                $gte: ratingValue,
+                $lt: ratingValue + 1 // So 3 gives 3.0 to 3.999...
+            };
+        }
     }
     // Get paginated results
     const result = yield (0, infinitePaginate_1.infinitePaginate)(astrologer_model_1.Astrologer, query, skip, limit, []);
-    // Populate account details for each astrologer
+    // Handleling relevance sorting (requires user's intents)
+    if (filters.sortBy === "relevance" && filters.userId) {
+        const userAccount = yield user_model_1.User.findOne({ accountId: filters.userId });
+        const userIntents = (userAccount === null || userAccount === void 0 ? void 0 : userAccount.intents) || [];
+        if (userIntents.length > 0) {
+            const astrologersWithScore = result.data.map((astrologer) => {
+                let relevanceScore = 0;
+                userIntents.forEach((intent) => {
+                    var _a;
+                    if ((_a = astrologer.areaOfPractice) === null || _a === void 0 ? void 0 : _a.some((practice) => practice.toLowerCase().includes(intent.toLowerCase()))) {
+                        relevanceScore++;
+                    }
+                });
+                return Object.assign(Object.assign({}, astrologer.toObject()), { relevanceScore });
+            });
+            astrologersWithScore.sort((a, b) => b.relevanceScore - a.relevanceScore);
+            result.data = astrologersWithScore;
+        }
+    }
+    // Sort by top rated (highest rating first)
+    else if (filters.sortBy === "topRated") {
+        result.data.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    // Sort by most experienced (parse experience string to number)
+    else if (filters.sortBy === "mostExperienced") {
+        result.data.sort((a, b) => {
+            const expA = parseInt(a.experience) || 0;
+            const expB = parseInt(b.experience) || 0;
+            return expB - expA;
+        });
+    }
+    // Populating account details for each astrologer
     const astrologersWithAccount = yield Promise.all(result.data.map((astrologer) => __awaiter(void 0, void 0, void 0, function* () {
         const account = yield accounts_model_1.Accounts.findById(astrologer.accountId).select("_id email phoneNumber profilePicture role isSuspended suspensionReason");
-        return Object.assign(Object.assign({}, astrologer.toObject()), { accountDetails: account });
+        return Object.assign(Object.assign({}, astrologer), { accountDetails: account });
     })));
     return {
         data: astrologersWithAccount,

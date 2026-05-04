@@ -19,15 +19,29 @@ const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_1 = __importDefault(require("http-status"));
 const catchAsync_1 = __importDefault(require("../../utils/catchAsync"));
 const getAllAstrologer = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { keyword, identityStatus, isProfileCompleted, country, gender, areaOfPractice, consultLanguages, skip = "0", limit = "10", } = req.query;
+    var _a;
+    const { keyword, identityStatus, isProfileCompleted, country, gender, areaOfPractice, consultLanguages, minRating, sortBy, skip = "0", limit = "10", } = req.query;
+    // Parse areaOfPractice if it's a string (can be comma-separated or multiple values)
+    let areaOfPracticeArray = areaOfPractice;
+    if (areaOfPracticeArray && areaOfPracticeArray.includes(',')) {
+        areaOfPracticeArray = areaOfPracticeArray.split(',');
+    }
+    // Parse consultLanguages if it's a string
+    let consultLanguagesArray = consultLanguages;
+    if (consultLanguagesArray && consultLanguagesArray.includes(',')) {
+        consultLanguagesArray = consultLanguagesArray.split(',');
+    }
     const filters = {
         keyword: keyword,
         identityStatus: identityStatus,
         isProfileCompleted: isProfileCompleted,
         country: country,
         gender: gender,
-        areaOfPractice: areaOfPractice,
-        consultLanguages: consultLanguages,
+        areaOfPractice: areaOfPracticeArray,
+        consultLanguages: consultLanguagesArray,
+        minRating: minRating,
+        sortBy: sortBy,
+        userId: (_a = req.user) === null || _a === void 0 ? void 0 : _a._id, // For relevance sorting
     };
     const result = yield astrologer_services_1.AstrologerServices.getAllAstrologer(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
