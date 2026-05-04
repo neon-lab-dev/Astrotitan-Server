@@ -115,6 +115,31 @@ const astrologerSchema = new mongoose_1.Schema({
         default: false,
         index: true,
     },
+    rating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5,
+    },
+    reviews: [
+        {
+            user: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: "Accounts",
+                required: true,
+            },
+            review: {
+                type: String,
+                required: true,
+            },
+            rating: {
+                type: Number,
+                required: true,
+                min: 1,
+                max: 5,
+            },
+        },
+    ],
 }, {
     timestamps: true,
 });

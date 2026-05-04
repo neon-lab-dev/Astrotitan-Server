@@ -54,7 +54,7 @@ const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, f
     const result = yield (0, infinitePaginate_1.infinitePaginate)(astrologer_model_1.Astrologer, query, skip, limit, []);
     // Populate account details for each astrologer
     const astrologersWithAccount = yield Promise.all(result.data.map((astrologer) => __awaiter(void 0, void 0, void 0, function* () {
-        const account = yield accounts_model_1.Accounts.findById(astrologer.accountId).select("-otp -loginOtp -resetOtp -password");
+        const account = yield accounts_model_1.Accounts.findById(astrologer.accountId).select("_id email phoneNumber profilePicture role isSuspended suspensionReason");
         return Object.assign(Object.assign({}, astrologer.toObject()), { accountDetails: account });
     })));
     return {
@@ -68,7 +68,7 @@ const getSingleAstrologerById = (astrologerId) => __awaiter(void 0, void 0, void
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
     // Get account details
-    const account = yield accounts_model_1.Accounts.findById(astrologer.accountId).select("-otp -loginOtp -resetOtp");
+    const account = yield accounts_model_1.Accounts.findById(astrologer.accountId).select("_id email phoneNumber profilePicture role isSuspended suspensionReason");
     return Object.assign(Object.assign({}, astrologer.toObject()), { accountDetails: account });
 });
 const updateIdentityStatus = (astrologerId, payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -113,9 +113,124 @@ const getPendingIdentityRequests = (...args_1) => __awaiter(void 0, [...args_1],
         meta: result.meta,
     };
 });
+/* Add Review */
+const addReview = (astrologerId, userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // Validate rating (1-5)
+    if (payload.rating < 1 || payload.rating > 5) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
+    }
+    // Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Check if user already reviewed this astrologer
+    const existingReviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() === userId);
+    if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "You have already reviewed this astrologer. You can update your review instead.");
+    }
+    // Add new review
+    const newReview = {
+        user: userId,
+        review: payload.review,
+        rating: payload.rating,
+    };
+    if (!astrologer.reviews) {
+        astrologer.reviews = [];
+    }
+    astrologer.reviews.push(newReview);
+    // Calculate new average rating
+    const totalRating = astrologer.reviews.reduce((sum, rev) => sum + rev.rating, 0);
+    astrologer.rating = totalRating / astrologer.reviews.length;
+    yield astrologer.save();
+    return {
+        success: true,
+        message: "Review added successfully",
+        data: {
+            review: newReview,
+            averageRating: astrologer.rating,
+            totalReviews: astrologer.reviews.length,
+        },
+    };
+});
+/* Update Review */
+const updateReview = (astrologerId, userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // Validate rating if provided
+    if (payload.rating && (payload.rating < 1 || payload.rating > 5)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
+    }
+    // Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Find the review index
+    const reviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() === userId);
+    if (reviewIndex === undefined || reviewIndex === -1) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Review not found");
+    }
+    // Update review
+    const review = astrologer.reviews[reviewIndex];
+    if (payload.review)
+        review.review = payload.review;
+    if (payload.rating)
+        review.rating = payload.rating;
+    review.updatedAt = new Date();
+    // Recalculate average rating
+    const totalRating = astrologer.reviews.reduce((sum, rev) => sum + rev.rating, 0);
+    astrologer.rating = totalRating / astrologer.reviews.length;
+    yield astrologer.save();
+    return {
+        success: true,
+        message: "Review updated successfully",
+        data: {
+            review,
+            averageRating: astrologer.rating,
+            totalReviews: astrologer.reviews.length,
+        },
+    };
+});
+/* Delete Review */
+const deleteReview = (astrologerId, userId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    // Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Find the review index
+    const reviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() === userId);
+    if (reviewIndex === undefined || reviewIndex === -1) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Review not found");
+    }
+    // Remove review
+    (_b = astrologer.reviews) === null || _b === void 0 ? void 0 : _b.splice(reviewIndex, 1);
+    // Recalculate average rating (or set to 0 if no reviews)
+    if (astrologer.reviews && astrologer.reviews.length > 0) {
+        const totalRating = astrologer.reviews.reduce((sum, rev) => sum + rev.rating, 0);
+        astrologer.rating = totalRating / astrologer.reviews.length;
+    }
+    else {
+        astrologer.rating = 0;
+    }
+    yield astrologer.save();
+    return {
+        success: true,
+        message: "Review deleted successfully",
+        data: {
+            averageRating: astrologer.rating,
+            totalReviews: ((_c = astrologer.reviews) === null || _c === void 0 ? void 0 : _c.length) || 0,
+        },
+    };
+});
 exports.AstrologerServices = {
     getAllAstrologer,
     getSingleAstrologerById,
     updateIdentityStatus,
     getPendingIdentityRequests,
+    addReview,
+    updateReview,
+    deleteReview,
 };

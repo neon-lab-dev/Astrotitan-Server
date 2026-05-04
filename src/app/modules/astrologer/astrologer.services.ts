@@ -4,6 +4,7 @@ import { Astrologer } from "./astrologer.model";
 import { infinitePaginate } from "../../utils/infinitePaginate";
 import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
+import { TAstrologerReview } from "./astrologer.interface";
 
 const getAllAstrologer = async (
   filters: {
@@ -67,7 +68,7 @@ const getAllAstrologer = async (
   const astrologersWithAccount = await Promise.all(
     result.data.map(async (astrologer: any) => {
       const account = await Accounts.findById(astrologer.accountId).select(
-        "-otp -loginOtp -resetOtp -password"
+        "_id email phoneNumber profilePicture role isSuspended suspensionReason"
       );
       return {
         ...astrologer.toObject(),
@@ -91,7 +92,7 @@ const getSingleAstrologerById = async (astrologerId: string) => {
 
   // Get account details
   const account = await Accounts.findById(astrologer.accountId).select(
-    "-otp -loginOtp -resetOtp"
+    "_id email phoneNumber profilePicture role isSuspended suspensionReason"
   );
 
   return {
@@ -173,9 +174,175 @@ const getPendingIdentityRequests = async (
   };
 };
 
+/* Add Review */
+const addReview = async (
+  astrologerId: string,
+  userId: string,
+  payload: {
+    review: string;
+    rating: number;
+  }
+) => {
+  // Validate rating (1-5)
+  if (payload.rating < 1 || payload.rating > 5) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Rating must be between 1 and 5"
+    );
+  }
+
+  // Find astrologer
+  const astrologer = await Astrologer.findById(astrologerId);
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Check if user already reviewed this astrologer
+  const existingReviewIndex = astrologer.reviews?.findIndex(
+    (review:TAstrologerReview) => review.user.toString() === userId
+  );
+
+  if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You have already reviewed this astrologer. You can update your review instead."
+    );
+  }
+
+  // Add new review
+  const newReview = {
+    user: userId as any,
+    review: payload.review,
+    rating: payload.rating,
+  };
+
+  if (!astrologer.reviews) {
+    astrologer.reviews = [];
+  }
+  astrologer.reviews.push(newReview);
+
+  // Calculate new average rating
+  const totalRating = astrologer.reviews.reduce((sum: number, rev: TAstrologerReview) => sum + rev.rating, 0);
+  astrologer.rating = totalRating / astrologer.reviews.length;
+
+  await astrologer.save();
+
+  return {
+    success: true,
+    message: "Review added successfully",
+    data: {
+      review: newReview,
+      averageRating: astrologer.rating,
+      totalReviews: astrologer.reviews.length,
+    },
+  };
+};
+
+/* Update Review */
+const updateReview = async (
+  astrologerId: string,
+  userId: string,
+  payload: {
+    review?: string;
+    rating?: number;
+  }
+) => {
+  // Validate rating if provided
+  if (payload.rating && (payload.rating < 1 || payload.rating > 5)) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Rating must be between 1 and 5"
+    );
+  }
+
+  // Find astrologer
+  const astrologer = await Astrologer.findById(astrologerId);
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Find the review index
+  const reviewIndex = astrologer.reviews?.findIndex(
+    (review:TAstrologerReview) => review.user.toString() === userId
+  );
+
+  if (reviewIndex === undefined || reviewIndex === -1) {
+    throw new AppError(httpStatus.NOT_FOUND, "Review not found");
+  }
+
+  // Update review
+  const review = astrologer.reviews[reviewIndex];
+  if (payload.review) review.review = payload.review;
+  if (payload.rating) review.rating = payload.rating;
+  review.updatedAt = new Date();
+
+  // Recalculate average rating
+  const totalRating = astrologer.reviews.reduce((sum: number, rev: TAstrologerReview) => sum + rev.rating, 0);
+  astrologer.rating = totalRating / astrologer.reviews.length;
+
+  await astrologer.save();
+
+  return {
+    success: true,
+    message: "Review updated successfully",
+    data: {
+      review,
+      averageRating: astrologer.rating,
+      totalReviews: astrologer.reviews.length,
+    },
+  };
+};
+
+/* Delete Review */
+const deleteReview = async (
+  astrologerId: string,
+  userId: string
+) => {
+  // Find astrologer
+  const astrologer = await Astrologer.findById(astrologerId);
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Find the review index
+  const reviewIndex = astrologer.reviews?.findIndex(
+    (review: TAstrologerReview) => review.user.toString() === userId
+  );
+
+  if (reviewIndex === undefined || reviewIndex === -1) {
+    throw new AppError(httpStatus.NOT_FOUND, "Review not found");
+  }
+
+  // Remove review
+  astrologer.reviews?.splice(reviewIndex, 1);
+
+  // Recalculate average rating (or set to 0 if no reviews)
+  if (astrologer.reviews && astrologer.reviews.length > 0) {
+    const totalRating = astrologer.reviews.reduce((sum: number, rev: TAstrologerReview) => sum + rev.rating, 0);
+    astrologer.rating = totalRating / astrologer.reviews.length;
+  } else {
+    astrologer.rating = 0;
+  }
+
+  await astrologer.save();
+
+  return {
+    success: true,
+    message: "Review deleted successfully",
+    data: {
+      averageRating: astrologer.rating,
+      totalReviews: astrologer.reviews?.length || 0,
+    },
+  };
+};
+
+
 export const AstrologerServices = {
   getAllAstrologer,
   getSingleAstrologerById,
   updateIdentityStatus,
   getPendingIdentityRequests,
+  addReview,
+  updateReview,
+  deleteReview,
 };

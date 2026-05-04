@@ -4,8 +4,16 @@ export type TLoginAuth = {
     password: string;
 };
 
-import { Model } from "mongoose";
+import { Model, ObjectId } from "mongoose";
 import { UserRole } from "../accounts/accounts.constants";
+
+export type TAstrologerReview = {
+  user: ObjectId;
+  review: string;
+  rating: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 export type TAstrologer = {
     _id: string;
@@ -30,6 +38,8 @@ export type TAstrologer = {
     }
     isIdentityVerified: boolean;
     isProfileCompleted: boolean;
+    rating?: number;
+    reviews?: TAstrologerReview[];
 };
 
 export interface AstrologerModel extends Model<TAstrologer> {

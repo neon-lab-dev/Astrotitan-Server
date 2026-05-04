@@ -73,9 +73,56 @@ const getPendingIdentityRequests = (0, catchAsync_1.default)((req, res) => __awa
         },
     });
 }));
+/* Add Review */
+const addReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { astrologerId } = req.params;
+    const userId = req.user._id;
+    const { review, rating } = req.body;
+    const result = yield astrologer_services_1.AstrologerServices.addReview(astrologerId, userId, {
+        review,
+        rating: Number(rating),
+    });
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.CREATED,
+        success: true,
+        message: "Review added successfully",
+        data: result,
+    });
+}));
+/* Update Review */
+const updateReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { astrologerId } = req.params;
+    const userId = req.user._id;
+    const { review, rating } = req.body;
+    const result = yield astrologer_services_1.AstrologerServices.updateReview(astrologerId, userId, {
+        review,
+        rating: rating ? Number(rating) : undefined,
+    });
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Review updated successfully",
+        data: result,
+    });
+}));
+/* Delete Review */
+const deleteReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { astrologerId } = req.params;
+    const userId = req.user._id;
+    const result = yield astrologer_services_1.AstrologerServices.deleteReview(astrologerId, userId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Review deleted successfully",
+        data: result,
+    });
+}));
 exports.AstrologerControllers = {
     getAllAstrologer,
     getSingleAstrologerById,
     updateIdentityStatus,
     getPendingIdentityRequests,
+    addReview,
+    updateReview,
+    deleteReview,
 };

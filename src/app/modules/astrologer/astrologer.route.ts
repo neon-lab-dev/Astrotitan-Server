@@ -8,7 +8,6 @@ const router = express.Router();
 // Admin routes
 router.get(
   "/",
-  auth(UserRole.admin),
   AstrologerControllers.getAllAstrologer
 );
 
@@ -20,7 +19,6 @@ router.get(
 
 router.get(
   "/:astrologerId",
-  auth(UserRole.admin),
   AstrologerControllers.getSingleAstrologerById
 );
 
@@ -30,4 +28,22 @@ router.patch(
   AstrologerControllers.updateIdentityStatus
 );
 
+// Review Routes (Protected - User only)
+router.post(
+  "/review/add/:astrologerId",
+  auth(UserRole.user),
+  AstrologerControllers.addReview
+);
+
+router.patch(
+  "/review/update/:astrologerId",
+  auth(UserRole.user),
+  AstrologerControllers.updateReview
+);
+
+router.delete(
+  "/review/delete/:astrologerId",
+  auth(UserRole.user, UserRole.admin),
+  AstrologerControllers.deleteReview
+);
 export const AstrologerRoutes = router;

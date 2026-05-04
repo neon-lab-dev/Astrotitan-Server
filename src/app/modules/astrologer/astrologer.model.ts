@@ -112,6 +112,31 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
       default: false,
       index: true,
     },
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    reviews: [
+      {
+        user: {
+          type: Schema.Types.ObjectId,
+          ref: "Accounts",
+          required: true,
+        },
+        review: {
+          type: String,
+          required: true,
+        },
+        rating: {
+          type: Number,
+          required: true,
+          min: 1,
+          max: 5,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

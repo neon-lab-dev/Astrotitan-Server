@@ -87,9 +87,65 @@ const getPendingIdentityRequests = catchAsync(async (req, res) => {
   });
 });
 
+/* Add Review */
+const addReview = catchAsync(async (req, res) => {
+  const { astrologerId } = req.params;
+  const userId = req.user._id;
+  const { review, rating } = req.body;
+
+  const result = await AstrologerServices.addReview(astrologerId, userId, {
+    review,
+    rating: Number(rating),
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Review added successfully",
+    data: result,
+  });
+});
+
+/* Update Review */
+const updateReview = catchAsync(async (req, res) => {
+  const { astrologerId } = req.params;
+  const userId = req.user._id;
+  const { review, rating } = req.body;
+
+  const result = await AstrologerServices.updateReview(astrologerId, userId, {
+    review,
+    rating: rating ? Number(rating) : undefined,
+  });
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Review updated successfully",
+    data: result,
+  });
+});
+
+/* Delete Review */
+const deleteReview = catchAsync(async (req, res) => {
+  const { astrologerId } = req.params;
+  const userId = req.user._id;
+
+  const result = await AstrologerServices.deleteReview(astrologerId, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Review deleted successfully",
+    data: result,
+  });
+});
+
 export const AstrologerControllers = {
   getAllAstrologer,
   getSingleAstrologerById,
   updateIdentityStatus,
   getPendingIdentityRequests,
+  addReview,
+  updateReview,
+  deleteReview,
 };
