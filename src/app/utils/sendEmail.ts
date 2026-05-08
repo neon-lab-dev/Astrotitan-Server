@@ -1,5 +1,7 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import config from "../config";
+
+const resend = new Resend(config.resend_api_key);
 
 export const sendEmail = async (
   to: string,
@@ -7,32 +9,23 @@ export const sendEmail = async (
   html: string
 ) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: config.smtp_email,
-        pass: config.smtp_pass,
-      },
-    });
+    const from = config.email_from;
+    if (!from) {
+      throw new Error("Missing email_from configuration");
+    }
 
-    await transporter.verify();
-
-    console.log("✅ SMTP connected");
-
-    const info = await transporter.sendMail({
-      from: config.smtp_email,
+    const response = await resend.emails.send({
+      from,
       to,
       subject,
       html,
     });
 
-    console.log("✅ Email sent:", info.messageId);
+    console.log("✅ Email Sent:", response);
 
+    return response;
   } catch (error) {
-    console.error("❌ REAL EMAIL ERROR:", error);
-
+    console.error("❌ Email Send Error:", error);
     throw error;
   }
 };

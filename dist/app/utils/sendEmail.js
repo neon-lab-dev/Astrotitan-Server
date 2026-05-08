@@ -13,31 +13,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendEmail = void 0;
-const nodemailer_1 = __importDefault(require("nodemailer"));
+const resend_1 = require("resend");
 const config_1 = __importDefault(require("../config"));
+const resend = new resend_1.Resend(config_1.default.resend_api_key);
 const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const transporter = nodemailer_1.default.createTransport({
-            host: "smtp.gmail.com",
-            port: 465,
-            secure: true,
-            auth: {
-                user: config_1.default.smtp_email,
-                pass: config_1.default.smtp_pass,
-            },
-        });
-        yield transporter.verify();
-        console.log("✅ SMTP connected");
-        const info = yield transporter.sendMail({
-            from: config_1.default.smtp_email,
+        const from = config_1.default.email_from;
+        if (!from) {
+            throw new Error("Missing email_from configuration");
+        }
+        const response = yield resend.emails.send({
+            from,
             to,
             subject,
             html,
         });
-        console.log("✅ Email sent:", info.messageId);
+        console.log("✅ Email Sent:", response);
+        return response;
     }
     catch (error) {
-        console.error("❌ REAL EMAIL ERROR:", error);
+        console.error("❌ Email Send Error:", error);
         throw error;
     }
 });
