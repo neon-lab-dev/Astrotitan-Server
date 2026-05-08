@@ -1,31 +1,38 @@
 import nodemailer from "nodemailer";
-import dotenv from "dotenv";
 import config from "../config";
 
-dotenv.config();
-
-export const sendEmail = async (to: string, subject: string, html: string) => {
+export const sendEmail = async (
+  to: string,
+  subject: string,
+  html: string
+) => {
   try {
     const transporter = nodemailer.createTransport({
-      // service: "gmail",
       host: "smtp.gmail.com",
-      port: 25 ,
-      secure: false,
+      port: 465,
+      secure: true,
       auth: {
         user: config.smtp_email,
         pass: config.smtp_pass,
       },
     });
 
-    await transporter.sendMail({
+    await transporter.verify();
+
+    console.log("✅ SMTP connected");
+
+    const info = await transporter.sendMail({
       from: config.smtp_email,
       to,
       subject,
-      text: "Reset your password within 10 minutes",
       html,
     });
+
+    console.log("✅ Email sent:", info.messageId);
+
   } catch (error) {
-    console.error("Failed to send email:", error);
-    throw new Error("Failed to send email");
+    console.error("❌ REAL EMAIL ERROR:", error);
+
+    throw error;
   }
 };
