@@ -22,7 +22,7 @@ const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, funct
         const transporter = nodemailer_1.default.createTransport({
             // service: "gmail",
             host: "smtp.gmail.com",
-            port: 465,
+            port: 25,
             secure: false,
             auth: {
                 user: config_1.default.smtp_email,

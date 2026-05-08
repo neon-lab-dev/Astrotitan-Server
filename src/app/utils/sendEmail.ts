@@ -9,7 +9,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
     const transporter = nodemailer.createTransport({
       // service: "gmail",
       host: "smtp.gmail.com",
-      port: 465 ,
+      port: 25 ,
       secure: false,
       auth: {
         user: config.smtp_email,
