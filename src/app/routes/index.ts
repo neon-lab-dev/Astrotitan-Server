@@ -6,6 +6,7 @@ import { ProductRoutes } from "../modules/product/product.route";
 import { PujaRoutes } from "../modules/puja/puja.route";
 import { CategoryRoutes } from "../modules/categories/categories.route";
 import { ProductOrderRoutes } from "../modules/orders/productOrder/productOrder.route";
+import { AddressRoutes } from "../modules/orders/address/address.route";
 
 const router = Router();
 
@@ -21,6 +22,10 @@ const moduleRoutes = [
   {
     path: "/astrologer",
     route: AstrologerRoutes,
+  },
+  {
+    path: "/address",
+    route: AddressRoutes,
   },
   {
     path: "/product",

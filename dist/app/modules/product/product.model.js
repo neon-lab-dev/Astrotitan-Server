@@ -13,6 +13,10 @@ const productSchema = new mongoose_1.Schema({
         required: true,
         index: true,
     },
+    intent: {
+        type: String,
+        required: true,
+    },
     description: {
         type: String,
         required: true,

@@ -8,6 +8,7 @@ const product_route_1 = require("../modules/product/product.route");
 const puja_route_1 = require("../modules/puja/puja.route");
 const categories_route_1 = require("../modules/categories/categories.route");
 const productOrder_route_1 = require("../modules/orders/productOrder/productOrder.route");
+const address_route_1 = require("../modules/orders/address/address.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -21,6 +22,10 @@ const moduleRoutes = [
     {
         path: "/astrologer",
         route: astrologer_route_1.AstrologerRoutes,
+    },
+    {
+        path: "/address",
+        route: address_route_1.AddressRoutes,
     },
     {
         path: "/product",

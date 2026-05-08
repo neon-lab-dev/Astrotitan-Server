@@ -84,8 +84,8 @@ const getAllProductOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0
 });
 // Get single order by ID
 const getSingleProductOrderById = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield productOrder_model_1.ProductOrder.findOne({ orderId })
-        .populate("userId", "name email phoneNumber pinCode city addressLine1 addressLine2")
+    const result = yield productOrder_model_1.ProductOrder.findById(orderId)
+        .populate("userId")
         .populate("orderedItems.productId", "name imageUrls category");
     if (!result) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Order not found");
@@ -115,8 +115,8 @@ const getMyProductOrders = (userId_1, keyword_1, status_1, ...args_1) => __await
             .skip(skip)
             .limit(limit)
             .sort({ createdAt: -1 })
-            .populate("userId", "name phoneNumber city pinCode addressLine1 addressLine2")
-            .populate("orderedItems.productId", "name"),
+            .populate("userId")
+            .populate("orderedItems.productId", "imageUrls"),
         productOrder_model_1.ProductOrder.countDocuments(query),
     ]);
     return {

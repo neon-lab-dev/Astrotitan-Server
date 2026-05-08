@@ -12,6 +12,7 @@ const multer_config_1 = require("../../config/multer.config");
 const router = express_1.default.Router();
 router.post("/add", (0, auth_1.default)(accounts_constants_1.UserRole.admin), multer_config_1.multerUpload.array("files", 4), product_controller_1.ProductControllers.addProduct);
 router.get("/", product_controller_1.ProductControllers.getAllProducts);
+router.get("/review-images", product_controller_1.ProductControllers.getAllReviewImages);
 router.get("/:productId", product_controller_1.ProductControllers.getSingleProductById);
 router.patch("/update/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), multer_config_1.multerUpload.array("files", 4), product_controller_1.ProductControllers.updateProduct);
 router.delete("/delete/:productId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), product_controller_1.ProductControllers.deleteProduct);

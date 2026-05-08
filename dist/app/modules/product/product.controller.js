@@ -40,10 +40,11 @@ const addProduct = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
 }));
 /* Get All Products */
 const getAllProducts = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { keyword, category, skip = "0", limit = "10" } = req.query;
+    const { keyword, category, intent, skip = "0", limit = "10" } = req.query;
     const filters = {
         keyword: keyword,
         category: category,
+        intent: intent,
     };
     const result = yield product_service_1.ProductServices.getAllProducts(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
@@ -64,11 +65,22 @@ const getSingleProductById = (0, catchAsync_1.default)((req, res) => __awaiter(v
         data: result,
     });
 }));
+/* Get All Review Images */
+const getAllReviewImages = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { skip = "0", limit = "100" } = req.query;
+    const result = yield product_service_1.ProductServices.getAllReviewImages(Number(skip), Number(limit));
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Review images retrieved successfully",
+        data: result,
+    });
+}));
 /* Update Product */
 const updateProduct = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { productId } = req.params;
     const files = req.files || [];
-    const result = yield product_service_1.ProductServices.updateProduct(productId, req.user.userId, req.body, files);
+    const result = yield product_service_1.ProductServices.updateProduct(productId, req.body, files);
     (0, sendResponse_1.default)(res, {
         success: true,
         statusCode: http_status_1.default.OK,
@@ -129,6 +141,7 @@ exports.ProductControllers = {
     addProduct,
     getAllProducts,
     getSingleProductById,
+    getAllReviewImages,
     updateProduct,
     deleteProduct,
     addReview,

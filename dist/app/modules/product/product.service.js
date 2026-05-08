@@ -20,6 +20,7 @@ const deleteImageFromCloudinary_1 = require("../../utils/deleteImageFromCloudina
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const AppError_1 = __importDefault(require("../../errors/AppError"));
+const accounts_model_1 = require("../accounts/accounts.model");
 const addProduct = (userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
     let imageUrls = [];
     if (files.length) {
@@ -35,6 +36,9 @@ const addProduct = (userId, payload, files) => __awaiter(void 0, void 0, void 0,
 /* Get All Products */
 const getAllProducts = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
     const query = {};
+    if (filters.intent) {
+        query.intent = filters.intent;
+    }
     if (filters.category) {
         query.category = filters.category;
     }
@@ -53,8 +57,47 @@ const getSingleProductById = (productId) => __awaiter(void 0, void 0, void 0, fu
     }
     return product;
 });
+const getAllReviewImages = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (skip = 0, limit = 100) {
+    const query = {
+        "reviews.images": { $exists: true, $ne: [] }
+    };
+    // Use infinitePaginate directly on Product model
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(product_model_1.default, query, skip, limit, []);
+    // Transform the data to extract images
+    const images = result.data.flatMap((product) => {
+        const productImages = [];
+        if (product.reviews && product.reviews.length > 0) {
+            product.reviews.forEach((review) => {
+                if (review.images && review.images.length > 0) {
+                    review.images.forEach((imageUrl) => {
+                        productImages.push({
+                            imageUrl,
+                            reviewId: review._id,
+                            reviewText: review.review,
+                            rating: review.rating,
+                            productId: product._id,
+                            productName: product.name,
+                            userId: review.user,
+                            createdAt: review.createdAt,
+                        });
+                    });
+                }
+            });
+        }
+        return productImages;
+    });
+    // Populate user details
+    const imagesWithUser = yield Promise.all(images.map((image) => __awaiter(void 0, void 0, void 0, function* () {
+        const account = yield accounts_model_1.Accounts.findById(image.userId).select("_id firstName lastName email phoneNumber profilePicture").lean();
+        return Object.assign(Object.assign({}, image), { userDetails: account });
+    })));
+    return {
+        data: imagesWithUser,
+        meta: result.meta,
+    };
+});
 /* Update Product */
-const updateProduct = (productId, userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
+const updateProduct = (productId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
     const product = yield product_model_1.default.findById(productId);
     if (!product) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Product not found");
@@ -223,6 +266,7 @@ exports.ProductServices = {
     addProduct,
     getAllProducts,
     getSingleProductById,
+    getAllReviewImages,
     updateProduct,
     deleteProduct,
     addReview,
