@@ -21,6 +21,9 @@ const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, funct
     try {
         const transporter = nodemailer_1.default.createTransport({
             service: "gmail",
+            host: "smtp.gmail.com",
+            port: 587, // Try port 25
+            secure: false,
             auth: {
                 user: config_1.default.smtp_email,
                 pass: config_1.default.smtp_pass,

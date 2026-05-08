@@ -4,11 +4,14 @@ import config from "../config";
 
 dotenv.config();
 
-export const sendEmail = async (to: string, subject:string, html: string) => {
+export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
-     auth: {
+      host: "smtp.gmail.com",
+      port: 587 , // Try port 25
+      secure: false,
+      auth: {
         user: config.smtp_email,
         pass: config.smtp_pass,
       },
