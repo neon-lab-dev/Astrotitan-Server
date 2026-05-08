@@ -109,10 +109,9 @@ const getAllProductOrders = async (
 
 // Get single order by ID
 const getSingleProductOrderById = async (orderId: string) => {
-  const result = await ProductOrder.findOne({ orderId })
+  const result = await ProductOrder.findById(orderId)
     .populate(
       "userId",
-      "name email phoneNumber pinCode city addressLine1 addressLine2"
     )
     .populate("orderedItems.productId", "name imageUrls category");
 
@@ -159,9 +158,8 @@ const getMyProductOrders = async (
       .sort({ createdAt: -1 })
       .populate(
         "userId",
-        "name phoneNumber city pinCode addressLine1 addressLine2"
       )
-      .populate("orderedItems.productId", "name"),
+      .populate("orderedItems.productId", "imageUrls"),
     ProductOrder.countDocuments(query),
   ]);
 
