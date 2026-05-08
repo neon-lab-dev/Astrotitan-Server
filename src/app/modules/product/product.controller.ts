@@ -23,11 +23,12 @@ const addProduct = catchAsync(async (req, res) => {
 /* Get All Products */
 const getAllProducts = catchAsync(async (req, res) => {
 
-  const { keyword, category, skip = "0", limit = "10" } = req.query;
+  const { keyword, category, intent, skip = "0", limit = "10" } = req.query;
 
   const filters = {
     keyword: keyword as string,
     category: category as string,
+    intent: intent as string,
   };
 
   const result = await ProductServices.getAllProducts(
@@ -60,6 +61,23 @@ const getSingleProductById = catchAsync(async (req, res) => {
   });
 });
 
+/* Get All Review Images */
+const getAllReviewImages = catchAsync(async (req, res) => {
+  const { skip = "0", limit = "100" } = req.query;
+
+  const result = await ProductServices.getAllReviewImages(
+    Number(skip),
+    Number(limit)
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Review images retrieved successfully",
+    data: result,
+  });
+});
+
 /* Update Product */
 const updateProduct = catchAsync(async (req, res) => {
 
@@ -69,7 +87,6 @@ const updateProduct = catchAsync(async (req, res) => {
 
   const result = await ProductServices.updateProduct(
     productId,
-    req.user.userId,
     req.body,
     files
   );
@@ -163,6 +180,7 @@ export const ProductControllers = {
   addProduct,
   getAllProducts,
   getSingleProductById,
+  getAllReviewImages,
   updateProduct,
   deleteProduct,
   addReview,

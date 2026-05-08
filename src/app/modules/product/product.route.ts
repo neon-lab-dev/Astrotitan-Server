@@ -18,11 +18,17 @@ router.get(
   ProductControllers.getAllProducts
 );
 
+router.get(
+  "/review-images",
+  ProductControllers.getAllReviewImages
+);
+
 
 router.get(
   "/:productId",
   ProductControllers.getSingleProductById
 );
+
 
 router.patch(
   "/update/:productId",

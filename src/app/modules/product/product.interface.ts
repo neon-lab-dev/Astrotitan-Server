@@ -2,6 +2,7 @@ import { ObjectId } from "mongoose";
 
 export type TProduct = {
   name: string;
+  intent: string;
   category: string;
   description: string;
   quantity: number;

@@ -14,6 +14,10 @@ const productSchema = new Schema<TProduct>(
       required: true,
       index: true,
     },
+    intent: {
+      type: String,
+      required: true,
+    },
     description: {
       type: String,
       required: true,

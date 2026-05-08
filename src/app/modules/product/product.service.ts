@@ -5,6 +5,7 @@ import { deleteImageFromCloudinary } from "../../utils/deleteImageFromCloudinary
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import { infinitePaginate } from "../../utils/infinitePaginate";
 import AppError from "../../errors/AppError";
+import { Accounts } from "../accounts/accounts.model";
 
 const addProduct = async (
   userId: any,
@@ -45,6 +46,10 @@ const getAllProducts = async (
 
   const query: any = {};
 
+  if (filters.intent) {
+    query.intent = filters.intent;
+  }
+
   if (filters.category) {
     query.category = filters.category;
   }
@@ -69,10 +74,72 @@ const getSingleProductById = async (productId: string) => {
   return product;
 };
 
+const getAllReviewImages = async (
+  skip = 0,
+  limit = 100
+) => {
+  const query: any = {
+    "reviews.images": { $exists: true, $ne: [] }
+  };
+
+  // Use infinitePaginate directly on Product model
+  const result = await infinitePaginate(
+    Product,
+    query,
+    skip,
+    limit,
+    []
+  );
+
+  // Transform the data to extract images
+  const images = result.data.flatMap((product: any) => {
+    const productImages: any[] = [];
+    
+    if (product.reviews && product.reviews.length > 0) {
+      product.reviews.forEach((review: any) => {
+        if (review.images && review.images.length > 0) {
+          review.images.forEach((imageUrl: string) => {
+            productImages.push({
+              imageUrl,
+              reviewId: review._id,
+              reviewText: review.review,
+              rating: review.rating,
+              productId: product._id,
+              productName: product.name,
+              userId: review.user,
+              createdAt: review.createdAt,
+            });
+          });
+        }
+      });
+    }
+    
+    return productImages;
+  });
+
+  // Populate user details
+  const imagesWithUser = await Promise.all(
+    images.map(async (image: any) => {
+      const account = await Accounts.findById(image.userId).select(
+        "_id firstName lastName email phoneNumber profilePicture"
+      ).lean();
+      
+      return {
+        ...image,
+        userDetails: account,
+      };
+    })
+  );
+
+  return {
+    data: imagesWithUser,
+    meta: result.meta,
+  };
+};
+
 /* Update Product */
 const updateProduct = async (
   productId: string,
-  userId: any,
   payload: any,
   files: Express.Multer.File[]
 ) => {
@@ -340,6 +407,7 @@ export const ProductServices = {
   addProduct,
   getAllProducts,
   getSingleProductById,
+  getAllReviewImages,
   updateProduct,
   deleteProduct,
   addReview,
