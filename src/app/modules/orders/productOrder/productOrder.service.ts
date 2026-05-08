@@ -57,7 +57,11 @@ const createProductOrder = async (user: any, payload: TProductOrder) => {
 
   const orderedItems = payload?.orderedItems;
 
+  const randomNum = Math.floor(100000 + Math.random() * 900000);
+  const orderId = `AT-${randomNum}`;
+
   const payloadData = {
+    orderId,
     userId: user?._id,
     orderedItems,
     totalAmount: payload.totalAmount,

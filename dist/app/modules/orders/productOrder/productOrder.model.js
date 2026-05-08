@@ -9,6 +9,7 @@ const OrderItemSchema = new mongoose_1.Schema({
     price: { type: Number, required: true },
 });
 const ProductOrderSchema = new mongoose_1.Schema({
+    orderId: { type: String, required: true, unique: true },
     userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
     orderedItems: [OrderItemSchema],
     totalAmount: { type: Number, required: true },

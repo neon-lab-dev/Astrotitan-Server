@@ -10,6 +10,7 @@ const OrderItemSchema = new Schema<TProductOrderItem>({
 
 const ProductOrderSchema = new Schema<TProductOrder>(
   {
+    orderId: { type: String, required: true, unique: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
     orderedItems: [OrderItemSchema],

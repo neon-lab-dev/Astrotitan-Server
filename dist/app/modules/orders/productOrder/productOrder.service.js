@@ -54,7 +54,10 @@ const createProductOrder = (user, payload) => __awaiter(void 0, void 0, void 0, 
         yield product.save();
     }
     const orderedItems = payload === null || payload === void 0 ? void 0 : payload.orderedItems;
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    const orderId = `AT-${randomNum}`;
     const payloadData = {
+        orderId,
         userId: user === null || user === void 0 ? void 0 : user._id,
         orderedItems,
         totalAmount: payload.totalAmount,

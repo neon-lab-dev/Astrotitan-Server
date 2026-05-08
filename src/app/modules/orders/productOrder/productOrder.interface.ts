@@ -8,6 +8,7 @@ export interface TProductOrderItem {
 }
 
 export interface TProductOrder {
+  orderId : string;
   userId: ObjectId;
   orderedItems: TProductOrderItem[];
   totalAmount: number;
