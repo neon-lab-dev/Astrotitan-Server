@@ -10,6 +10,7 @@ const categories_route_1 = require("../modules/categories/categories.route");
 const productOrder_route_1 = require("../modules/orders/productOrder/productOrder.route");
 const address_route_1 = require("../modules/orders/address/address.route");
 const query_route_1 = require("../modules/query/query.route");
+const pujaBooking_route_1 = require("../modules/pujaBooking/pujaBooking.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -47,6 +48,10 @@ const moduleRoutes = [
     {
         path: "/query",
         route: query_route_1.QueryRoutes,
+    },
+    {
+        path: "/puja-booking",
+        route: pujaBooking_route_1.PujaBookingRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

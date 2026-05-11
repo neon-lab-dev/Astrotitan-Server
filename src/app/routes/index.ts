@@ -8,6 +8,7 @@ import { CategoryRoutes } from "../modules/categories/categories.route";
 import { ProductOrderRoutes } from "../modules/orders/productOrder/productOrder.route";
 import { AddressRoutes } from "../modules/orders/address/address.route";
 import { QueryRoutes } from "../modules/query/query.route";
+import { PujaBookingRoutes } from "../modules/pujaBooking/pujaBooking.route";
 
 const router = Router();
 
@@ -47,6 +48,10 @@ const moduleRoutes = [
   {
     path: "/query",
     route: QueryRoutes,
+  },
+  {
+    path: "/puja-booking",
+    route: PujaBookingRoutes,
   },
 ];
 
