@@ -8,7 +8,7 @@ const router = express.Router();
 // Add category (admin only)
 router.post(
   "/add",
-  auth(UserRole.admin),
+  auth(UserRole.admin, UserRole.astrologer),
   CategoryController.addCategory
 );
 

@@ -10,7 +10,7 @@ const auth_1 = __importDefault(require("../../middlewares/auth"));
 const accounts_constants_1 = require("../accounts/accounts.constants");
 const router = express_1.default.Router();
 // Add category (admin only)
-router.post("/add", (0, auth_1.default)(accounts_constants_1.UserRole.admin), categories_controller_1.CategoryController.addCategory);
+router.post("/add", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.astrologer), categories_controller_1.CategoryController.addCategory);
 // Get all categories
 router.get("/:areaName", categories_controller_1.CategoryController.getAllCategoriesByAreaName);
 // Get a single category by ID
