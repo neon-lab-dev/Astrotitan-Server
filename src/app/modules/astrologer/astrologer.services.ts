@@ -59,16 +59,16 @@ const getAllAstrologer = async (
 
   // Filter by area of practice (supports array from frontend)
   if (filters.areaOfPractice) {
-    const areas = Array.isArray(filters.areaOfPractice) 
-      ? filters.areaOfPractice 
+    const areas = Array.isArray(filters.areaOfPractice)
+      ? filters.areaOfPractice
       : [filters.areaOfPractice];
     query.areaOfPractice = { $in: areas };
   }
 
   // Filter by consult languages (supports array from frontend)
   if (filters.consultLanguages) {
-    const languages = Array.isArray(filters.consultLanguages) 
-      ? filters.consultLanguages 
+    const languages = Array.isArray(filters.consultLanguages)
+      ? filters.consultLanguages
       : [filters.consultLanguages];
     query.consultLanguages = { $in: languages };
   }
@@ -104,34 +104,34 @@ const getAllAstrologer = async (
   if (filters.sortBy === "relevance" && filters.userId) {
     const userAccount = await User.findOne({ accountId: filters.userId }).select("intents");
     const userIntents = userAccount?.intents || [];
-    
+
     if (userIntents.length > 0) {
       astrologersList = astrologersList.map((astrologer: any) => {
         let relevanceScore = 0;
-        
+
         userIntents.forEach((intent: string) => {
-          if (astrologer.areaOfPractice?.some((practice: string) => 
+          if (astrologer.areaOfPractice?.some((practice: string) =>
             practice.toLowerCase().includes(intent.toLowerCase())
           )) {
             relevanceScore++;
           }
         });
-        
+
         return {
           ...astrologer,
           relevanceScore
         };
       });
-      
+
       astrologersList.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
     }
   }
-  
+
   // Sort by top rated (highest rating first)
   else if (filters.sortBy === "topRated") {
     astrologersList.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
   }
-  
+
   // Sort by most experienced (parse experience string to number)
   else if (filters.sortBy === "mostExperienced") {
     astrologersList.sort((a: any, b: any) => {
@@ -276,7 +276,7 @@ const addReview = async (
 
   // Check if user already reviewed this astrologer
   const existingReviewIndex = astrologer.reviews?.findIndex(
-    (review:TAstrologerReview) => review.user.toString() === userId
+    (review: TAstrologerReview) => review.user.toString() === userId
   );
 
   if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
@@ -340,7 +340,7 @@ const updateReview = async (
 
   // Find the review index
   const reviewIndex = astrologer.reviews?.findIndex(
-    (review:TAstrologerReview) => review.user.toString() === userId
+    (review: TAstrologerReview) => review.user.toString() === userId
   );
 
   if (reviewIndex === undefined || reviewIndex === -1) {
@@ -413,6 +413,56 @@ const deleteReview = async (
   };
 };
 
+/* Update Astrologer Availability */
+const updateAvailability = async (
+  userId: string,
+  payload: {
+    availableDays: string[];
+    availableTime: {
+      startTime: string;
+      endTime: string;
+    };
+  }
+) => {
+  // Check if astrologer exists
+  const astrologer = await Astrologer.findOne({ accountId: userId });
+
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Validate availableDays
+  const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const invalidDays = payload.availableDays.filter(day => !validDays.includes(day));
+  if (invalidDays.length > 0) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Invalid days: ${invalidDays.join(", ")}. Valid days are: ${validDays.join(", ")}`
+    );
+  }
+
+  // Update availability
+  const updatedAstrologer = await Astrologer.findOneAndUpdate(
+    { accountId: userId },
+    {
+      availability: {
+        availableDays: payload.availableDays,
+        availableTime: payload.availableTime,
+      },
+    },
+    { new: true, runValidators: true }
+  ).populate("accountId", "email phoneNumber");
+
+  return {
+    success: true,
+    message: "Availability updated successfully",
+    data: {
+      availableDays: updatedAstrologer?.availability?.availableDays,
+      availableTime: updatedAstrologer?.availability?.availableTime,
+    },
+  };
+};
+
 
 export const AstrologerServices = {
   getAllAstrologer,
@@ -422,4 +472,5 @@ export const AstrologerServices = {
   addReview,
   updateReview,
   deleteReview,
+  updateAvailability,
 };

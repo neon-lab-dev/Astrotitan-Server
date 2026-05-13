@@ -157,6 +157,19 @@ const deleteReview = catchAsync(async (req, res) => {
   });
 });
 
+/* Update Availability */
+const updateAvailability = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const result = await AstrologerServices.updateAvailability(userId, req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result.message,
+    data: result.data,
+  });
+});
+
 export const AstrologerControllers = {
   getAllAstrologer,
   getSingleAstrologerById,
@@ -165,4 +178,5 @@ export const AstrologerControllers = {
   addReview,
   updateReview,
   deleteReview,
+  updateAvailability,
 };

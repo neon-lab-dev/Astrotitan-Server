@@ -48,4 +48,10 @@ router.delete(
   auth(UserRole.user, UserRole.admin),
   AstrologerControllers.deleteReview
 );
+
+router.put(
+  "/availability/update",
+  auth(UserRole.astrologer),
+  AstrologerControllers.updateAvailability
+);
 export const AstrologerRoutes = router;

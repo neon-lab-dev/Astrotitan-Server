@@ -8,11 +8,11 @@ import { Model, ObjectId } from "mongoose";
 import { UserRole } from "../accounts/accounts.constants";
 
 export type TAstrologerReview = {
-  user: ObjectId;
-  review: string;
-  rating: number;
-  createdAt?: Date;
-  updatedAt?: Date;
+    user: ObjectId;
+    review: string;
+    rating: number;
+    createdAt?: Date;
+    updatedAt?: Date;
 };
 
 export type TAstrologer = {
@@ -40,6 +40,13 @@ export type TAstrologer = {
     isProfileCompleted: boolean;
     rating?: number;
     reviews?: TAstrologerReview[];
+    availability?: {
+        availableDays: string[];
+        availableTime: {
+            startTime: string;
+            endTime: string;
+        };
+    };
 };
 
 export interface AstrologerModel extends Model<TAstrologer> {

@@ -18,4 +18,5 @@ router.patch("/update-identity-status/:astrologerId", (0, auth_1.default)(accoun
 router.post("/review/add/:astrologerId", (0, auth_1.default)(accounts_constants_1.UserRole.user), astrologer_controller_1.AstrologerControllers.addReview);
 router.patch("/review/update/:astrologerId", (0, auth_1.default)(accounts_constants_1.UserRole.user), astrologer_controller_1.AstrologerControllers.updateReview);
 router.delete("/review/delete/:astrologerId", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.admin), astrologer_controller_1.AstrologerControllers.deleteReview);
+router.put("/availability/update", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), astrologer_controller_1.AstrologerControllers.updateAvailability);
 exports.AstrologerRoutes = router;

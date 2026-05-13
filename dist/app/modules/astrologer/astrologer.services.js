@@ -285,6 +285,36 @@ const deleteReview = (astrologerId, userId) => __awaiter(void 0, void 0, void 0,
         },
     };
 });
+/* Update Astrologer Availability */
+const updateAvailability = (userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    // Check if astrologer exists
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Validate availableDays
+    const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const invalidDays = payload.availableDays.filter(day => !validDays.includes(day));
+    if (invalidDays.length > 0) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Invalid days: ${invalidDays.join(", ")}. Valid days are: ${validDays.join(", ")}`);
+    }
+    // Update availability
+    const updatedAstrologer = yield astrologer_model_1.Astrologer.findOneAndUpdate({ accountId: userId }, {
+        availability: {
+            availableDays: payload.availableDays,
+            availableTime: payload.availableTime,
+        },
+    }, { new: true, runValidators: true }).populate("accountId", "email phoneNumber");
+    return {
+        success: true,
+        message: "Availability updated successfully",
+        data: {
+            availableDays: (_a = updatedAstrologer === null || updatedAstrologer === void 0 ? void 0 : updatedAstrologer.availability) === null || _a === void 0 ? void 0 : _a.availableDays,
+            availableTime: (_b = updatedAstrologer === null || updatedAstrologer === void 0 ? void 0 : updatedAstrologer.availability) === null || _b === void 0 ? void 0 : _b.availableTime,
+        },
+    };
+});
 exports.AstrologerServices = {
     getAllAstrologer,
     getSingleAstrologerById,
@@ -293,4 +323,5 @@ exports.AstrologerServices = {
     addReview,
     updateReview,
     deleteReview,
+    updateAvailability,
 };

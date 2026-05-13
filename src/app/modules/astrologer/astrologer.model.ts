@@ -137,6 +137,24 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
         },
       },
     ],
+    availability: {
+      availableDays: {
+        type: [String],
+        required: false,
+        default: [],
+      },
+      availableTime: {
+        startTime: {
+          type: String,
+          required: false,
+        },
+        endTime: {
+          type: String,
+          required: false,
+        },
+      }
+
+    },
   },
   {
     timestamps: true,

@@ -131,6 +131,17 @@ const deleteReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
         data: result,
     });
 }));
+/* Update Availability */
+const updateAvailability = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.user._id;
+    const result = yield astrologer_services_1.AstrologerServices.updateAvailability(userId, req.body);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: result.message,
+        data: result.data,
+    });
+}));
 exports.AstrologerControllers = {
     getAllAstrologer,
     getSingleAstrologerById,
@@ -139,4 +150,5 @@ exports.AstrologerControllers = {
     addReview,
     updateReview,
     deleteReview,
+    updateAvailability,
 };
