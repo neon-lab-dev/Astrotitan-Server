@@ -196,6 +196,20 @@ const getMe = catchAsync(async (req, res) => {
   });
 });
 
+/* Update My Profile */
+const updateProfile = catchAsync(async (req, res) => {
+  const { _id } = req.user;
+  const file = req.file as Express.Multer.File;
+  const result = await AuthServices.updateProfile(_id, req.body, file);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile updated successfully",
+    data: result.data,
+  });
+});
+
 export const AuthControllers = {
   signup,
   verifySignupOtp,
@@ -210,4 +224,5 @@ export const AuthControllers = {
   suspendAccount,
   activeAccount,
   getMe,
+  updateProfile,
 };

@@ -173,6 +173,18 @@ const getMe = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, 
         data: result,
     });
 }));
+/* Update My Profile */
+const updateProfile = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { _id } = req.user;
+    const file = req.file;
+    const result = yield accounts_service_1.AuthServices.updateProfile(_id, req.body, file);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Profile updated successfully",
+        data: result.data,
+    });
+}));
 exports.AuthControllers = {
     signup,
     verifySignupOtp,
@@ -187,4 +199,5 @@ exports.AuthControllers = {
     suspendAccount,
     activeAccount,
     getMe,
+    updateProfile,
 };

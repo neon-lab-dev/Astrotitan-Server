@@ -14,6 +14,7 @@ import { Astrologer } from "../astrologer/astrologer.model";
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import { TLoginAuth } from "./accounts.interface";
 import bcrypt from 'bcrypt';
+import { deleteImageFromCloudinary } from "../../utils/deleteImageFromCloudinary";
 
 const signup = async (payload: {
   email?: string;
@@ -971,6 +972,128 @@ const getMe = async (accountId: string) => {
   };
 };
 
+/* Update My Profile (works for both user and astrologer) */
+const updateProfile = async (
+  accountId: string,
+  payload: any,
+  file?: Express.Multer.File
+) => {
+  // Find the account
+  const account = await Accounts.findById(accountId);
+  if (!account) {
+    throw new AppError(httpStatus.NOT_FOUND, "Account not found");
+  }
+
+  // Check if account is active
+  if (account.isDeleted) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your account has been deleted. Please contact support."
+    );
+  }
+
+  // Upload new profile picture if provided
+  let profilePictureUrl = "";
+  if (file) {
+    const { secure_url } = await sendImageToCloudinary(
+      `profile-${accountId}-${Date.now()}`,
+      file.path
+    );
+    profilePictureUrl = secure_url;
+  }
+
+  // Update common fields in Accounts collection (only email and phoneNumber)
+  const updateAccountData: any = {
+    ...(payload.email && { email: payload.email }),
+    ...(payload.phoneNumber && { phoneNumber: payload.phoneNumber }),
+  };
+
+  if (Object.keys(updateAccountData).length > 0) {
+    await Accounts.findByIdAndUpdate(accountId, updateAccountData);
+  }
+
+  let profileData = null;
+
+  // Update role-specific profile
+  if (account.role === "user") {
+    // Get existing user to delete old profile picture
+    if (profilePictureUrl) {
+      const existingUser = await User.findOne({ accountId: account._id });
+      if (existingUser?.profilePicture) {
+        const publicId = existingUser.profilePicture.split("/").pop()?.split(".")[0];
+        if (publicId) {
+          await deleteImageFromCloudinary(publicId);
+        }
+      }
+    }
+
+    profileData = await User.findOneAndUpdate(
+      { accountId: account._id },
+      {
+        ...payload,
+        ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
+        isProfileCompleted: true
+      },
+      { new: true, upsert: true }
+    );
+  }
+  else if (account.role === "astrologer") {
+    // Get existing astrologer to delete old profile picture
+    if (profilePictureUrl) {
+      const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
+      if (existingAstrologer?.profilePicture) {
+        const publicId = existingAstrologer.profilePicture.split("/").pop()?.split(".")[0];
+        if (publicId) {
+          await deleteImageFromCloudinary(publicId);
+        }
+      }
+    }
+
+    // Parse identity if it's a string
+    let identity = payload.identity;
+    if (identity && typeof identity === "string") {
+      identity = JSON.parse(identity);
+    }
+
+    // Parse array fields if they come as strings
+    let consultLanguages = payload.consultLanguages;
+    if (consultLanguages && typeof consultLanguages === "string") {
+      consultLanguages = JSON.parse(consultLanguages);
+    }
+
+    let areaOfPractice = payload.areaOfPractice;
+    if (areaOfPractice && typeof areaOfPractice === "string") {
+      areaOfPractice = JSON.parse(areaOfPractice);
+    }
+
+    profileData = await Astrologer.findOneAndUpdate(
+      { accountId: account._id },
+      {
+        ...payload,
+        ...(consultLanguages && { consultLanguages }),
+        ...(areaOfPractice && { areaOfPractice }),
+        ...(identity && {
+          identity: {
+            ...identity,
+            status: "pending"
+          },
+          isIdentityVerified: false
+        }),
+        ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
+        isProfileCompleted: true
+      },
+      { new: true, upsert: true }
+    );
+  }
+
+  return {
+    success: true,
+    message: "Profile updated successfully",
+    data: {
+      profileData,
+    },
+  };
+};
 
 export const AuthServices = {
   signup,
@@ -985,5 +1108,6 @@ export const AuthServices = {
   changeUserRole,
   suspendAccount,
   activeAccount,
-  getMe
+  getMe,
+  updateProfile,
 };

@@ -73,6 +73,14 @@ router.put(
   AuthControllers.changeUserRole
 );
 
+// Admin Routes
+router.put(
+  "/update-profile",
+  auth(UserRole.admin, UserRole.astrologer, UserRole.user),
+  multerUpload.single("file"),
+  AuthControllers.updateProfile
+);
+
 
 router.patch(
   "/suspend/:accountId",

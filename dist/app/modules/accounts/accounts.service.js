@@ -28,6 +28,7 @@ const generateOtp_1 = require("../../utils/generateOtp");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const deleteImageFromCloudinary_1 = require("../../utils/deleteImageFromCloudinary");
 const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     // Validating for admin registration (only one admin allowed)
     if (payload.role === "admin") {
@@ -714,6 +715,82 @@ const getMe = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
         isProfileComplete,
     };
 });
+/* Update My Profile (works for both user and astrologer) */
+const updateProfile = (accountId, payload, file) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    // Find the account
+    const account = yield accounts_model_1.Accounts.findById(accountId);
+    if (!account) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Account not found");
+    }
+    // Check if account is active
+    if (account.isDeleted) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "Your account has been deleted. Please contact support.");
+    }
+    // Upload new profile picture if provided
+    let profilePictureUrl = "";
+    if (file) {
+        const { secure_url } = yield (0, sendImageToCloudinary_1.sendImageToCloudinary)(`profile-${accountId}-${Date.now()}`, file.path);
+        profilePictureUrl = secure_url;
+    }
+    // Update common fields in Accounts collection (only email and phoneNumber)
+    const updateAccountData = Object.assign(Object.assign({}, (payload.email && { email: payload.email })), (payload.phoneNumber && { phoneNumber: payload.phoneNumber }));
+    if (Object.keys(updateAccountData).length > 0) {
+        yield accounts_model_1.Accounts.findByIdAndUpdate(accountId, updateAccountData);
+    }
+    let profileData = null;
+    // Update role-specific profile
+    if (account.role === "user") {
+        // Get existing user to delete old profile picture
+        if (profilePictureUrl) {
+            const existingUser = yield user_model_1.User.findOne({ accountId: account._id });
+            if (existingUser === null || existingUser === void 0 ? void 0 : existingUser.profilePicture) {
+                const publicId = (_a = existingUser.profilePicture.split("/").pop()) === null || _a === void 0 ? void 0 : _a.split(".")[0];
+                if (publicId) {
+                    yield (0, deleteImageFromCloudinary_1.deleteImageFromCloudinary)(publicId);
+                }
+            }
+        }
+        profileData = yield user_model_1.User.findOneAndUpdate({ accountId: account._id }, Object.assign(Object.assign(Object.assign({}, payload), (profilePictureUrl && { profilePicture: profilePictureUrl })), { isProfileCompleted: true }), { new: true, upsert: true });
+    }
+    else if (account.role === "astrologer") {
+        // Get existing astrologer to delete old profile picture
+        if (profilePictureUrl) {
+            const existingAstrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
+            if (existingAstrologer === null || existingAstrologer === void 0 ? void 0 : existingAstrologer.profilePicture) {
+                const publicId = (_b = existingAstrologer.profilePicture.split("/").pop()) === null || _b === void 0 ? void 0 : _b.split(".")[0];
+                if (publicId) {
+                    yield (0, deleteImageFromCloudinary_1.deleteImageFromCloudinary)(publicId);
+                }
+            }
+        }
+        // Parse identity if it's a string
+        let identity = payload.identity;
+        if (identity && typeof identity === "string") {
+            identity = JSON.parse(identity);
+        }
+        // Parse array fields if they come as strings
+        let consultLanguages = payload.consultLanguages;
+        if (consultLanguages && typeof consultLanguages === "string") {
+            consultLanguages = JSON.parse(consultLanguages);
+        }
+        let areaOfPractice = payload.areaOfPractice;
+        if (areaOfPractice && typeof areaOfPractice === "string") {
+            areaOfPractice = JSON.parse(areaOfPractice);
+        }
+        profileData = yield astrologer_model_1.Astrologer.findOneAndUpdate({ accountId: account._id }, Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, payload), (consultLanguages && { consultLanguages })), (areaOfPractice && { areaOfPractice })), (identity && {
+            identity: Object.assign(Object.assign({}, identity), { status: "pending" }),
+            isIdentityVerified: false
+        })), (profilePictureUrl && { profilePicture: profilePictureUrl })), { isProfileCompleted: true }), { new: true, upsert: true });
+    }
+    return {
+        success: true,
+        message: "Profile updated successfully",
+        data: {
+            profileData,
+        },
+    };
+});
 exports.AuthServices = {
     signup,
     verifySignupOtp,
@@ -727,5 +804,6 @@ exports.AuthServices = {
     changeUserRole,
     suspendAccount,
     activeAccount,
-    getMe
+    getMe,
+    updateProfile,
 };
