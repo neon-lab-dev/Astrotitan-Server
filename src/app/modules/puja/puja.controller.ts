@@ -27,6 +27,7 @@ const getAllPujas = catchAsync(async (req, res) => {
     minPrice,
     maxPrice,
     minRating,
+    intent,
     skip = "0",
     limit = "10",
   } = req.query;
@@ -37,6 +38,7 @@ const getAllPujas = catchAsync(async (req, res) => {
     minPrice: minPrice as string,
     maxPrice: maxPrice as string,
     minRating: minRating as string,
+    intent: intent as string,
   };
 
   const result = await PujaServices.getAllPujas(

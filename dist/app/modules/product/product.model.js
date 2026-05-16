@@ -16,6 +16,7 @@ const productSchema = new mongoose_1.Schema({
     intent: {
         type: String,
         required: true,
+        index: true,
     },
     description: {
         type: String,
@@ -89,5 +90,7 @@ productSchema.index({
 productSchema.index({ category: 1, rating: -1 });
 productSchema.index({ category: 1, basePrice: 1 });
 productSchema.index({ rating: -1 });
+productSchema.index({ intent: 1 });
+productSchema.index({ intent: 1, rating: -1 });
 const Product = (0, mongoose_1.model)("Product", productSchema);
 exports.default = Product;

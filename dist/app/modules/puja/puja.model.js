@@ -31,6 +31,11 @@ const pujaSchema = new mongoose_1.Schema({
         trim: true,
         index: true,
     },
+    intent: {
+        type: String,
+        required: true,
+        index: true,
+    },
     category: {
         type: String,
         required: true,
@@ -83,5 +88,9 @@ pujaSchema.index({ category: 1, rating: -1 });
 pujaSchema.index({ category: 1, basePrice: 1 });
 pujaSchema.index({ rating: -1 });
 pujaSchema.index({ addedBy: 1 });
+pujaSchema.index({ intent: 1 });
+pujaSchema.index({ intent: 1, rating: -1 });
+pujaSchema.index({ intent: 1, basePrice: 1 });
+pujaSchema.index({ category: 1, intent: 1 });
 const Puja = (0, mongoose_1.model)("Puja", pujaSchema);
 exports.default = Puja;

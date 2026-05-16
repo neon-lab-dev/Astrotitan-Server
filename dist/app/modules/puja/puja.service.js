@@ -53,6 +53,9 @@ const getAllPujas = (...args_1) => __awaiter(void 0, [...args_1], void 0, functi
             $search: filters.keyword,
         };
     }
+    if (filters.intent) {
+        query.intent = filters.intent;
+    }
     return (0, infinitePaginate_1.infinitePaginate)(puja_model_1.default, query, skip, limit, []);
 });
 /* Get Single Puja */

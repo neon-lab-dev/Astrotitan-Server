@@ -11,6 +11,7 @@ export type TPujaReview = {
 
 export type TPuja = {
   name: string;
+  intent: string;
   category: string;
   description: string;
   imageUrls: string[];

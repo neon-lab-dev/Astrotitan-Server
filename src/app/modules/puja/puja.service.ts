@@ -64,6 +64,10 @@ const getAllPujas = async (
     };
   }
 
+  if (filters.intent) {
+    query.intent = filters.intent;
+  }
+
   return infinitePaginate(Puja, query, skip, limit, []);
 };
 

@@ -43,13 +43,14 @@ const addPuja = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0
 }));
 /* Get All Pujas */
 const getAllPujas = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { keyword, category, minPrice, maxPrice, minRating, skip = "0", limit = "10", } = req.query;
+    const { keyword, category, minPrice, maxPrice, minRating, intent, skip = "0", limit = "10", } = req.query;
     const filters = {
         keyword: keyword,
         category: category,
         minPrice: minPrice,
         maxPrice: maxPrice,
         minRating: minRating,
+        intent: intent,
     };
     const result = yield puja_service_1.PujaServices.getAllPujas(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {

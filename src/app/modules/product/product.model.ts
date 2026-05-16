@@ -17,6 +17,7 @@ const productSchema = new Schema<TProduct>(
     intent: {
       type: String,
       required: true,
+      index: true,
     },
     description: {
       type: String,
@@ -94,6 +95,8 @@ productSchema.index({
 productSchema.index({ category: 1, rating: -1 });
 productSchema.index({ category: 1, basePrice: 1 });
 productSchema.index({ rating: -1 });
+productSchema.index({ intent: 1 });
+productSchema.index({ intent: 1, rating: -1 });
 
 const Product = model<TProduct>("Product", productSchema);
 
