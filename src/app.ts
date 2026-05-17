@@ -4,6 +4,7 @@ import router from "./app/routes";
 import cookieParser from "cookie-parser";
 import notFoundHandler from "./app/middlewares/notFoundHandeler";
 import globalErrorHandler from "./app/middlewares/globalErrorHandeler";
+import config from "./app/config";
 
 const app = express();
 
@@ -31,6 +32,10 @@ app.use(
 app.get("/", (req, res) => {
   res.send("Welcome to Astrotitan! Api is up and running.");
 });
+
+app.get("/api/v1/get-key", (req, res) =>
+  res.status(200).json({ key: config.razorpay_api_key })
+);
 
 // Application routes
 app.use("/api/v1", router);

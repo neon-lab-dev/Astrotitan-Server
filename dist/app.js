@@ -9,6 +9,7 @@ const routes_1 = __importDefault(require("./app/routes"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const notFoundHandeler_1 = __importDefault(require("./app/middlewares/notFoundHandeler"));
 const globalErrorHandeler_1 = __importDefault(require("./app/middlewares/globalErrorHandeler"));
+const config_1 = __importDefault(require("./app/config"));
 const app = (0, express_1.default)();
 // Enable cookie parsing
 app.use((0, cookie_parser_1.default)());
@@ -29,6 +30,7 @@ app.use((0, cors_1.default)({
 app.get("/", (req, res) => {
     res.send("Welcome to Astrotitan! Api is up and running.");
 });
+app.get("/api/v1/get-key", (req, res) => res.status(200).json({ key: config_1.default.razorpay_api_key }));
 // Application routes
 app.use("/api/v1", routes_1.default);
 // Catch-all route for handling 404 errors
