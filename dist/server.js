@@ -31,10 +31,14 @@ function main() {
             exports.io = new socket_io_1.Server(server, {
                 cors: {
                     origin: [
+                        "http://192.168.0.102:5000", // Your local network IP
+                        "http://localhost:19000", // React Native default
+                        "http://localhost:19006", // Common React Native port
+                        "http://192.168.0.102:19000", // Your local network IP
+                        "http://192.168.0.102:19006",
                         "http://localhost:5173",
                         "http://localhost:5000",
-                        "http://api.brighttuitioncare.com",
-                        "https://api.brighttuitioncare.com",
+                        "https://astro-titan-admin-panel.vercel.app",
                     ],
                     methods: ["GET", "POST", "PUT", "DELETE"],
                     allowedHeaders: ["Content-Type", "Authorization"],
