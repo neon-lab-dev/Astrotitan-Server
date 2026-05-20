@@ -1095,6 +1095,37 @@ const updateProfile = async (
   };
 };
 
+/* Update Expo Push Token */
+const updateExpoPushToken = async (
+  accountId: string,
+  expoPushToken: string
+) => {
+  // Find the account
+  const account = await Accounts.findById(accountId);
+  if (!account) {
+    throw new AppError(httpStatus.NOT_FOUND, "Account not found");
+  }
+
+  // Check if account is active
+  if (account.isDeleted) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your account has been deleted. Please contact support."
+    );
+  }
+
+  // Update expoPushToken
+  await Accounts.findByIdAndUpdate(accountId, { expoPushToken });
+
+  return {
+    success: true,
+    message: "Push notification token updated successfully",
+    data: {
+      expoPushToken,
+    },
+  };
+};
+
 export const AuthServices = {
   signup,
   verifySignupOtp,
@@ -1110,4 +1141,5 @@ export const AuthServices = {
   activeAccount,
   getMe,
   updateProfile,
+  updateExpoPushToken
 };

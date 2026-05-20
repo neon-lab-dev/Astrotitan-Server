@@ -210,6 +210,21 @@ const updateProfile = catchAsync(async (req, res) => {
   });
 });
 
+/* Update Expo Push Token */
+const updateExpoPushToken = catchAsync(async (req, res) => {
+  const { _id } = req.user;
+  const { expoPushToken } = req.body;
+
+  const result = await AuthServices.updateExpoPushToken(_id, expoPushToken);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Push notification token updated successfully",
+    data: result.data,
+  });
+});
+
 export const AuthControllers = {
   signup,
   verifySignupOtp,
@@ -225,4 +240,5 @@ export const AuthControllers = {
   activeAccount,
   getMe,
   updateProfile,
+  updateExpoPushToken
 };

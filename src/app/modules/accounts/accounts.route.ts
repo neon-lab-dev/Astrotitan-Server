@@ -81,6 +81,12 @@ router.put(
   AuthControllers.updateProfile
 );
 
+router.patch(
+  "/update-push-token",
+  auth(UserRole.user, UserRole.astrologer),
+  AuthControllers.updateExpoPushToken
+);
+
 
 router.patch(
   "/suspend/:accountId",

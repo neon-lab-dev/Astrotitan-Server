@@ -30,6 +30,7 @@ router.post("/refresh-token", accounts_controller_1.AuthControllers.refreshToken
 router.put("/change-role", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.changeUserRole);
 // Admin Routes
 router.put("/update-profile", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.astrologer, accounts_constants_1.UserRole.user), multer_config_1.multerUpload.single("file"), accounts_controller_1.AuthControllers.updateProfile);
+router.patch("/update-push-token", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), accounts_controller_1.AuthControllers.updateExpoPushToken);
 router.patch("/suspend/:accountId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.suspendAccount);
 router.patch("/active/:accountId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), accounts_controller_1.AuthControllers.activeAccount);
 exports.AccountsRoutes = router;
