@@ -324,24 +324,24 @@ const completeProfile = async (
   }
 
   // Upload identity front
-  let frontSideUrl = "";
-  if (files?.identityFront?.[0]) {
-    const uploaded = await sendImageToCloudinary(
-      files.identityFront[0].originalname,
-      files.identityFront[0].path
-    );
-    frontSideUrl = uploaded.secure_url;
-  }
+  // let frontSideUrl = "";
+  // if (files?.identityFront?.[0]) {
+  //   const uploaded = await sendImageToCloudinary(
+  //     files.identityFront[0].originalname,
+  //     files.identityFront[0].path
+  //   );
+  //   frontSideUrl = uploaded.secure_url;
+  // }
 
   // Upload identity back
-  let backSideUrl = "";
-  if (files?.identityBack?.[0]) {
-    const uploaded = await sendImageToCloudinary(
-      files.identityBack[0].originalname,
-      files.identityBack[0].path
-    );
-    backSideUrl = uploaded.secure_url;
-  }
+  // let backSideUrl = "";
+  // if (files?.identityBack?.[0]) {
+  //   const uploaded = await sendImageToCloudinary(
+  //     files.identityBack[0].originalname,
+  //     files.identityBack[0].path
+  //   );
+  //   backSideUrl = uploaded.secure_url;
+  // }
 
   // Checking if account exists
   const account = await Accounts.findById(accountId);
@@ -396,8 +396,8 @@ const completeProfile = async (
       accountId: account._id,
       identity: {
         identityType: payload.identityType,
-        frontSide: frontSideUrl || payload.frontSide,
-        backSide: backSideUrl || payload.backSide,
+        // frontSide: frontSideUrl || payload.frontSide,
+        // backSide: backSideUrl || payload.backSide,
       },
       profilePicture: profilePictureUrl || payload.profilePicture || "",
       isProfileCompleted: true,
@@ -405,15 +405,15 @@ const completeProfile = async (
     };
 
     // Validating identity for astrologer
-    if (!astrologerData.identity.identityType) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Identity type is required for astrologer");
-    }
-    if (!astrologerData.identity.frontSide) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Front side of identity document is required");
-    }
-    if (!astrologerData.identity.backSide) {
-      throw new AppError(httpStatus.BAD_REQUEST, "Back side of identity document is required");
-    }
+    // if (!astrologerData.identity.identityType) {
+    //   throw new AppError(httpStatus.BAD_REQUEST, "Identity type is required for astrologer");
+    // }
+    // if (!astrologerData.identity.frontSide) {
+    //   throw new AppError(httpStatus.BAD_REQUEST, "Front side of identity document is required");
+    // }
+    // if (!astrologerData.identity.backSide) {
+    //   throw new AppError(httpStatus.BAD_REQUEST, "Back side of identity document is required");
+    // }
 
     profile = await Astrologer.findOneAndUpdate(
       { accountId: accountId },
