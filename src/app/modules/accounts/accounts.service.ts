@@ -168,20 +168,20 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
   if (account.role === "user") {
     const existingUser = await User.findOne({ accountId: account._id });
     if (!existingUser) {
-      await User.create({
+      const res = await User.create({
         accountId: account._id,
       });
+      userName = `${res?.firstName} ${res?.lastName}`;
     };
-    userName = `${existingUser?.firstName} ${existingUser?.lastName}`;
   }
   if (account.role === "astrologer") {
     const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
     if (!existingAstrologer) {
-      await Astrologer.create({
+      const res = await Astrologer.create({
         accountId: account._id,
       });
+      userName = `${res?.firstName} ${res?.lastName}`;
     };
-    userName = `${existingAstrologer?.firstName} ${existingAstrologer?.lastName}`;
   }
 
   // 4. JWT Payload

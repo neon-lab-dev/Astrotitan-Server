@@ -143,22 +143,22 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
     if (account.role === "user") {
         const existingUser = yield user_model_1.User.findOne({ accountId: account._id });
         if (!existingUser) {
-            yield user_model_1.User.create({
+            const res = yield user_model_1.User.create({
                 accountId: account._id,
             });
+            userName = `${res === null || res === void 0 ? void 0 : res.firstName} ${res === null || res === void 0 ? void 0 : res.lastName}`;
         }
         ;
-        userName = `${existingUser === null || existingUser === void 0 ? void 0 : existingUser.firstName} ${existingUser === null || existingUser === void 0 ? void 0 : existingUser.lastName}`;
     }
     if (account.role === "astrologer") {
         const existingAstrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
         if (!existingAstrologer) {
-            yield astrologer_model_1.Astrologer.create({
+            const res = yield astrologer_model_1.Astrologer.create({
                 accountId: account._id,
             });
+            userName = `${res === null || res === void 0 ? void 0 : res.firstName} ${res === null || res === void 0 ? void 0 : res.lastName}`;
         }
         ;
-        userName = `${existingAstrologer === null || existingAstrologer === void 0 ? void 0 : existingAstrologer.firstName} ${existingAstrologer === null || existingAstrologer === void 0 ? void 0 : existingAstrologer.lastName}`;
     }
     // 4. JWT Payload
     const jwtPayload = {
