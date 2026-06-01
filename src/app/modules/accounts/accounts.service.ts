@@ -163,25 +163,37 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
   account.otpExpireAt = null;
   await account.save();
 
-  let userName;
-  // 3. Create role-specific profile if not exists
+  let userName = "";
+  let isProfileCompleted = false;
+
+  // 3. Create or fetch role-specific profile
   if (account.role === "user") {
-    const existingUser = await User.findOne({ accountId: account._id });
-    if (!existingUser) {
-      const res = await User.create({
+    let userProfile = await User.findOne({ accountId: account._id });
+    if (!userProfile) {
+      userProfile = await User.create({
         accountId: account._id,
       });
-      userName = `${res?.firstName} ${res?.lastName}`;
-    };
+    }
+    // Get userName from profile (firstName + lastName)
+    userName = `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim();
+    isProfileCompleted = userProfile.isProfileCompleted || false;
   }
+  
   if (account.role === "astrologer") {
-    const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
-    if (!existingAstrologer) {
-      const res = await Astrologer.create({
+    let astrologerProfile = await Astrologer.findOne({ accountId: account._id });
+    if (!astrologerProfile) {
+      astrologerProfile = await Astrologer.create({
         accountId: account._id,
       });
-      userName = `${res?.firstName} ${res?.lastName}`;
-    };
+    }
+    // Get userName from profile (firstName + lastName)
+    userName = `${astrologerProfile.firstName || ""} ${astrologerProfile.lastName || ""}`.trim();
+    isProfileCompleted = astrologerProfile.isProfileCompleted || false;
+  }
+
+  // If no name is set yet, use email or phone as fallback
+  if (!userName) {
+    userName = account.email || account.phoneNumber || "User";
   }
 
   // 4. JWT Payload
@@ -204,9 +216,6 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
     config.jwt_refresh_expires_in as string
   );
 
-  const user = await User.findOne({ accountId: account._id });
-  // const astrologer = await Astrologer.findOne({ accountId: account._id });
-
   return {
     success: true,
     message: "OTP verified successfully. Please complete your profile.",
@@ -219,7 +228,7 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
       phoneNumber: account.phoneNumber,
       role: account.role,
       isOtpVerified: account.isOtpVerified,
-      isProfileCompleted: user ? user.isProfileCompleted : false
+      isProfileCompleted: isProfileCompleted
     },
   };
 };

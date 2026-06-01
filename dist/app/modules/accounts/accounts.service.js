@@ -138,27 +138,34 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
     account.otp = null;
     account.otpExpireAt = null;
     yield account.save();
-    let userName;
-    // 3. Create role-specific profile if not exists
+    let userName = "";
+    let isProfileCompleted = false;
+    // 3. Create or fetch role-specific profile
     if (account.role === "user") {
-        const existingUser = yield user_model_1.User.findOne({ accountId: account._id });
-        if (!existingUser) {
-            const res = yield user_model_1.User.create({
+        let userProfile = yield user_model_1.User.findOne({ accountId: account._id });
+        if (!userProfile) {
+            userProfile = yield user_model_1.User.create({
                 accountId: account._id,
             });
-            userName = `${res === null || res === void 0 ? void 0 : res.firstName} ${res === null || res === void 0 ? void 0 : res.lastName}`;
         }
-        ;
+        // Get userName from profile (firstName + lastName)
+        userName = `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim();
+        isProfileCompleted = userProfile.isProfileCompleted || false;
     }
     if (account.role === "astrologer") {
-        const existingAstrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
-        if (!existingAstrologer) {
-            const res = yield astrologer_model_1.Astrologer.create({
+        let astrologerProfile = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
+        if (!astrologerProfile) {
+            astrologerProfile = yield astrologer_model_1.Astrologer.create({
                 accountId: account._id,
             });
-            userName = `${res === null || res === void 0 ? void 0 : res.firstName} ${res === null || res === void 0 ? void 0 : res.lastName}`;
         }
-        ;
+        // Get userName from profile (firstName + lastName)
+        userName = `${astrologerProfile.firstName || ""} ${astrologerProfile.lastName || ""}`.trim();
+        isProfileCompleted = astrologerProfile.isProfileCompleted || false;
+    }
+    // If no name is set yet, use email or phone as fallback
+    if (!userName) {
+        userName = account.email || account.phoneNumber || "User";
     }
     // 4. JWT Payload
     const jwtPayload = {
@@ -169,8 +176,6 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
     // 5. Generate Tokens
     const accessToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_access_secret, config_1.default.jwt_access_expires_in);
     const refreshToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_refresh_secret, config_1.default.jwt_refresh_expires_in);
-    const user = yield user_model_1.User.findOne({ accountId: account._id });
-    // const astrologer = await Astrologer.findOne({ accountId: account._id });
     return {
         success: true,
         message: "OTP verified successfully. Please complete your profile.",
@@ -183,7 +188,7 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
             phoneNumber: account.phoneNumber,
             role: account.role,
             isOtpVerified: account.isOtpVerified,
-            isProfileCompleted: user ? user.isProfileCompleted : false
+            isProfileCompleted: isProfileCompleted
         },
     };
 });
