@@ -163,6 +163,7 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
   account.otpExpireAt = null;
   await account.save();
 
+  let userName;
   // 3. Create role-specific profile if not exists
   if (account.role === "user") {
     const existingUser = await User.findOne({ accountId: account._id });
@@ -170,7 +171,8 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
       await User.create({
         accountId: account._id,
       });
-    }
+    };
+    userName = `${existingUser?.firstName} ${existingUser?.lastName}`;
   }
   if (account.role === "astrologer") {
     const existingAstrologer = await Astrologer.findOne({ accountId: account._id });
@@ -178,7 +180,8 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
       await Astrologer.create({
         accountId: account._id,
       });
-    }
+    };
+    userName = `${existingAstrologer?.firstName} ${existingAstrologer?.lastName}`;
   }
 
   // 4. JWT Payload
@@ -211,6 +214,7 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
     refreshToken,
     user: {
       _id: account._id,
+      userName,
       email: account.email,
       phoneNumber: account.phoneNumber,
       role: account.role,

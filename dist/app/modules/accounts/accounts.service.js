@@ -138,6 +138,7 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
     account.otp = null;
     account.otpExpireAt = null;
     yield account.save();
+    let userName;
     // 3. Create role-specific profile if not exists
     if (account.role === "user") {
         const existingUser = yield user_model_1.User.findOne({ accountId: account._id });
@@ -146,6 +147,8 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
                 accountId: account._id,
             });
         }
+        ;
+        userName = `${existingUser === null || existingUser === void 0 ? void 0 : existingUser.firstName} ${existingUser === null || existingUser === void 0 ? void 0 : existingUser.lastName}`;
     }
     if (account.role === "astrologer") {
         const existingAstrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
@@ -154,6 +157,8 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
                 accountId: account._id,
             });
         }
+        ;
+        userName = `${existingAstrologer === null || existingAstrologer === void 0 ? void 0 : existingAstrologer.firstName} ${existingAstrologer === null || existingAstrologer === void 0 ? void 0 : existingAstrologer.lastName}`;
     }
     // 4. JWT Payload
     const jwtPayload = {
@@ -173,6 +178,7 @@ const verifySignupOtp = (emailOrPhone, otp) => __awaiter(void 0, void 0, void 0,
         refreshToken,
         user: {
             _id: account._id,
+            userName,
             email: account.email,
             phoneNumber: account.phoneNumber,
             role: account.role,
