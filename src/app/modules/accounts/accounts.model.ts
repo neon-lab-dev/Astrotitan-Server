@@ -20,6 +20,7 @@ const userSchema = new Schema<TAccounts, UserModel>(
       trim: true,
       lowercase: true,
       index: true,
+      default: undefined,
     },
     phoneNumber: {
       type: String,
@@ -27,6 +28,7 @@ const userSchema = new Schema<TAccounts, UserModel>(
       trim: true,
       sparse: true,
       index: true,
+      default: undefined,
     },
     role: {
       type: String,

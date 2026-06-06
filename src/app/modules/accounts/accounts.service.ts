@@ -97,9 +97,11 @@ const signup = async (payload: {
     if (payload.phoneNumber) {
       // Send SMS
       try {
-        const message = `Your OTP for Astrotitan is ${otp}. Valid for 2 minutes.`;
-        const smsUrl = `https://smsapi?api_key=${config.sms_provider_api_key}&type=text&contacts=${payload.phoneNumber}&senderid=${config.sms_sender_id}&msg=${encodeURIComponent(message)}`;
-        await axios.get(smsUrl);
+        const smsUrl = `https://2factor.in/API/V1/${config.sms_provider_api_key}/SMS/${payload.phoneNumber}/${otp}/OTP1`;
+
+        const response = await axios.get(smsUrl);
+
+        console.log("SMS Response:", response.data);
       } catch (error) {
         console.error("❌ Failed to send OTP SMS:", error);
         throw new AppError(
@@ -178,7 +180,7 @@ const verifySignupOtp = async (emailOrPhone: string, otp: string) => {
     userName = `${userProfile.firstName || ""} ${userProfile.lastName || ""}`.trim();
     isProfileCompleted = userProfile.isProfileCompleted || false;
   }
-  
+
   if (account.role === "astrologer") {
     let astrologerProfile = await Astrologer.findOne({ accountId: account._id });
     if (!astrologerProfile) {

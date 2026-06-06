@@ -31,6 +31,7 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         lowercase: true,
         index: true,
+        default: undefined,
     },
     phoneNumber: {
         type: String,
@@ -38,6 +39,7 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         sparse: true,
         index: true,
+        default: undefined,
     },
     role: {
         type: String,
