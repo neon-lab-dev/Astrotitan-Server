@@ -62,8 +62,8 @@ const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const otp = payload.role !== "admin" ? (0, generateOtp_1.generateOtp)() : null;
     // Prepare account data
     const accountData = {
-        email: payload.email || null,
-        phoneNumber: payload.phoneNumber || null,
+        email: payload.email || undefined,
+        phoneNumber: payload.phoneNumber || undefined,
         role: payload.role,
         isOtpVerified: payload.role === "admin" ? true : false, // Admin is auto-verified
         otp: otp,

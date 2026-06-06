@@ -72,8 +72,8 @@ const signup = async (payload: {
 
   // Prepare account data
   const accountData: any = {
-    email: payload.email || null,
-    phoneNumber: payload.phoneNumber || null,
+    email: payload.email || undefined,
+    phoneNumber: payload.phoneNumber || undefined,
     role: payload.role,
     isOtpVerified: payload.role === "admin" ? true : false, // Admin is auto-verified
     otp: otp,
