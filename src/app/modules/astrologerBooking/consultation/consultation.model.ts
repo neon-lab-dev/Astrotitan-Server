@@ -5,7 +5,7 @@ const ConsultationSchema = new Schema<TConsultation>(
     {
         user: {
             type: Types.ObjectId,
-            ref: "Accounts",
+            ref: "User",
             required: true,
             index: true,
         },

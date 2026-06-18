@@ -26,7 +26,7 @@ router.get(
 );
 
 router.patch(
-    "/:consultationId/status",
+    "/change-status/:consultationId",
     auth(UserRole.astrologer),
     ConsultationControllers.changeConsultationStatus
 );

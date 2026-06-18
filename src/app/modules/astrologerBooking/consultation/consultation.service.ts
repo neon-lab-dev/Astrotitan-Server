@@ -3,9 +3,9 @@ import httpStatus from "http-status";
 import Consultation from "./consultation.model";
 import { Astrologer } from "../../astrologer/astrologer.model";
 import AppError from "../../../errors/AppError";
-import { Accounts } from "../../accounts/accounts.model";
 import { sendSingleNotification } from "../../../utils/sendSingleNotification";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
+import { User } from "../../users/user.model";
 
 /* Request Consultation - User */
 const requestConsultation = async (
@@ -18,20 +18,20 @@ const requestConsultation = async (
     }
 ) => {
     // Check if astrologer exists
-    const astrologer = await Astrologer.findOne({ accountId: payload.astrologer });
+    const astrologer = await Astrologer.findById(payload.astrologer);
     if (!astrologer) {
         throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
     }
 
     // Check if user exists
-    const user = await Accounts.findById(userId);
+    const user = await User.findOne({ accountId: userId });
     if (!user) {
         throw new AppError(httpStatus.NOT_FOUND, "User not found");
     }
 
     // Check if there's already a pending consultation with this astrologer
     const existingConsultation = await Consultation.findOne({
-        user: userId,
+        user: user?._id,
         astrologer: payload.astrologer,
         status: "pending",
     });
@@ -45,11 +45,10 @@ const requestConsultation = async (
 
     // Create consultation
     const consultation = await Consultation.create({
-        user: userId,
+        user: user?._id,
         astrologer: payload.astrologer,
         method: payload.method,
         consultationFor: payload.consultationFor,
-        requestMessage: payload.requestMessage,
         status: "pending",
     });
 
@@ -68,16 +67,22 @@ const requestConsultation = async (
     return populatedConsultation;
 };
 
-/* Get My Consultation Bookings - Astrologer */
-const getMyConsultationBookings = async (
-    astrologerId: string,
+/* Get My Consultation Requests - User */
+const getMyConsultationRequests = async (
+    accountId: string,
     filters: {
         status?: string;
     } = {},
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { astrologer: astrologerId };
+    const user = await User.findOne({ accountId: accountId });
+
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    }
+
+    const query: any = { user: user._id };
 
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
@@ -88,22 +93,36 @@ const getMyConsultationBookings = async (
         query,
         skip,
         limit,
-        ["user", "astrologer"]
+        [
+            {
+                path: "user",
+                select: "firstName lastName accountId profilePicture"
+            },
+            {
+                path: "astrologer",
+                select: "firstName lastName accountId displayName profilePicture"
+            }
+        ]
     );
 
     return result;
 };
 
-/* Get My Consultation Requests - User */
-const getMyConsultationRequests = async (
-    userId: string,
+/* Get My Consultation Bookings - Astrologer */
+const getMyConsultationBookings = async (
+    accountId: string,
     filters: {
         status?: string;
     } = {},
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { user: userId };
+    const astrologer = await Astrologer.findOne({ accountId: accountId });
+
+    if (!astrologer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+    }
+    const query: any = { astrologer: astrologer?._id };
 
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
@@ -114,7 +133,12 @@ const getMyConsultationRequests = async (
         query,
         skip,
         limit,
-        ["user", "astrologer"]
+        [
+            {
+                path: "user",
+                select: "firstName lastName accountId profilePicture"
+            }
+        ]
     );
 
     return result;
@@ -123,7 +147,7 @@ const getMyConsultationRequests = async (
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = async (
     consultationId: string,
-    astrologerId: string,
+    accountId: string,
     payload: {
         status: "accepted" | "declined";
     }
@@ -134,12 +158,17 @@ const changeConsultationStatus = async (
     if (!consultation) {
         throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
     }
+    const astrologer = await Astrologer.findOne({ accountId });
+
+    if (!astrologer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+    }
 
     // Check if astrologer is the owner
-    if (consultation.astrologer.toString() !== astrologerId) {
+    if (consultation.astrologer.toString() !== astrologer?._id.toString()) {
         throw new AppError(
             httpStatus.FORBIDDEN,
-            "You are not authorized to update this consultation"
+            "Something went wrong."
         );
     }
 
@@ -185,11 +214,21 @@ const changeConsultationStatus = async (
 /* Get Single Consultation */
 const getSingleConsultation = async (
     consultationId: string,
-    userId: string
+    accountId: string
 ) => {
+    const astrologer = await Astrologer.findOne({ accountId });
+
+    if (!astrologer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+    }
+    const user = await User.findOne({ accountId });
+
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    }
     const consultation = await Consultation.findOne({
         _id: consultationId,
-        $or: [{ user: userId }, { astrologer: userId }],
+        $or: [{ user: user?._id }, { astrologer: astrologer?._id }],
     })
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");

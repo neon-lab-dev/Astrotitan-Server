@@ -12,6 +12,7 @@ const ProductOrderSchema = new Schema<TProductOrder>(
   {
     orderId: { type: String, required: true, unique: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    addressId: { type: Schema.Types.ObjectId, ref: "Address", required: true },
 
     orderedItems: [OrderItemSchema],
     totalAmount: { type: Number, required: true },

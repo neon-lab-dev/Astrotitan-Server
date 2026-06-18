@@ -12,31 +12,7 @@ const requestConsultation = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: "Consultation request sent successfully",
-    data: result,
-  });
-});
-
-/* Get My Consultation Bookings - Astrologer */
-const getMyConsultationBookings = catchAsync(async (req, res) => {
-  const astrologerId = req.user._id;
-  const { status, skip = "0", limit = "10" } = req.query;
-
-  const filters = {
-    status: status as string,
-  };
-
-  const result = await ConsultationServices.getMyConsultationBookings(
-    astrologerId,
-    filters,
-    Number(skip),
-    Number(limit)
-  );
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Consultation bookings fetched successfully",
+    message: "Your consultation request has been sent successfully. Please wait for astrologer to accept your request.",
     data: result,
   });
 });
@@ -65,15 +41,40 @@ const getMyConsultationRequests = catchAsync(async (req, res) => {
   });
 });
 
+/* Get My Consultation Bookings - Astrologer */
+const getMyConsultationBookings = catchAsync(async (req, res) => {
+  const astrologerId = req.user._id;
+  const { status, skip = "0", limit = "10" } = req.query;
+
+  const filters = {
+    status: status as string,
+  };
+
+  const result = await ConsultationServices.getMyConsultationBookings(
+    astrologerId,
+    filters,
+    Number(skip),
+    Number(limit)
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Consultation bookings fetched successfully",
+    data: result,
+  });
+});
+
+
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = catchAsync(async (req, res) => {
-  const astrologerId = req.user._id;
+  const accountId = req.user._id;
   const { consultationId } = req.params;
   const { status } = req.body;
 
   const result = await ConsultationServices.changeConsultationStatus(
     consultationId,
-    astrologerId,
+    accountId,
     { status }
   );
 

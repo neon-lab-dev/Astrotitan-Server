@@ -2,14 +2,15 @@ import { ObjectId } from "mongoose";
 
 export interface TProductOrderItem {
   productId: ObjectId;
-  name : string
+  name: string
   quantity: number;
   price: number;
 }
 
 export interface TProductOrder {
-  orderId : string;
+  orderId: string;
   userId: ObjectId;
+  addressId: ObjectId;
   orderedItems: TProductOrderItem[];
   totalAmount: number;
   status: "pending" | "shipped" | "cancelled";

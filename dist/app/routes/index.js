@@ -12,6 +12,7 @@ const address_route_1 = require("../modules/orders/address/address.route");
 const query_route_1 = require("../modules/query/query.route");
 const pujaBooking_route_1 = require("../modules/pujaBooking/pujaBooking.route");
 const blog_route_1 = require("../modules/blog/blog.route");
+const consultation_route_1 = require("../modules/astrologerBooking/consultation/consultation.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -57,6 +58,10 @@ const moduleRoutes = [
     {
         path: "/blog",
         route: blog_route_1.BlogRoutes,
+    },
+    {
+        path: "/consultation",
+        route: consultation_route_1.ConsultationRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
