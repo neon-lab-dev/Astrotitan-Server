@@ -40,10 +40,10 @@ const ConsultationSchema = new Schema<TConsultation>(
         endedAt: {
             type: Date,
         },
-        endedBy: {
-            type: String,
-            enum: ["user", "astrologer"],
-        },
+        // endedBy: {
+        //     type: String,
+        //     enum: ["user", "astrologer"],
+        // },
         startedAt: {
             type: Date,
         },

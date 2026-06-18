@@ -39,10 +39,10 @@ const ConsultationSchema = new mongoose_1.Schema({
     endedAt: {
         type: Date,
     },
-    endedBy: {
-        type: String,
-        enum: ["user", "astrologer"],
-    },
+    // endedBy: {
+    //     type: String,
+    //     enum: ["user", "astrologer"],
+    // },
     startedAt: {
         type: Date,
     },

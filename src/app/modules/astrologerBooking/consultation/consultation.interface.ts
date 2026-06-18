@@ -10,7 +10,7 @@ export type TConsultation = {
     acceptedAt?: Date;
     declinedAt?: Date;
     endedAt?: Date;
-    endedBy?: "user" | "astrologer";
+    // endedBy?: "user" | "astrologer";
     startedAt?: Date;                // When chat actually started
     duration?: number;               // Duration in minutes (for call)
     rating?: number;
