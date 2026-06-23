@@ -101,12 +101,7 @@ const getAllProductOrders = async (
     query,
     skip,
     limit,
-    ["userId"],
-    [
-      { $sort: { createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit }
-    ]
+    ["userId"]
   );
 
   return result;

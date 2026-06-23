@@ -79,11 +79,7 @@ const getAllProductOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0
         query.orderId = { $regex: filters.keyword, $options: "i" };
     }
     // Get paginated results with populate
-    const result = yield (0, infinitePaginate_1.infinitePaginate)(productOrder_model_1.ProductOrder, query, skip, limit, ["userId"], [
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit }
-    ]);
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(productOrder_model_1.ProductOrder, query, skip, limit, ["userId"]);
     return result;
 });
 // Get single order by ID
