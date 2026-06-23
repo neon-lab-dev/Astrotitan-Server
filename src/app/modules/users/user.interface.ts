@@ -18,6 +18,7 @@ export type TUser = {
     dateOfBirth: Date;
     timeOfBirth: string;
     placeOfBirth: string;
+    zodiacSign: string;
     intents: string[];
     country: string;
     isProfileCompleted: boolean;

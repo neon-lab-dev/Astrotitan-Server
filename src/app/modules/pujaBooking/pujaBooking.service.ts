@@ -30,7 +30,7 @@ const bookPuja = async (
   }
   // Create booking
   const booking = await PujaBooking.create({
-    userId : user?._id,
+    userId: user?._id,
     name: payload.name,
     phoneNumber: payload.phoneNumber,
     pujaId: payload.pujaId,
@@ -61,7 +61,11 @@ const getMyBookings = async (
   skip = 0,
   limit = 10
 ) => {
-  const query: any = { userId };
+  const user = await User.findOne({ accountId: userId });
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+  const query: any = { userId: user._id };
 
   // Status filter
   if (filters.status && filters.status !== "all") {
@@ -73,7 +77,8 @@ const getMyBookings = async (
     query,
     skip,
     limit,
-    []
+    ["pujaId"],
+    "name"
   );
 
   return result;

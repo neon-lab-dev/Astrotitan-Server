@@ -66,6 +66,7 @@ const astrologerSchema = new mongoose_1.Schema({
     experience: {
         type: String,
         required: false,
+        enum: ["1", "2", "3", "4", "5", "5+", "10+", "15+", "20+"],
     },
     bio: {
         type: String,

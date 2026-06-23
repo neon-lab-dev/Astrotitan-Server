@@ -81,6 +81,12 @@ router.put(
   AuthControllers.updateProfile
 );
 
+router.put(
+  "/delete-account",
+  auth(UserRole.admin, UserRole.astrologer, UserRole.user),
+  AuthControllers.deleteAccount
+);
+
 router.patch(
   "/update-push-token",
   auth(UserRole.user, UserRole.astrologer),

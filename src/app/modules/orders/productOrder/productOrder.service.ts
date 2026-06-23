@@ -65,6 +65,7 @@ const createProductOrder = async (user: any, payload: TProductOrder) => {
     userId: user?._id,
     orderedItems,
     totalAmount: payload.totalAmount,
+    addressId : payload.addressId,
     status: "pending",
   };
 

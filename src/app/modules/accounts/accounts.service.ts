@@ -656,7 +656,7 @@ const verifyLoginOtp = async (payload: {
   );
 
   const user = await User.findOne({ accountId: account._id });
-  // const astrologer = await Astrologer.findOne({ accountId: account._id });
+  const astrologer = await Astrologer.findOne({ accountId: account._id });
 
   return {
     success: true,
@@ -668,7 +668,8 @@ const verifyLoginOtp = async (payload: {
       email: account.email,
       phoneNumber: account.phoneNumber,
       role: account.role,
-      isProfileCompleted: user?.isProfileCompleted || false
+      isProfileCompleted: user?.isProfileCompleted || false,
+      name: user?.fullName || `${astrologer?.firstName} ${astrologer?.lastName}` || "",
     },
   };
 };
@@ -1141,6 +1142,15 @@ const updateExpoPushToken = async (
   };
 };
 
+const deleteAccount = async (payload: any, accountId: string) => {
+  const result = await Accounts.findByIdAndUpdate(accountId, {
+    accountDeleteReason: payload.accountDeleteReason || null,
+    isDeleted: true
+  });
+
+  return result;
+};
+
 export const AuthServices = {
   signup,
   verifySignupOtp,
@@ -1156,5 +1166,6 @@ export const AuthServices = {
   activeAccount,
   getMe,
   updateProfile,
-  updateExpoPushToken
+  updateExpoPushToken,
+  deleteAccount
 };

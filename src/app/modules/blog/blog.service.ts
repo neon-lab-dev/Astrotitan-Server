@@ -69,34 +69,43 @@ const getAllBlogs = async (
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { status: "live" }; // Only live blogs for public
+    const query: any = { status: "live" };
 
-    // Category filter
     if (filters.category) {
         query.category = filters.category;
     }
 
-    // Blog type filter
     if (filters.blogType) {
         query.blogType = filters.blogType;
     }
 
-    // Keyword search
     if (filters.keyword) {
         query.$text = {
             $search: filters.keyword,
         };
     }
 
-    const result = await infinitePaginate(
-        Blog,
-        query,
-        skip,
-        limit,
-        ["addedBy"]
-    );
+    // Build the query
+    const dbQuery = Blog.find(query)
+        .populate('addedBy', 'displayName _id profilePicture experience bio')
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 });
 
-    return result;
+    const [blogs, total] = await Promise.all([
+        dbQuery.exec(),
+        Blog.countDocuments(query)
+    ]);
+
+    return {
+        data: blogs,
+        meta: {
+            total,
+            skip,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
 };
 
 /* Get My Blogs (Astrologer) */
@@ -134,7 +143,10 @@ const getMyBlogs = async (
 const getSingleBlog = async (blogId: string) => {
     // await Blog.findByIdAndUpdate(blogId, { $inc: { views: 1 } });
 
-    const blog = await Blog.findOne({ _id: blogId, status: "live" });
+    const blog = await Blog.findOne({ _id: blogId, status: "live" }).populate(
+        "addedBy",
+        "displayName _id profilePicture experience bio"
+    );
 
     if (!blog) {
         throw new AppError(httpStatus.NOT_FOUND, "Blog not found");

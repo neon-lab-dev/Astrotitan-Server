@@ -49,23 +49,37 @@ const addBlog = (userId, payload, file) => __awaiter(void 0, void 0, void 0, fun
 });
 /* Get All Blogs (Public) */
 const getAllBlogs = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
-    const query = { status: "live" }; // Only live blogs for public
-    // Category filter
+    const query = { status: "live" };
     if (filters.category) {
         query.category = filters.category;
     }
-    // Blog type filter
     if (filters.blogType) {
         query.blogType = filters.blogType;
     }
-    // Keyword search
     if (filters.keyword) {
         query.$text = {
             $search: filters.keyword,
         };
     }
-    const result = yield (0, infinitePaginate_1.infinitePaginate)(blog_model_1.Blog, query, skip, limit, ["addedBy"]);
-    return result;
+    // Build the query
+    const dbQuery = blog_model_1.Blog.find(query)
+        .populate('addedBy', 'displayName _id profilePicture experience bio')
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+    const [blogs, total] = yield Promise.all([
+        dbQuery.exec(),
+        blog_model_1.Blog.countDocuments(query)
+    ]);
+    return {
+        data: blogs,
+        meta: {
+            total,
+            skip,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        }
+    };
 });
 /* Get My Blogs (Astrologer) */
 const getMyBlogs = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args_1], void 0, function* (userId, filters = {}, skip = 0, limit = 10) {
@@ -83,7 +97,7 @@ const getMyBlogs = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args
 /* Get Single Blog by ID (Public) */
 const getSingleBlog = (blogId) => __awaiter(void 0, void 0, void 0, function* () {
     // await Blog.findByIdAndUpdate(blogId, { $inc: { views: 1 } });
-    const blog = yield blog_model_1.Blog.findOne({ _id: blogId, status: "live" });
+    const blog = yield blog_model_1.Blog.findOne({ _id: blogId, status: "live" }).populate("addedBy", "displayName _id profilePicture experience bio");
     if (!blog) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Blog not found");
     }

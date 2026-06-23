@@ -491,7 +491,7 @@ const verifyLoginOtp = (payload) => __awaiter(void 0, void 0, void 0, function* 
     const accessToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_access_secret, config_1.default.jwt_access_expires_in);
     const refreshToken = (0, accounts_utils_1.createToken)(jwtPayload, config_1.default.jwt_refresh_secret, config_1.default.jwt_refresh_expires_in);
     const user = yield user_model_1.User.findOne({ accountId: account._id });
-    // const astrologer = await Astrologer.findOne({ accountId: account._id });
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: account._id });
     return {
         success: true,
         message: "Login successful",
@@ -502,7 +502,8 @@ const verifyLoginOtp = (payload) => __awaiter(void 0, void 0, void 0, function* 
             email: account.email,
             phoneNumber: account.phoneNumber,
             role: account.role,
-            isProfileCompleted: (user === null || user === void 0 ? void 0 : user.isProfileCompleted) || false
+            isProfileCompleted: (user === null || user === void 0 ? void 0 : user.isProfileCompleted) || false,
+            name: (user === null || user === void 0 ? void 0 : user.fullName) || `${astrologer === null || astrologer === void 0 ? void 0 : astrologer.firstName} ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.lastName}` || "",
         },
     };
 });
@@ -829,6 +830,13 @@ const updateExpoPushToken = (accountId, expoPushToken) => __awaiter(void 0, void
         },
     };
 });
+const deleteAccount = (payload, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield accounts_model_1.Accounts.findByIdAndUpdate(accountId, {
+        accountDeleteReason: payload.accountDeleteReason || null,
+        isDeleted: true
+    });
+    return result;
+});
 exports.AuthServices = {
     signup,
     verifySignupOtp,
@@ -844,5 +852,6 @@ exports.AuthServices = {
     activeAccount,
     getMe,
     updateProfile,
-    updateExpoPushToken
+    updateExpoPushToken,
+    deleteAccount
 };

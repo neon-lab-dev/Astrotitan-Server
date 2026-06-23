@@ -197,6 +197,16 @@ const updateExpoPushToken = (0, catchAsync_1.default)((req, res) => __awaiter(vo
         data: result.data,
     });
 }));
+const deleteAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.user._id;
+    const result = yield accounts_service_1.AuthServices.deleteAccount(req.body, userId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        message: "Account deleted successfully. In case you want to re-activate your account, please contact support.",
+        statusCode: http_status_1.default.OK,
+        data: result,
+    });
+}));
 exports.AuthControllers = {
     signup,
     verifySignupOtp,
@@ -212,5 +222,6 @@ exports.AuthControllers = {
     activeAccount,
     getMe,
     updateProfile,
-    updateExpoPushToken
+    updateExpoPushToken,
+    deleteAccount
 };

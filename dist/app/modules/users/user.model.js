@@ -48,6 +48,11 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         index: true,
     },
+    zodiacSign: {
+        type: String,
+        trim: true,
+        index: true,
+    },
     intents: {
         type: [String],
         default: [],

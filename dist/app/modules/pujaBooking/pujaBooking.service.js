@@ -50,12 +50,16 @@ const bookPuja = (userId, payload) => __awaiter(void 0, void 0, void 0, function
 });
 /* User: Get My Bookings */
 const getMyBookings = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args_1], void 0, function* (userId, filters = {}, skip = 0, limit = 10) {
-    const query = { userId };
+    const user = yield user_model_1.User.findOne({ accountId: userId });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    const query = { userId: user._id };
     // Status filter
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
-    const result = yield (0, infinitePaginate_1.infinitePaginate)(pujaBooking_model_1.PujaBooking, query, skip, limit, []);
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(pujaBooking_model_1.PujaBooking, query, skip, limit, ["pujaId"], "name");
     return result;
 });
 /* User: Get Single Booking */

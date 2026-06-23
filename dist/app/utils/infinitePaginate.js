@@ -12,11 +12,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.infinitePaginate = void 0;
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const infinitePaginate = (model_1, query_1, skip_1, limit_1, ...args_1) => __awaiter(void 0, [model_1, query_1, skip_1, limit_1, ...args_1], void 0, function* (model, query, skip, limit, populate = [], p0) {
+const infinitePaginate = (model_1, query_1, skip_1, limit_1, ...args_1) => __awaiter(void 0, [model_1, query_1, skip_1, limit_1, ...args_1], void 0, function* (model, query, skip, limit, populate = [], selectFields // Optional: fields to select from populated documents
+) {
     const baseQuery = {};
     let dbQuery = model.find(query);
+    // Populate with optional field selection
     populate.forEach((pop) => {
-        dbQuery = dbQuery.populate(pop);
+        if (typeof pop === 'string') {
+            // If pop is a string, use it as the path
+            if (selectFields) {
+                dbQuery = dbQuery.populate(pop, selectFields);
+            }
+            else {
+                dbQuery = dbQuery.populate(pop);
+            }
+        }
+        else if (typeof pop === 'object' && pop !== null) {
+            // If pop is an object with path and select
+            dbQuery = dbQuery.populate(Object.assign(Object.assign({}, pop), { select: pop.select || selectFields }));
+        }
     });
     const [data, total, filteredTotal] = yield Promise.all([
         dbQuery.skip(skip).limit(limit).sort({ createdAt: -1 }),

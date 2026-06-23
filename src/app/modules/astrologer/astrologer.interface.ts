@@ -26,7 +26,7 @@ export type TAstrologer = {
     gender: string;
     consultLanguages: string[];
     areaOfPractice: string[];
-    experience: string;
+    experience: "1" | "2" | "3" | "4" | "5" | "5+" | "10+" | "15+" | "20+";
     bio?: string;
     country: string;
     identity: {

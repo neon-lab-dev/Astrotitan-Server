@@ -60,7 +60,6 @@ const getAllUser = async (
   };
 };
 
-
 const getSingleUserById = async (userId: string) => {
   const result = await User.findById(userId).populate("accountId");
   return result;
