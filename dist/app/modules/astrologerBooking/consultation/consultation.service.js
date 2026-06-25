@@ -86,20 +86,36 @@ const getMyConsultationRequests = (accountId_1, ...args_1) => __awaiter(void 0, 
 const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
     // ✅ Use Account ID directly - no need to find Astrologer
     const query = { astrologer: accountId };
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    const user = yield user_model_1.User.findOne({ accountId });
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
-            select: "firstName lastName email profilePicture"
+            select: "firstName lastName fullName email profilePicture"
         },
         {
             path: "astrologer",
             select: "firstName lastName displayName profilePicture"
         }
     ]);
-    return result;
+    return {
+        result,
+        astrologer: {
+            firstName: astrologer === null || astrologer === void 0 ? void 0 : astrologer.firstName,
+            lastName: astrologer === null || astrologer === void 0 ? void 0 : astrologer.lastName,
+            displayName: astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName,
+            profilePicture: astrologer === null || astrologer === void 0 ? void 0 : astrologer.profilePicture
+        },
+        user: {
+            firstName: user === null || user === void 0 ? void 0 : user.firstName,
+            lastName: user === null || user === void 0 ? void 0 : user.lastName,
+            fullName: user === null || user === void 0 ? void 0 : user.fullName,
+            profilePicture: user === null || user === void 0 ? void 0 : user.profilePicture
+        }
+    };
 });
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = (consultationId, accountId, // This is Account ID

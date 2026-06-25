@@ -69,74 +69,90 @@ const requestConsultation = async (
 
 /* Get My Consultation Requests - User */
 const getMyConsultationRequests = async (
-    accountId: string,
-    filters: {
-        status?: string;
-    } = {},
-    skip = 0,
-    limit = 10
+  accountId: string,
+  filters: {
+    status?: string;
+  } = {},
+  skip = 0,
+  limit = 10
 ) => {
-    // ✅ Use Account ID directly - no need to find User
-    const query: any = { user: accountId };
+  // ✅ Use Account ID directly - no need to find User
+  const query: any = { user: accountId };
 
-    if (filters.status && filters.status !== "all") {
-        query.status = filters.status;
-    }
+  if (filters.status && filters.status !== "all") {
+    query.status = filters.status;
+  }
 
-    const result = await infinitePaginate(
-        Consultation,
-        query,
-        skip,
-        limit,
-        [
-            {
-                path: "user",
-                select: "firstName lastName email profilePicture"
-            },
-            {
-                path: "astrologer",
-                select: "firstName lastName displayName profilePicture"
-            }
-        ]
-    );
+  const result = await infinitePaginate(
+    Consultation,
+    query,
+    skip,
+    limit,
+    [
+      {
+        path: "user",
+        select: "firstName lastName email profilePicture"
+      },
+      {
+        path: "astrologer",
+        select: "firstName lastName displayName profilePicture"
+      }
+    ]
+  );
 
-    return result;
+  return result;
 };
 
 /* Get My Consultation Bookings - Astrologer */
 const getMyConsultationBookings = async (
-    accountId: string,
-    filters: {
-        status?: string;
-    } = {},
-    skip = 0,
-    limit = 10
+  accountId: string,
+  filters: {
+    status?: string;
+  } = {},
+  skip = 0,
+  limit = 10
 ) => {
-    // ✅ Use Account ID directly - no need to find Astrologer
-    const query: any = { astrologer: accountId };
+  // ✅ Use Account ID directly - no need to find Astrologer
+  const query: any = { astrologer: accountId };
+  const astrologer = await Astrologer.findOne({ accountId });
+  const user = await User.findOne({ accountId });
 
-    if (filters.status && filters.status !== "all") {
-        query.status = filters.status;
+  if (filters.status && filters.status !== "all") {
+    query.status = filters.status;
+  }
+
+  const result = await infinitePaginate(
+    Consultation,
+    query,
+    skip,
+    limit,
+    [
+      {
+        path: "user",
+        select: "firstName lastName fullName email profilePicture"
+      },
+      {
+        path: "astrologer",
+        select: "firstName lastName displayName profilePicture"
+      }
+    ]
+  );
+
+  return {
+    result,
+    astrologer: {
+      firstName: astrologer?.firstName,
+      lastName: astrologer?.lastName,
+      displayName: astrologer?.displayName,
+      profilePicture: astrologer?.profilePicture
+    },
+    user: {
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+      fullName: user?.fullName,
+      profilePicture: user?.profilePicture
     }
-
-    const result = await infinitePaginate(
-        Consultation,
-        query,
-        skip,
-        limit,
-        [
-            {
-                path: "user",
-                select: "firstName lastName email profilePicture"
-            },
-            {
-                path: "astrologer",
-                select: "firstName lastName displayName profilePicture"
-            }
-        ]
-    );
-
-    return result;
+  };
 };
 
 /* Change Consultation Status - Astrologer */
@@ -206,37 +222,37 @@ const changeConsultationStatus = async (
 };
 /* Get Single Consultation */
 const getSingleConsultation = async (
-    consultationId: string,
-    accountId: string
+  consultationId: string,
+  accountId: string
 ) => {
-    const astrologer = await Astrologer.findOne({ accountId });
+  const astrologer = await Astrologer.findOne({ accountId });
 
-    if (!astrologer) {
-        throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
-    }
-    const user = await User.findOne({ accountId });
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+  const user = await User.findOne({ accountId });
 
-    if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, "User not found");
-    }
-    const consultation = await Consultation.findOne({
-        _id: consultationId,
-        $or: [{ user: user?._id }, { astrologer: astrologer?._id }],
-    })
-        .populate("user", "firstName lastName email profilePicture")
-        .populate("astrologer", "firstName lastName displayName profilePicture");
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+  const consultation = await Consultation.findOne({
+    _id: consultationId,
+    $or: [{ user: user?._id }, { astrologer: astrologer?._id }],
+  })
+    .populate("user", "firstName lastName email profilePicture")
+    .populate("astrologer", "firstName lastName displayName profilePicture");
 
-    if (!consultation) {
-        throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
-    }
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+  }
 
-    return consultation;
+  return consultation;
 };
 
 export const ConsultationServices = {
-    requestConsultation,
-    getMyConsultationBookings,
-    getMyConsultationRequests,
-    changeConsultationStatus,
-    getSingleConsultation,
+  requestConsultation,
+  getMyConsultationBookings,
+  getMyConsultationRequests,
+  changeConsultationStatus,
+  getSingleConsultation,
 };
