@@ -28,10 +28,6 @@ const setupSocket = (server: Server) => {
 
     const consultationId = message.consultationId;
 
-    console.log("📩 Sender ID:", senderId);
-    console.log("📩 Receiver ID:", receiverId);
-    console.log("📩 Consultation ID:", consultationId);
-
     const senderSocketId = userSocketMap.get(senderId);
     const receiverSocketId = userSocketMap.get(receiverId);
 
@@ -53,15 +49,22 @@ const setupSocket = (server: Server) => {
             return;
         }
 
-        // ✅ Check if sender is part of this consultation (now using Account IDs directly)
+        // Check if sender is part of this consultation (now using Account IDs directly)
         const isUser = consultation.user.toString() === senderId;
         const isAstrologer = consultation.astrologer.toString() === senderId;
 
-        console.log("Consultation.user:", consultation.user.toString());
-        console.log("Consultation.astrologer:", consultation.astrologer.toString());
-        console.log("Sender ID:", senderId);
-        console.log("Is User:", isUser);
-        console.log("Is Astrologer:", isAstrologer);
+        // console.log("Consultation.user:", consultation.user.toString());
+        // console.log("Consultation.astrologer:", consultation.astrologer.toString());
+        // console.log("Sender ID:", senderId);
+        // console.log("Is User:", isUser);
+        // console.log("Is Astrologer:", isAstrologer);
+
+          console.log("📩 Sender ID:", senderId);
+    console.log("📩 Receiver ID:", receiverId);
+    console.log("📩 Sender Socket ID:", senderSocketId);
+    console.log("📩 Receiver Socket ID:", receiverSocketId);
+    console.log("📊 All online users:", Array.from(userSocketMap.keys()));
+    console.log("📊 userSocketMap size:", userSocketMap.size);
 
         if (!isUser && !isAstrologer) {
             console.log("❌ Sender is not part of this consultation");
@@ -74,7 +77,7 @@ const setupSocket = (server: Server) => {
             return;
         }
 
-        // ✅ Create message with Account IDs
+        // Create message with Account IDs
         const messageData = {
             consultationId: consultationId,
             sender: senderId,
@@ -87,7 +90,7 @@ const setupSocket = (server: Server) => {
 
         const createdMessage = await ConsultationChat.create(messageData);
 
-        console.log("✅ Message created:", createdMessage._id);
+        // console.log("Message created:", createdMessage._id);
 
         // Populate message
         const populatedMessage = await ConsultationChat.findById(createdMessage._id)
@@ -99,13 +102,13 @@ const setupSocket = (server: Server) => {
             tempId: message.tempId,
         };
 
-        // ✅ Send to receiver
+        // Send to receiver
         if (receiverSocketId) {
             io.to(receiverSocketId).emit("receiveConsultationMessage", populatedMessage);
             console.log("📤 Sent to receiver:", receiverId);
         }
 
-        // ✅ Send confirmation to sender
+        // Send confirmation to sender
         if (senderSocketId) {
             io.to(senderSocketId).emit("consultationMessageSent", responseMessage);
             console.log("📤 Sent confirmation to sender:", senderId);
@@ -126,10 +129,10 @@ const setupSocket = (server: Server) => {
 
         if (userId) {
             userSocketMap.set(userId, socket.id);
-            console.log(`✅ User connected: ${userId} with socket ID: ${socket.id}`);
+            console.log(`User connected: ${userId} with socket ID: ${socket.id}`);
             console.log(`📊 Online users: ${userSocketMap.size}`);
 
-            // ✅ Send initial chat list on connection
+            // Send initial chat list on connection
             (async () => {
                 try {
                     const chatList = await ConsultationChatServices.getConsultationChatList(userId);
@@ -146,13 +149,13 @@ const setupSocket = (server: Server) => {
             console.log("❌ User ID not provided during connection.");
         }
 
-        // ✅ Handle send consultation message
+        // Handle send consultation message
         socket.on("sendConsultationMessage", (message) => {
             console.log("📩 Received sendConsultationMessage event:", message);
             sendMessage(message);
         });
 
-        // ✅ Handle mark messages as read
+        // Handle mark messages as read
         socket.on("markConsultationMessagesRead", async ({ consultationId, userId }) => {
             try {
                 await ConsultationChat.updateMany(
@@ -163,9 +166,9 @@ const setupSocket = (server: Server) => {
                     },
                     { isRead: true, readAt: new Date() }
                 );
-                console.log(`✅ Messages marked as read for consultation: ${consultationId}`);
+                console.log(`Messages marked as read for consultation: ${consultationId}`);
 
-                // ✅ Update chat list after marking as read
+                // Update chat list after marking as read
                 const updatedChatList = await ConsultationChatServices.getConsultationChatList(userId);
                 
                 // Get the other participant's accountId
@@ -201,7 +204,7 @@ const setupSocket = (server: Server) => {
             }
         });
 
-        // ✅ Handle typing indicator
+        // Handle typing indicator
         socket.on("consultationTyping", ({ consultationId, sender, receiver, isTyping }) => {
             const receiverSocketId = userSocketMap.get(receiver);
             if (receiverSocketId) {

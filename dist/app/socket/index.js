@@ -36,9 +36,6 @@ const setupSocket = (server) => {
             ? message.receiver
             : (_b = message.receiver) === null || _b === void 0 ? void 0 : _b._id;
         const consultationId = message.consultationId;
-        console.log("📩 Sender ID:", senderId);
-        console.log("📩 Receiver ID:", receiverId);
-        console.log("📩 Consultation ID:", consultationId);
         const senderSocketId = exports.userSocketMap.get(senderId);
         const receiverSocketId = exports.userSocketMap.get(receiverId);
         try {
@@ -57,14 +54,20 @@ const setupSocket = (server) => {
                 }
                 return;
             }
-            // ✅ Check if sender is part of this consultation (now using Account IDs directly)
+            // Check if sender is part of this consultation (now using Account IDs directly)
             const isUser = consultation.user.toString() === senderId;
             const isAstrologer = consultation.astrologer.toString() === senderId;
-            console.log("Consultation.user:", consultation.user.toString());
-            console.log("Consultation.astrologer:", consultation.astrologer.toString());
-            console.log("Sender ID:", senderId);
-            console.log("Is User:", isUser);
-            console.log("Is Astrologer:", isAstrologer);
+            // console.log("Consultation.user:", consultation.user.toString());
+            // console.log("Consultation.astrologer:", consultation.astrologer.toString());
+            // console.log("Sender ID:", senderId);
+            // console.log("Is User:", isUser);
+            // console.log("Is Astrologer:", isAstrologer);
+            console.log("📩 Sender ID:", senderId);
+            console.log("📩 Receiver ID:", receiverId);
+            console.log("📩 Sender Socket ID:", senderSocketId);
+            console.log("📩 Receiver Socket ID:", receiverSocketId);
+            console.log("📊 All online users:", Array.from(exports.userSocketMap.keys()));
+            console.log("📊 userSocketMap size:", exports.userSocketMap.size);
             if (!isUser && !isAstrologer) {
                 console.log("❌ Sender is not part of this consultation");
                 if (senderSocketId) {
@@ -75,7 +78,7 @@ const setupSocket = (server) => {
                 }
                 return;
             }
-            // ✅ Create message with Account IDs
+            // Create message with Account IDs
             const messageData = {
                 consultationId: consultationId,
                 sender: senderId,
@@ -85,18 +88,18 @@ const setupSocket = (server) => {
             };
             console.log("📝 Creating message:", messageData);
             const createdMessage = yield consultationChat_model_1.default.create(messageData);
-            console.log("✅ Message created:", createdMessage._id);
+            // console.log("Message created:", createdMessage._id);
             // Populate message
             const populatedMessage = yield consultationChat_model_1.default.findById(createdMessage._id)
                 .populate("sender", "_id firstName lastName email profilePicture")
                 .populate("receiver", "_id firstName lastName email profilePicture");
             const responseMessage = Object.assign(Object.assign({}, populatedMessage === null || populatedMessage === void 0 ? void 0 : populatedMessage.toObject()), { tempId: message.tempId });
-            // ✅ Send to receiver
+            // Send to receiver
             if (receiverSocketId) {
                 exports.io.to(receiverSocketId).emit("receiveConsultationMessage", populatedMessage);
                 console.log("📤 Sent to receiver:", receiverId);
             }
-            // ✅ Send confirmation to sender
+            // Send confirmation to sender
             if (senderSocketId) {
                 exports.io.to(senderSocketId).emit("consultationMessageSent", responseMessage);
                 console.log("📤 Sent confirmation to sender:", senderId);
@@ -116,9 +119,9 @@ const setupSocket = (server) => {
         const userId = socket.handshake.query.userId;
         if (userId) {
             exports.userSocketMap.set(userId, socket.id);
-            console.log(`✅ User connected: ${userId} with socket ID: ${socket.id}`);
+            console.log(`User connected: ${userId} with socket ID: ${socket.id}`);
             console.log(`📊 Online users: ${exports.userSocketMap.size}`);
-            // ✅ Send initial chat list on connection
+            // Send initial chat list on connection
             (() => __awaiter(void 0, void 0, void 0, function* () {
                 try {
                     const chatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
@@ -135,12 +138,12 @@ const setupSocket = (server) => {
         else {
             console.log("❌ User ID not provided during connection.");
         }
-        // ✅ Handle send consultation message
+        // Handle send consultation message
         socket.on("sendConsultationMessage", (message) => {
             console.log("📩 Received sendConsultationMessage event:", message);
             sendMessage(message);
         });
-        // ✅ Handle mark messages as read
+        // Handle mark messages as read
         socket.on("markConsultationMessagesRead", (_a) => __awaiter(void 0, [_a], void 0, function* ({ consultationId, userId }) {
             try {
                 yield consultationChat_model_1.default.updateMany({
@@ -148,8 +151,8 @@ const setupSocket = (server) => {
                     receiver: userId,
                     isRead: false,
                 }, { isRead: true, readAt: new Date() });
-                console.log(`✅ Messages marked as read for consultation: ${consultationId}`);
-                // ✅ Update chat list after marking as read
+                console.log(`Messages marked as read for consultation: ${consultationId}`);
+                // Update chat list after marking as read
                 const updatedChatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
                 // Get the other participant's accountId
                 const consultation = yield consultation_model_1.default.findById(consultationId);
@@ -180,7 +183,7 @@ const setupSocket = (server) => {
                 console.error("❌ Error marking messages as read:", error);
             }
         }));
-        // ✅ Handle typing indicator
+        // Handle typing indicator
         socket.on("consultationTyping", ({ consultationId, sender, receiver, isTyping }) => {
             const receiverSocketId = exports.userSocketMap.get(receiver);
             if (receiverSocketId) {

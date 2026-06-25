@@ -15,8 +15,8 @@ const getConsultationChatList = async (accountId: string) => {
     const user = await User.findById(accountId).lean();
     const astrologer = await Astrologer.findOne({ accountId });
 
-    console.log("📝 User found:", user?._id);
-    console.log("📝 Astrologer found:", astrologer?._id);
+    // console.log("📝 User found:", user?._id);
+    // console.log("📝 Astrologer found:", astrologer?._id);
 
     // ✅ Check if either user or astrologer exists
     if (!user && !astrologer) {
@@ -47,7 +47,7 @@ const getConsultationChatList = async (accountId: string) => {
         status: { $in: ["accepted", "pending", "ended"] }
     };
 
-    console.log("🔍 Consultation query:", JSON.stringify(query, null, 2));
+    // console.log("🔍 Consultation query:", JSON.stringify(query, null, 2));
 
     const consultations = await Consultation.find(query)
         .populate("user", "firstName lastName accountId profilePicture")
@@ -55,7 +55,7 @@ const getConsultationChatList = async (accountId: string) => {
         .sort({ updatedAt: -1 })
         .lean();
 
-    console.log("📊 Consultations found:", consultations.length);
+    // console.log("📊 Consultations found:", consultations.length);
 
     const chatList = await Promise.all(
         consultations.map(async (consultation) => {
@@ -127,17 +127,14 @@ const getConsultationMessages = async (
     skip = 0,
     limit = 50
 ) => {
-    // ✅ Find user and astrologer to get their ObjectIds
-    const user = await User.findOne({ accountId: accountId });
-    const astrologer = await Astrologer.findOne({ accountId: accountId });
 
     // ✅ Build OR conditions for consultation lookup
     const orConditions = [];
-    if (user) {
-        orConditions.push({ user: user._id });
+    if (accountId) {
+        orConditions.push({ user: accountId });
     }
-    if (astrologer) {
-        orConditions.push({ astrologer: astrologer._id });
+    if (accountId) {
+        orConditions.push({ astrologer: accountId });
     }
 
     if (orConditions.length === 0) {
