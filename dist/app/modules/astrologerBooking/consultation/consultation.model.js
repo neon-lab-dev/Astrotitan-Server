@@ -4,13 +4,13 @@ const mongoose_1 = require("mongoose");
 const ConsultationSchema = new mongoose_1.Schema({
     user: {
         type: mongoose_1.Types.ObjectId,
-        ref: "User",
+        ref: "Accounts",
         required: true,
         index: true,
     },
     astrologer: {
         type: mongoose_1.Types.ObjectId,
-        ref: "Astrologer",
+        ref: "Accounts",
         required: true,
         index: true,
     },

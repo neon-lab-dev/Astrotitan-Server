@@ -5,13 +5,13 @@ const ConsultationSchema = new Schema<TConsultation>(
     {
         user: {
             type: Types.ObjectId,
-            ref: "User",
+            ref: "Accounts",
             required: true,
             index: true,
         },
         astrologer: {
             type: Types.ObjectId,
-            ref: "Astrologer",
+            ref: "Accounts",
             required: true,
             index: true,
         },

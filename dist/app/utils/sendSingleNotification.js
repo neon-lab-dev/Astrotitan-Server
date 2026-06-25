@@ -14,9 +14,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendSingleNotification = void 0;
 const expo_server_sdk_1 = __importDefault(require("expo-server-sdk"));
-const server_1 = require("../../server");
 const accounts_model_1 = require("../modules/accounts/accounts.model");
 const notification_model_1 = require("../modules/notification/notification.model");
+const socket_1 = require("../socket");
 const expo = new expo_server_sdk_1.default();
 console.log(expo);
 //Send a single-user Expo notification
@@ -44,7 +44,7 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
     //   },
     // ]);
     // Emit via Socket.io
-    server_1.io.to(userId.toString()).emit("new-notification", {
+    socket_1.io.to(userId.toString()).emit("new-notification", {
         title,
         message,
         createdAt: Date.now(),

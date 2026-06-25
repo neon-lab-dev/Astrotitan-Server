@@ -14,7 +14,7 @@ router.use((0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_cons
 // Get consultation chat list (inbox)
 router.get("/chat-list", consultationChat_controller_1.ConsultationChatControllers.getConsultationChatList);
 // Get messages for a specific consultation
-router.get("/:consultationId/messages", consultationChat_controller_1.ConsultationChatControllers.getConsultationMessages);
+router.get("/messages/:consultationId", consultationChat_controller_1.ConsultationChatControllers.getConsultationMessages);
 // Mark messages as read in a consultation
-router.patch("/:consultationId/read", consultationChat_controller_1.ConsultationChatControllers.markConsultationMessagesAsRead);
+router.patch("/read/:consultationId", consultationChat_controller_1.ConsultationChatControllers.markConsultationMessagesAsRead);
 exports.ConsultationChatRoutes = router;

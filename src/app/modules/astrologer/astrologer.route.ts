@@ -8,7 +8,7 @@ const router = express.Router();
 // Admin routes
 router.get(
   "/",
-  auth(UserRole.admin, UserRole.user),
+  auth(UserRole.admin, UserRole.user, UserRole.astrologer),
   AstrologerControllers.getAllAstrologer
 );
 
@@ -20,7 +20,7 @@ router.get(
 
 router.get(
   "/:astrologerId",
-  auth(UserRole.admin, UserRole.user),
+  auth(UserRole.admin, UserRole.user, UserRole.astrologer),
   AstrologerControllers.getSingleAstrologerById
 );
 

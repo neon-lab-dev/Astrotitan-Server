@@ -1,27 +1,53 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ConsultationChat from "./consultationChat.model";
 import Consultation from "../consultation/consultation.model";
-import { Accounts } from "../../accounts/accounts.model";
 import AppError from "../../../errors/AppError";
 import httpStatus from "http-status";
 import { userSocketMap } from "../../../socket";
+import { User } from "../../users/user.model";
+import { Astrologer } from "../../astrologer/astrologer.model";
 
 /* Get Consultation Chat List (Inbox) */
 const getConsultationChatList = async (accountId: string) => {
-    // Find all consultations where user is either user or astrologer
-    const user = await Accounts.findById(accountId);
-    if (!user) {
-        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    console.log("🔍 Getting chat list for accountId:", accountId);
+
+    // ✅ Find user and astrologer by accountId
+    const user = await User.findById(accountId).lean();
+    const astrologer = await Astrologer.findOne({ accountId });
+
+    console.log("📝 User found:", user?._id);
+    console.log("📝 Astrologer found:", astrologer?._id);
+
+    // ✅ Check if either user or astrologer exists
+    if (!user && !astrologer) {
+        console.log("❌ No user or astrologer found for accountId:", accountId);
+        throw new AppError(httpStatus.NOT_FOUND, "User or Astrologer not found");
     }
 
-    // Build query to find consultations
+    // ✅ Get the ObjectId of the user or astrologer
+    const userId = user?._id;
+    const astrologerId = astrologer?._id;
+
+    // ✅ Build query with OR conditions
+    const orConditions = [];
+    if (userId) {
+        orConditions.push({ user: userId });
+    }
+    if (astrologerId) {
+        orConditions.push({ astrologer: astrologerId });
+    }
+
+    if (orConditions.length === 0) {
+        throw new AppError(httpStatus.NOT_FOUND, "No valid user or astrologer found");
+    }
+
+    // ✅ Build query to find consultations
     const query: any = {
-        $or: [
-            { user: accountId },
-            { astrologer: accountId }
-        ],
+        $or: orConditions,
         status: { $in: ["accepted", "pending", "ended"] }
     };
+
+    console.log("🔍 Consultation query:", JSON.stringify(query, null, 2));
 
     const consultations = await Consultation.find(query)
         .populate("user", "firstName lastName accountId profilePicture")
@@ -29,17 +55,16 @@ const getConsultationChatList = async (accountId: string) => {
         .sort({ updatedAt: -1 })
         .lean();
 
+    console.log("📊 Consultations found:", consultations.length);
+
     const chatList = await Promise.all(
         consultations.map(async (consultation) => {
-            // Get the other participant
-            const getId = (field: any) => {
-                if (!field) return null;
-                // field may be an ObjectId or a populated object with _id
-                if (field._id) return field._id.toString();
-                return field.toString();
-            };
+            // ✅ Get the other participant
+            const consultationUserId = consultation.user && typeof consultation.user === "object" && "_id" in consultation.user
+                ? (consultation.user as any)._id.toString()
+                : consultation.user?.toString();
+            const isUser = userId && consultationUserId === userId.toString();
 
-            const isUser = getId(consultation.user) === accountId;
             const otherUser: any = isUser ? consultation.astrologer : consultation.user;
 
             if (!otherUser) return null;
@@ -58,6 +83,9 @@ const getConsultationChatList = async (accountId: string) => {
                 .sort({ createdAt: -1 })
                 .lean();
 
+            // ✅ Determine the role of the other participant
+            const otherUserRole = isUser ? "astrologer" : "user";
+
             return {
                 consultationId: consultation._id,
                 consultationStatus: consultation.status,
@@ -72,7 +100,7 @@ const getConsultationChatList = async (accountId: string) => {
                     lastName: otherUser.lastName,
                     profilePicture: otherUser.profilePicture,
                     accountId: otherUser.accountId,
-                    role: isUser ? "astrologer" : "user",
+                    role: otherUserRole,
                 },
                 lastMessage: lastMessage?.content || "No messages yet",
                 lastMessageTime: lastMessage?.createdAt || consultation.createdAt,
@@ -99,20 +127,34 @@ const getConsultationMessages = async (
     skip = 0,
     limit = 50
 ) => {
-    // Check if user is part of this consultation
+    // ✅ Find user and astrologer to get their ObjectIds
+    const user = await User.findOne({ accountId: accountId });
+    const astrologer = await Astrologer.findOne({ accountId: accountId });
+
+    // ✅ Build OR conditions for consultation lookup
+    const orConditions = [];
+    if (user) {
+        orConditions.push({ user: user._id });
+    }
+    if (astrologer) {
+        orConditions.push({ astrologer: astrologer._id });
+    }
+
+    if (orConditions.length === 0) {
+        throw new AppError(httpStatus.NOT_FOUND, "User or Astrologer not found");
+    }
+
+    // ✅ Check if user is part of this consultation
     const consultation = await Consultation.findOne({
         _id: consultationId,
-        $or: [
-            { user: accountId },
-            { astrologer: accountId }
-        ]
+        $or: orConditions,
     });
 
     if (!consultation) {
         throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or you are not authorized");
     }
 
-    // Get messages
+    // ✅ Get messages
     const messages = await ConsultationChat.find({
         consultationId: consultationId,
     })
@@ -123,7 +165,7 @@ const getConsultationMessages = async (
         .limit(limit)
         .lean();
 
-    // Mark messages as read
+    // ✅ Mark messages as read
     await ConsultationChat.updateMany(
         {
             consultationId: consultationId,

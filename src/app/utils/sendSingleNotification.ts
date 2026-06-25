@@ -1,8 +1,8 @@
 import Expo from "expo-server-sdk";
 import mongoose from "mongoose";
-import { io } from "../../server";
 import { Accounts } from "../modules/accounts/accounts.model";
 import { Notification } from "../modules/notification/notification.model";
+import { io } from "../socket";
 
 const expo = new Expo();
 console.log(expo);

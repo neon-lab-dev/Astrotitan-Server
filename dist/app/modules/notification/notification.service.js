@@ -19,8 +19,8 @@ const http_status_1 = __importDefault(require("http-status"));
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const notification_model_1 = require("./notification.model");
 const expo_server_sdk_1 = __importDefault(require("expo-server-sdk"));
-const server_1 = require("../../../server");
 const accounts_model_1 = require("../accounts/accounts.model");
+const socket_1 = require("../../socket");
 const expo = new expo_server_sdk_1.default();
 const sendNotification = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { userIds, title, message } = payload;
@@ -69,7 +69,7 @@ const sendNotification = (payload) => __awaiter(void 0, void 0, void 0, function
     yield notification_model_1.Notification.updateOne({ _id: createdNotification._id }, { $set: { deliveryStatus: overallStatus } });
     // 🔥 REAL-TIME SOCKET EMIT (THIS WAS MISSING)
     users.forEach((user) => {
-        server_1.io.to(user._id.toString()).emit("new-notification", {
+        socket_1.io.to(user._id.toString()).emit("new-notification", {
             _id: createdNotification._id,
             title,
             message,

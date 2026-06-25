@@ -17,6 +17,7 @@ exports.userSocketMap = exports.io = void 0;
 const socket_io_1 = require("socket.io");
 const consultation_model_1 = __importDefault(require("../modules/astrologerBooking/consultation/consultation.model"));
 const consultationChat_model_1 = __importDefault(require("../modules/astrologerBooking/consultationChat/consultationChat.model"));
+const consultationChat_service_1 = require("../modules/astrologerBooking/consultationChat/consultationChat.service");
 exports.userSocketMap = new Map();
 const setupSocket = (server) => {
     exports.io = new socket_io_1.Server(server, {
@@ -35,20 +36,19 @@ const setupSocket = (server) => {
             ? message.receiver
             : (_b = message.receiver) === null || _b === void 0 ? void 0 : _b._id;
         const consultationId = message.consultationId;
-        // console.log("Sender ID:", senderId);
-        // console.log("Receiver ID:", receiverId);
-        // console.log("Consultation ID:", consultationId);
-        // console.log("Temp ID:", message.tempId);
+        console.log("📩 Sender ID:", senderId);
+        console.log("📩 Receiver ID:", receiverId);
+        console.log("📩 Consultation ID:", consultationId);
         const senderSocketId = exports.userSocketMap.get(senderId);
         const receiverSocketId = exports.userSocketMap.get(receiverId);
         try {
-            // ✅ Check if consultation exists and is active
+            // ✅ Find consultation
             const consultation = yield consultation_model_1.default.findOne({
                 _id: consultationId,
-                status: { $in: ["accepted", "pending"] }, // Only allow chat if accepted or pending
+                status: { $in: ["accepted", "pending"] },
             });
             if (!consultation) {
-                console.log("Consultation not found or not active");
+                console.log("❌ Consultation not found or not active");
                 if (senderSocketId) {
                     exports.io.to(senderSocketId).emit("messageError", {
                         tempId: message.tempId,
@@ -57,33 +57,39 @@ const setupSocket = (server) => {
                 }
                 return;
             }
-            // ✅ Check if sender is part of this consultation
+            // ✅ Check if sender is part of this consultation (now using Account IDs directly)
             const isUser = consultation.user.toString() === senderId;
             const isAstrologer = consultation.astrologer.toString() === senderId;
+            console.log("Consultation.user:", consultation.user.toString());
+            console.log("Consultation.astrologer:", consultation.astrologer.toString());
+            console.log("Sender ID:", senderId);
+            console.log("Is User:", isUser);
+            console.log("Is Astrologer:", isAstrologer);
             if (!isUser && !isAstrologer) {
-                console.log("Sender is not part of this consultation");
+                console.log("❌ Sender is not part of this consultation");
                 if (senderSocketId) {
                     exports.io.to(senderSocketId).emit("messageError", {
                         tempId: message.tempId,
-                        error: "You are not authorized to send messages in this consultation",
+                        error: "You are not authorized to send messages",
                     });
                 }
                 return;
             }
-            // ✅ Create consultation chat message
+            // ✅ Create message with Account IDs
             const messageData = {
                 consultationId: consultationId,
                 sender: senderId,
                 receiver: receiverId,
-                message: message.content,
+                content: message.content,
                 isRead: false,
             };
+            console.log("📝 Creating message:", messageData);
             const createdMessage = yield consultationChat_model_1.default.create(messageData);
+            console.log("✅ Message created:", createdMessage._id);
             // Populate message
             const populatedMessage = yield consultationChat_model_1.default.findById(createdMessage._id)
-                .populate("sender", "_id firstName lastName profilePicture")
-                .populate("receiver", "_id firstName lastName profilePicture");
-            console.log("✅ Consultation message created:", populatedMessage === null || populatedMessage === void 0 ? void 0 : populatedMessage._id);
+                .populate("sender", "_id firstName lastName email profilePicture")
+                .populate("receiver", "_id firstName lastName email profilePicture");
             const responseMessage = Object.assign(Object.assign({}, populatedMessage === null || populatedMessage === void 0 ? void 0 : populatedMessage.toObject()), { tempId: message.tempId });
             // ✅ Send to receiver
             if (receiverSocketId) {
@@ -94,10 +100,6 @@ const setupSocket = (server) => {
             if (senderSocketId) {
                 exports.io.to(senderSocketId).emit("consultationMessageSent", responseMessage);
                 console.log("📤 Sent confirmation to sender:", senderId);
-            }
-            // ✅ If sender is offline, save for later
-            if (!senderSocketId) {
-                console.log("⚠️ Sender is offline, message saved but not delivered");
             }
         }
         catch (error) {
@@ -116,6 +118,16 @@ const setupSocket = (server) => {
             exports.userSocketMap.set(userId, socket.id);
             console.log(`✅ User connected: ${userId} with socket ID: ${socket.id}`);
             console.log(`📊 Online users: ${exports.userSocketMap.size}`);
+            // ✅ Send initial chat list on connection
+            (() => __awaiter(void 0, void 0, void 0, function* () {
+                try {
+                    const chatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
+                    socket.emit("updateConsultationChatList", chatList);
+                }
+                catch (error) {
+                    console.error("Error sending initial chat list:", error);
+                }
+            }))();
             const onlineUsers = Array.from(exports.userSocketMap.keys());
             exports.io.emit("onlineUsers", onlineUsers);
             socket.broadcast.emit("userOnline", userId);
@@ -137,6 +149,24 @@ const setupSocket = (server) => {
                     isRead: false,
                 }, { isRead: true, readAt: new Date() });
                 console.log(`✅ Messages marked as read for consultation: ${consultationId}`);
+                // ✅ Update chat list after marking as read
+                const updatedChatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
+                // Get the other participant's accountId
+                const consultation = yield consultation_model_1.default.findById(consultationId);
+                if (consultation) {
+                    const otherAccountId = consultation.user.toString() === userId
+                        ? consultation.astrologer.toString()
+                        : consultation.user.toString();
+                    const otherChatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(otherAccountId);
+                    const senderSocketId = exports.userSocketMap.get(userId);
+                    const otherSocketId = exports.userSocketMap.get(otherAccountId);
+                    if (senderSocketId) {
+                        exports.io.to(senderSocketId).emit("updateConsultationChatList", updatedChatList);
+                    }
+                    if (otherSocketId) {
+                        exports.io.to(otherSocketId).emit("updateConsultationChatList", otherChatList);
+                    }
+                }
                 // Notify sender that messages were read
                 const senderSocketId = exports.userSocketMap.get(userId);
                 if (senderSocketId) {

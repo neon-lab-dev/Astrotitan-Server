@@ -12,9 +12,9 @@ router.use(auth(UserRole.user, UserRole.astrologer));
 router.get("/chat-list", ConsultationChatControllers.getConsultationChatList);
 
 // Get messages for a specific consultation
-router.get("/:consultationId/messages", ConsultationChatControllers.getConsultationMessages);
+router.get("/messages/:consultationId", ConsultationChatControllers.getConsultationMessages);
 
 // Mark messages as read in a consultation
-router.patch("/:consultationId/read", ConsultationChatControllers.markConsultationMessagesAsRead);
+router.patch("/read/:consultationId", ConsultationChatControllers.markConsultationMessagesAsRead);
 
 export const ConsultationChatRoutes = router;

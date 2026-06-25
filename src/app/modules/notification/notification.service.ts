@@ -4,8 +4,8 @@ import httpStatus from "http-status";
 import AppError from "../../errors/AppError";
 import { Notification } from "./notification.model";
 import Expo from "expo-server-sdk";
-import { io } from "../../../server";
 import { Accounts } from "../accounts/accounts.model";
+import { io } from "../../socket";
 
 const expo = new Expo();
 

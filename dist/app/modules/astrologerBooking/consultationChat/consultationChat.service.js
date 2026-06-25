@@ -16,41 +16,57 @@ exports.ConsultationChatServices = void 0;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const consultationChat_model_1 = __importDefault(require("./consultationChat.model"));
 const consultation_model_1 = __importDefault(require("../consultation/consultation.model"));
-const accounts_model_1 = require("../../accounts/accounts.model");
 const AppError_1 = __importDefault(require("../../../errors/AppError"));
 const http_status_1 = __importDefault(require("http-status"));
 const socket_1 = require("../../../socket");
+const user_model_1 = require("../../users/user.model");
+const astrologer_model_1 = require("../../astrologer/astrologer.model");
 /* Get Consultation Chat List (Inbox) */
 const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    // Find all consultations where user is either user or astrologer
-    const user = yield accounts_model_1.Accounts.findById(accountId);
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    console.log("🔍 Getting chat list for accountId:", accountId);
+    // ✅ Find user and astrologer by accountId
+    const user = yield user_model_1.User.findById(accountId).lean();
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    console.log("📝 User found:", user === null || user === void 0 ? void 0 : user._id);
+    console.log("📝 Astrologer found:", astrologer === null || astrologer === void 0 ? void 0 : astrologer._id);
+    // ✅ Check if either user or astrologer exists
+    if (!user && !astrologer) {
+        console.log("❌ No user or astrologer found for accountId:", accountId);
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or Astrologer not found");
     }
-    // Build query to find consultations
+    // ✅ Get the ObjectId of the user or astrologer
+    const userId = user === null || user === void 0 ? void 0 : user._id;
+    const astrologerId = astrologer === null || astrologer === void 0 ? void 0 : astrologer._id;
+    // ✅ Build query with OR conditions
+    const orConditions = [];
+    if (userId) {
+        orConditions.push({ user: userId });
+    }
+    if (astrologerId) {
+        orConditions.push({ astrologer: astrologerId });
+    }
+    if (orConditions.length === 0) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "No valid user or astrologer found");
+    }
+    // ✅ Build query to find consultations
     const query = {
-        $or: [
-            { user: accountId },
-            { astrologer: accountId }
-        ],
+        $or: orConditions,
         status: { $in: ["accepted", "pending", "ended"] }
     };
+    console.log("🔍 Consultation query:", JSON.stringify(query, null, 2));
     const consultations = yield consultation_model_1.default.find(query)
         .populate("user", "firstName lastName accountId profilePicture")
         .populate("astrologer", "firstName lastName accountId displayName profilePicture")
         .sort({ updatedAt: -1 })
         .lean();
+    console.log("📊 Consultations found:", consultations.length);
     const chatList = yield Promise.all(consultations.map((consultation) => __awaiter(void 0, void 0, void 0, function* () {
-        // Get the other participant
-        const getId = (field) => {
-            if (!field)
-                return null;
-            // field may be an ObjectId or a populated object with _id
-            if (field._id)
-                return field._id.toString();
-            return field.toString();
-        };
-        const isUser = getId(consultation.user) === accountId;
+        var _a;
+        // ✅ Get the other participant
+        const consultationUserId = consultation.user && typeof consultation.user === "object" && "_id" in consultation.user
+            ? consultation.user._id.toString()
+            : (_a = consultation.user) === null || _a === void 0 ? void 0 : _a.toString();
+        const isUser = userId && consultationUserId === userId.toString();
         const otherUser = isUser ? consultation.astrologer : consultation.user;
         if (!otherUser)
             return null;
@@ -66,6 +82,8 @@ const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0,
         })
             .sort({ createdAt: -1 })
             .lean();
+        // ✅ Determine the role of the other participant
+        const otherUserRole = isUser ? "astrologer" : "user";
         return {
             consultationId: consultation._id,
             consultationStatus: consultation.status,
@@ -80,7 +98,7 @@ const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0,
                 lastName: otherUser.lastName,
                 profilePicture: otherUser.profilePicture,
                 accountId: otherUser.accountId,
-                role: isUser ? "astrologer" : "user",
+                role: otherUserRole,
             },
             lastMessage: (lastMessage === null || lastMessage === void 0 ? void 0 : lastMessage.content) || "No messages yet",
             lastMessageTime: (lastMessage === null || lastMessage === void 0 ? void 0 : lastMessage.createdAt) || consultation.createdAt,
@@ -101,18 +119,29 @@ const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0,
 });
 /* Get Messages for a Specific Consultation */
 const getConsultationMessages = (consultationId_1, accountId_1, ...args_1) => __awaiter(void 0, [consultationId_1, accountId_1, ...args_1], void 0, function* (consultationId, accountId, skip = 0, limit = 50) {
-    // Check if user is part of this consultation
+    // ✅ Find user and astrologer to get their ObjectIds
+    const user = yield user_model_1.User.findOne({ accountId: accountId });
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: accountId });
+    // ✅ Build OR conditions for consultation lookup
+    const orConditions = [];
+    if (user) {
+        orConditions.push({ user: user._id });
+    }
+    if (astrologer) {
+        orConditions.push({ astrologer: astrologer._id });
+    }
+    if (orConditions.length === 0) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or Astrologer not found");
+    }
+    // ✅ Check if user is part of this consultation
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
-        $or: [
-            { user: accountId },
-            { astrologer: accountId }
-        ]
+        $or: orConditions,
     });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
     }
-    // Get messages
+    // ✅ Get messages
     const messages = yield consultationChat_model_1.default.find({
         consultationId: consultationId,
     })
@@ -122,7 +151,7 @@ const getConsultationMessages = (consultationId_1, accountId_1, ...args_1) => __
         .skip(skip)
         .limit(limit)
         .lean();
-    // Mark messages as read
+    // ✅ Mark messages as read
     yield consultationChat_model_1.default.updateMany({
         consultationId: consultationId,
         receiver: accountId,

@@ -20,6 +20,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
+      "http://localhost:5174",
       "https://astro-titan-admin-panel.vercel.app",
       "https://astrotitan.vercel.app"
     ],

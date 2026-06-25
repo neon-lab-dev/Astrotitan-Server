@@ -12,64 +12,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.io = void 0;
 const http_1 = __importDefault(require("http"));
 const app_1 = __importDefault(require("./app"));
 const config_1 = __importDefault(require("./app/config"));
 const mongoose_1 = __importDefault(require("mongoose"));
-const socket_io_1 = require("socket.io");
-// import { registerCrons } from "./cron";
-// import { registerOldNotificationCleanupCron } from "./app/utils/cleanOldNotifications";
+const socket_1 = __importDefault(require("./app/socket"));
 let server;
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield mongoose_1.default.connect(config_1.default.db_url);
             server = http_1.default.createServer(app_1.default);
-            // registerCrons();
-            // registerOldNotificationCleanupCron();
-            exports.io = new socket_io_1.Server(server, {
-                cors: {
-                    origin: [
-                        "http://192.168.0.102:5000", // Your local network IP
-                        "http://localhost:19000", // React Native default
-                        "http://localhost:19006", // Common React Native port
-                        "http://192.168.0.102:19000", // Your local network IP
-                        "http://192.168.0.102:19006",
-                        "http://localhost:5173",
-                        "http://localhost:5000",
-                        "https://astro-titan-admin-panel.vercel.app",
-                    ],
-                    methods: ["GET", "POST", "PUT", "DELETE"],
-                    allowedHeaders: ["Content-Type", "Authorization"],
-                    credentials: true,
-                },
-                pingInterval: 25000,
-                pingTimeout: 60000,
-                transports: ["websocket", "polling"],
-            });
-            // 🔐 Socket authentication + room join
-            exports.io.on("connection", (socket) => {
-                const { userId } = socket.handshake.auth;
-                // console.log("🔌 Socket connected:", socket.id);
-                // console.log("👤 userId:", userId);
-                if (!userId) {
-                    console.warn("❌ No userId, disconnecting");
-                    socket.disconnect(true);
-                    return;
-                }
-                socket.join(userId.toString());
-                console.log(`✅ User ${userId} joined room ${userId}`);
-                socket.on("disconnect", (reason) => {
-                    console.log(`❌ Socket ${socket.id} disconnected:`, reason);
-                });
-            });
+            (0, socket_1.default)(server);
             server.listen(config_1.default.port, () => {
                 console.log(`🚀 Server running on port ${config_1.default.port}`);
-                console.log(`📡 Socket.IO listening on ws://localhost:${config_1.default.port}`);
-            });
-            exports.io.engine.on("connection_error", (err) => {
-                console.error("🚫 Engine connection error:", err);
             });
         }
         catch (err) {
