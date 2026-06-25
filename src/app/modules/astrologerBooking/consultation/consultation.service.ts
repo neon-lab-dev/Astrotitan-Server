@@ -114,7 +114,6 @@ const getMyConsultationBookings = async (
 ) => {
   // ✅ Use Account ID directly - no need to find Astrologer
   const query: any = { astrologer: accountId };
-  const astrologer = await Astrologer.findOne({ accountId });
 
 
   if (filters.status && filters.status !== "all") {
@@ -129,25 +128,29 @@ const getMyConsultationBookings = async (
     []
   );
 
+  const bookingsWithDetails = await Promise.all(
+    result.data.map(async (booking: any) => {
+      const user = await User.findOne(
+        { accountId: booking.user },
+        "firstName lastName fullName profilePicture"
+      );
 
+      const astrologer = await Astrologer.findOne(
+        { accountId: booking.astrologer },
+        "firstName lastName displayName profilePicture"
+      );
 
-  const user = await User.findOne({ accountId: result?.data?.[0]?.user });
+      return {
+        ...booking.toObject(),
+        user,
+        astrologer,
+      };
+    })
+  );
 
-  return {
-    bookings: result,
-    astrologer: {
-      firstName: astrologer?.firstName,
-      lastName: astrologer?.lastName,
-      displayName: astrologer?.displayName,
-      profilePicture: astrologer?.profilePicture
-    },
-    user: {
-      firstName: user?.firstName,
-      lastName: user?.lastName,
-      fullName: user?.fullName,
-      profilePicture: user?.profilePicture
-    }
-  };
+  result.data = bookingsWithDetails;
+
+  return result;
 };
 
 /* Change Consultation Status - Astrologer */
