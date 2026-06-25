@@ -115,7 +115,7 @@ const getMyConsultationBookings = async (
   // ✅ Use Account ID directly - no need to find Astrologer
   const query: any = { astrologer: accountId };
   const astrologer = await Astrologer.findOne({ accountId });
-  const user = await User.findOne({ accountId });
+
 
   if (filters.status && filters.status !== "all") {
     query.status = filters.status;
@@ -126,20 +126,15 @@ const getMyConsultationBookings = async (
     query,
     skip,
     limit,
-    [
-      {
-        path: "user",
-        select: "firstName lastName fullName email profilePicture"
-      },
-      {
-        path: "astrologer",
-        select: "firstName lastName displayName profilePicture"
-      }
-    ]
+    []
   );
 
+
+
+  const user = await User.findOne({ accountId: result?.data?.[0]?.user });
+
   return {
-    result,
+    bookings: result,
     astrologer: {
       firstName: astrologer?.firstName,
       lastName: astrologer?.lastName,
