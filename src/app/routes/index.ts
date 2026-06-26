@@ -12,6 +12,7 @@ import { PujaBookingRoutes } from "../modules/pujaBooking/pujaBooking.route";
 import { BlogRoutes } from "../modules/blog/blog.route";
 import { ConsultationRoutes } from "../modules/astrologerBooking/consultation/consultation.route";
 import { ConsultationChatRoutes } from "../modules/astrologerBooking/consultationChat/consultationChat.route";
+import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
 
 const router = Router();
 
@@ -67,6 +68,10 @@ const moduleRoutes = [
   {
     path: "/consultation-chat",
     route: ConsultationChatRoutes,
+  },
+  {
+    path: "/subscription",
+    route: SubscriptionRoutes,
   },
 ];
 

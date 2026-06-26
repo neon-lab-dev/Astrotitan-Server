@@ -228,14 +228,10 @@ const getSingleConsultation = async (
   accountId: string
 ) => {
   const astrologer = await Astrologer.findOne({ accountId });
-
-  if (!astrologer) {
-    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
-  }
   const user = await User.findOne({ accountId });
 
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  if (!user && !astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "User or astrologer not found");
   }
   const consultation = await Consultation.findOne({
     _id: consultationId,

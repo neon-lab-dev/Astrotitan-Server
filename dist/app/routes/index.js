@@ -14,6 +14,7 @@ const pujaBooking_route_1 = require("../modules/pujaBooking/pujaBooking.route");
 const blog_route_1 = require("../modules/blog/blog.route");
 const consultation_route_1 = require("../modules/astrologerBooking/consultation/consultation.route");
 const consultationChat_route_1 = require("../modules/astrologerBooking/consultationChat/consultationChat.route");
+const subscription_route_1 = require("../modules/subscription/subscription.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -67,6 +68,10 @@ const moduleRoutes = [
     {
         path: "/consultation-chat",
         route: consultationChat_route_1.ConsultationChatRoutes,
+    },
+    {
+        path: "/subscription",
+        route: subscription_route_1.SubscriptionRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

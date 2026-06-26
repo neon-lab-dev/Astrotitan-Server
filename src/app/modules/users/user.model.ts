@@ -67,6 +67,10 @@ const userSchema = new Schema<TUser, UserModel>(
             type: Boolean,
             default: false,
         },
+        isPremiumUser:{
+            type: Boolean,
+            default: false
+        }
     },
     {
         timestamps: true,

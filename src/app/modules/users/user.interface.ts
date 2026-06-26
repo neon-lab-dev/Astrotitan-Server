@@ -22,6 +22,7 @@ export type TUser = {
     intents: string[];
     country: string;
     isProfileCompleted: boolean;
+    isPremiumUser?: boolean;
 };
 
 export interface UserModel extends Model<TUser> {

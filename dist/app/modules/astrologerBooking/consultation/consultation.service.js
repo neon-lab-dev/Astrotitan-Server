@@ -153,12 +153,9 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
 /* Get Single Consultation */
 const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
     const user = yield user_model_1.User.findOne({ accountId });
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    if (!user && !astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
     }
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
