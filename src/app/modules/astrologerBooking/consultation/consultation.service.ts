@@ -107,6 +107,7 @@ const getMyConsultationBookings = async (
   accountId: string,
   filters: {
     status?: string;
+    method?: string;
   } = {},
   skip = 0,
   limit = 10
@@ -122,6 +123,10 @@ const getMyConsultationBookings = async (
 
   if (filters.status && filters.status !== "all") {
     query.status = filters.status;
+  }
+
+   if (filters.method && filters.method !== "all") {
+    query.method = filters.method;
   }
 
   const result = await infinitePaginate(

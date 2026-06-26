@@ -92,6 +92,9 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
+    if (filters.method && filters.method !== "all") {
+        query.method = filters.method;
+    }
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",

@@ -47,9 +47,10 @@ const getMyConsultationRequests = (0, catchAsync_1.default)((req, res) => __awai
 /* Get My Consultation Bookings - Astrologer */
 const getMyConsultationBookings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const astrologerId = req.user._id;
-    const { status, skip = "0", limit = "10" } = req.query;
+    const { status, method, skip = "0", limit = "10" } = req.query;
     const filters = {
         status: status,
+        method: method,
     };
     const result = yield consultation_service_1.ConsultationServices.getMyConsultationBookings(astrologerId, filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
