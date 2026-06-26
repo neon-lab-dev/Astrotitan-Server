@@ -216,6 +216,7 @@ const changeConsultationStatus = async (
 
   return updatedConsultation;
 };
+
 /* Get Single Consultation */
 const getSingleConsultation = async (
   consultationId: string,
@@ -245,10 +246,28 @@ const getSingleConsultation = async (
   return consultation;
 };
 
+
+const endConsultationSession = async (consultationId: string,
+  accountId: string,) => {
+  const consultation = await Consultation.findById(consultationId);
+
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
+  };
+  const result = await Consultation.findOneAndUpdate(
+    { _id: consultationId },
+    { status: "ended", endedBy: accountId },
+    { new: true }
+  );
+  return result;
+}
+
+
 export const ConsultationServices = {
   requestConsultation,
   getMyConsultationBookings,
   getMyConsultationRequests,
   changeConsultationStatus,
   getSingleConsultation,
+  endConsultationSession,
 };

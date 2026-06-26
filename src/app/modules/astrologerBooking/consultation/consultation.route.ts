@@ -31,6 +31,12 @@ router.patch(
     ConsultationControllers.changeConsultationStatus
 );
 
+router.patch(
+    "/end-session/:consultationId",
+    auth(UserRole.astrologer, UserRole.user),
+    ConsultationControllers.endConsultationSession
+);
+
 // Common Routes (Both User and Astrologer)
 router.get(
     "/:consultationId",

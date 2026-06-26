@@ -128,8 +128,8 @@ const getConsultationMessages = async (
     limit = 50
 ) => {
 
-    const user = await User.findOne({accountId});
-    const astrologer = await Astrologer.findOne({accountId});
+    const user = await User.findOne({ accountId });
+    const astrologer = await Astrologer.findOne({ accountId });
 
     // Build OR conditions for consultation lookup
     const orConditions = [];
@@ -139,8 +139,6 @@ const getConsultationMessages = async (
     if (accountId) {
         orConditions.push({ astrologer: astrologer?._id });
     }
-
-   
 
     // Check if user is part of this consultation
     const consultation = await Consultation.findOne({

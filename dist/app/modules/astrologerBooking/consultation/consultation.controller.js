@@ -84,10 +84,22 @@ const getSingleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(
         data: result,
     });
 }));
+const endConsultationSession = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const result = yield consultation_service_1.ConsultationServices.endConsultationSession(consultationId, accountId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Session ended successfully!",
+        data: result,
+    });
+}));
 exports.ConsultationControllers = {
     requestConsultation,
     getMyConsultationBookings,
     getMyConsultationRequests,
     changeConsultationStatus,
     getSingleConsultation,
+    endConsultationSession,
 };

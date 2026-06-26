@@ -104,10 +104,28 @@ const getSingleConsultation = catchAsync(async (req, res) => {
   });
 });
 
+const endConsultationSession = catchAsync(async (req, res) => {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+
+    const result = await ConsultationServices.endConsultationSession(
+        consultationId,
+        accountId
+    );
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Session ended successfully!",
+        data: result,
+    });
+});
+
 export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationBookings,
   getMyConsultationRequests,
   changeConsultationStatus,
   getSingleConsultation,
+  endConsultationSession,
 };

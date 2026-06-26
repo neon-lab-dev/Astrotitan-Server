@@ -168,10 +168,20 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
     }
     return consultation;
 });
+const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const consultation = yield consultation_model_1.default.findById(consultationId);
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
+    }
+    ;
+    const result = yield consultation_model_1.default.findOneAndUpdate({ _id: consultationId }, { status: "ended", endedBy: accountId }, { new: true });
+    return result;
+});
 exports.ConsultationServices = {
     requestConsultation,
     getMyConsultationBookings,
     getMyConsultationRequests,
     changeConsultationStatus,
     getSingleConsultation,
+    endConsultationSession,
 };
