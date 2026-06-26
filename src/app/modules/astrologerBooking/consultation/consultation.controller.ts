@@ -122,6 +122,27 @@ const endConsultationSession = catchAsync(async (req, res) => {
     });
 });
 
+
+/* Add Review for Consultation */
+const addReview = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.params;
+  const { review, rating } = req.body;
+
+  const result = await ConsultationServices.addReview(
+    consultationId,
+    userId,
+    { review, rating }
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "Review added successfully",
+    data: result.data,
+  });
+});
+
 export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationBookings,
@@ -129,4 +150,5 @@ export const ConsultationControllers = {
   changeConsultationStatus,
   getSingleConsultation,
   endConsultationSession,
+  addReview
 };

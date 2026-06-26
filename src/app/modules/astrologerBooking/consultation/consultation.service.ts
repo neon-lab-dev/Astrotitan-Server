@@ -267,6 +267,107 @@ const endConsultationSession = async (consultationId: string,
   return result;
 }
 
+/* Add Review for Consultation */
+const addReview = async (
+  consultationId: string,
+  userId: string,
+  payload: {
+    review: string;
+    rating: number;
+  }
+) => {
+  // Validate rating (1-5)
+  if (payload.rating < 1 || payload.rating > 5) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Rating must be between 1 and 5"
+    );
+  }
+
+  const user = await User.findOne({ accountId: userId });
+
+  if (!user) {
+    throw new AppError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  // Find consultation and check if it belongs to the user
+  const consultation = await Consultation.findOne({
+    _id: consultationId,
+    user: user?._id,
+    status: "ended", // Only ended consultations can be reviewed
+  });
+
+  if (!consultation) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      "Consultation not found or not ended yet. You can only review ended consultations."
+    );
+  }
+
+  // Check if review already exists for this consultation
+  if (consultation.review && consultation.rating) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "You have already reviewed this consultation"
+    );
+  }
+
+  // Update consultation with review
+  consultation.review = payload.review;
+  consultation.rating = payload.rating;
+  await consultation.save();
+
+  // Find the astrologer
+  const astrologer = await Astrologer.findById(consultation.astrologer);
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Check if user already reviewed this astrologer
+  const existingReviewIndex = astrologer.reviews?.findIndex(
+    (review: any) => review.user.toString() === userId
+  );
+
+  if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
+    // Update existing review
+    astrologer.reviews[existingReviewIndex].review = payload.review;
+    astrologer.reviews[existingReviewIndex].rating = payload.rating;
+  } else {
+    // Add new review to astrologer
+    if (!astrologer.reviews) {
+      astrologer.reviews = [];
+    }
+    astrologer.reviews.push({
+      user: user?._id as any,
+      review: payload.review,
+      rating: payload.rating,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  // Recalculate average rating
+  const totalRating = astrologer.reviews.reduce((sum: number, rev: any) => sum + rev.rating, 0);
+  astrologer.rating = totalRating / astrologer.reviews.length;
+
+  await astrologer.save();
+
+  // Populate consultation with user and astrologer details
+  const updatedConsultation = await Consultation.findById(consultationId)
+    .populate("user", "firstName lastName email profilePicture")
+    .populate("astrologer", "firstName lastName displayName profilePicture");
+
+  return {
+    success: true,
+    message: "Review added successfully",
+    data: {
+      consultation: updatedConsultation,
+      astrologerRating: astrologer.rating,
+      totalReviews: astrologer.reviews.length,
+    },
+  };
+};
+
 
 export const ConsultationServices = {
   requestConsultation,
@@ -275,4 +376,5 @@ export const ConsultationServices = {
   changeConsultationStatus,
   getSingleConsultation,
   endConsultationSession,
+  addReview
 };

@@ -30,6 +30,9 @@ const ConsultationSchema = new mongoose_1.Schema({
         trim: true,
         required: true,
     },
+    requestMessage: {
+        type: String,
+    },
     acceptedAt: {
         type: Date,
     },

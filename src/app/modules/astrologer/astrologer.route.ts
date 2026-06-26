@@ -30,25 +30,6 @@ router.patch(
   AstrologerControllers.updateIdentityStatus
 );
 
-// Review Routes (Protected - User only)
-router.post(
-  "/review/add/:astrologerId",
-  auth(UserRole.user),
-  AstrologerControllers.addReview
-);
-
-router.patch(
-  "/review/update/:astrologerId",
-  auth(UserRole.user),
-  AstrologerControllers.updateReview
-);
-
-router.delete(
-  "/review/delete/:astrologerId",
-  auth(UserRole.user, UserRole.admin),
-  AstrologerControllers.deleteReview
-);
-
 router.put(
   "/availability/update",
   auth(UserRole.astrologer),

@@ -37,6 +37,12 @@ router.patch(
     ConsultationControllers.endConsultationSession
 );
 
+router.post(
+    "/review/add/:consultationId",
+    auth(UserRole.user),
+    ConsultationControllers.addReview
+);
+
 // Common Routes (Both User and Astrologer)
 router.get(
     "/:consultationId",

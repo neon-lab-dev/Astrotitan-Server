@@ -123,7 +123,7 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
       {
         user: {
           type: Schema.Types.ObjectId,
-          ref: "Accounts",
+          ref: "User",
           required: true,
         },
         review: {
@@ -136,6 +136,10 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
           min: 1,
           max: 5,
         },
+        createdAt : {
+          type: Date,
+          default: Date.now,
+        }
       },
     ],
     availability: {

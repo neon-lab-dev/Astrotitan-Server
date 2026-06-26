@@ -16,6 +16,7 @@ router.get("/my-requests", (0, auth_1.default)(accounts_constants_1.UserRole.use
 router.get("/my-bookings", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.getMyConsultationBookings);
 router.patch("/change-status/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.changeConsultationStatus);
 router.patch("/end-session/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer, accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.endConsultationSession);
+router.post("/review/add/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.addReview);
 // Common Routes (Both User and Astrologer)
 router.get("/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.getSingleConsultation);
 exports.ConsultationRoutes = router;

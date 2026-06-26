@@ -126,7 +126,7 @@ const astrologerSchema = new mongoose_1.Schema({
         {
             user: {
                 type: mongoose_1.Schema.Types.ObjectId,
-                ref: "Accounts",
+                ref: "User",
                 required: true,
             },
             review: {
@@ -139,6 +139,10 @@ const astrologerSchema = new mongoose_1.Schema({
                 min: 1,
                 max: 5,
             },
+            createdAt: {
+                type: Date,
+                default: Date.now,
+            }
         },
     ],
     availability: {

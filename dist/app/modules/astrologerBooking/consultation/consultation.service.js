@@ -180,6 +180,77 @@ const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, 
     const result = yield consultation_model_1.default.findOneAndUpdate({ _id: consultationId }, { status: "ended", endedBy: accountId }, { new: true });
     return result;
 });
+/* Add Review for Consultation */
+const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // Validate rating (1-5)
+    if (payload.rating < 1 || payload.rating > 5) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
+    }
+    const user = yield user_model_1.User.findOne({ accountId: userId });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    // Find consultation and check if it belongs to the user
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        user: user === null || user === void 0 ? void 0 : user._id,
+        status: "ended", // Only ended consultations can be reviewed
+    });
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not ended yet. You can only review ended consultations.");
+    }
+    // Check if review already exists for this consultation
+    if (consultation.review && consultation.rating) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "You have already reviewed this consultation");
+    }
+    // Update consultation with review
+    consultation.review = payload.review;
+    consultation.rating = payload.rating;
+    yield consultation.save();
+    // Find the astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Check if user already reviewed this astrologer
+    const existingReviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() === userId);
+    if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
+        // Update existing review
+        astrologer.reviews[existingReviewIndex].review = payload.review;
+        astrologer.reviews[existingReviewIndex].rating = payload.rating;
+    }
+    else {
+        // Add new review to astrologer
+        if (!astrologer.reviews) {
+            astrologer.reviews = [];
+        }
+        astrologer.reviews.push({
+            user: user === null || user === void 0 ? void 0 : user._id,
+            review: payload.review,
+            rating: payload.rating,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+    }
+    // Recalculate average rating
+    const totalRating = astrologer.reviews.reduce((sum, rev) => sum + rev.rating, 0);
+    astrologer.rating = totalRating / astrologer.reviews.length;
+    yield astrologer.save();
+    // Populate consultation with user and astrologer details
+    const updatedConsultation = yield consultation_model_1.default.findById(consultationId)
+        .populate("user", "firstName lastName email profilePicture")
+        .populate("astrologer", "firstName lastName displayName profilePicture");
+    return {
+        success: true,
+        message: "Review added successfully",
+        data: {
+            consultation: updatedConsultation,
+            astrologerRating: astrologer.rating,
+            totalReviews: astrologer.reviews.length,
+        },
+    };
+});
 exports.ConsultationServices = {
     requestConsultation,
     getMyConsultationBookings,
@@ -187,4 +258,5 @@ exports.ConsultationServices = {
     changeConsultationStatus,
     getSingleConsultation,
     endConsultationSession,
+    addReview
 };
