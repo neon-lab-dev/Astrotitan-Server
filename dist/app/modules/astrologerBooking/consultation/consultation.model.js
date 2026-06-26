@@ -27,7 +27,6 @@ const ConsultationSchema = new mongoose_1.Schema({
     },
     consultationFor: {
         type: String,
-        trim: true,
         required: true,
     },
     requestMessage: {

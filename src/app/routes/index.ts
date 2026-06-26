@@ -13,6 +13,7 @@ import { BlogRoutes } from "../modules/blog/blog.route";
 import { ConsultationRoutes } from "../modules/astrologerBooking/consultation/consultation.route";
 import { ConsultationChatRoutes } from "../modules/astrologerBooking/consultationChat/consultationChat.route";
 import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
+import { NotificationRoutes } from "../modules/notification/notification.route";
 
 const router = Router();
 
@@ -72,6 +73,10 @@ const moduleRoutes = [
   {
     path: "/subscription",
     route: SubscriptionRoutes,
+  },
+  {
+    path: "/notification",
+    route: NotificationRoutes,
   },
 ];
 

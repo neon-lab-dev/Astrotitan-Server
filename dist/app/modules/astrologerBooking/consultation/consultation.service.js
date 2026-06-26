@@ -55,6 +55,7 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     const populatedConsultation = yield consultation_model_1.default.findById(consultation._id)
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
     return populatedConsultation;
 });
 /* Get My Consultation Requests - User */
@@ -110,6 +111,7 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = (consultationId, accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
@@ -118,7 +120,7 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
-    });
+    }).populate("user", "accountId");
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
     }
@@ -126,8 +128,6 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (consultation.status !== "pending") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `This consultation is already ${consultation.status}`);
     }
-    // Store user ID before updating (for notification)
-    const userId = consultation.user.accountId;
     // Update status
     const updateData = {
         status: payload.status,
@@ -135,19 +135,15 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (payload.status === "accepted") {
         updateData.acceptedAt = new Date();
         updateData.startedAt = new Date();
+        yield (0, sendSingleNotification_1.sendSingleNotification)((_a = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _a === void 0 ? void 0 : _a.accountId, "Consultation Accepted!", `Great news! Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been ACCEPTED. You can now start your session and get the guidance you seek.`);
     }
     if (payload.status === "declined") {
         updateData.declinedAt = new Date();
+        yield (0, sendSingleNotification_1.sendSingleNotification)((_b = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _b === void 0 ? void 0 : _b.accountId, "Consultation Declined", `We're sorry, but ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} is currently unavailable for your consultation. Please try another astrologer who can assist you on your spiritual journey.`);
     }
     const updatedConsultation = yield consultation_model_1.default.findByIdAndUpdate(consultationId, updateData, { new: true })
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
-    // Send notification to user using stored userId
-    // const statusMessage =
-    //   payload.status === "accepted"
-    //     ? "accepted your consultation request"
-    //     : "declined your consultation request";
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, `Consultation ${payload.status === "accepted" ? "Accepted" : "Declined"}`, `Your consultation request has been ${payload.status} by the astrologer.`);
     return updatedConsultation;
 });
 /* Get Single Consultation */
@@ -179,7 +175,7 @@ const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, 
 });
 /* Add Review for Consultation */
 const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b, _c;
     // Validate rating (1-5)
     if (payload.rating < 1 || payload.rating > 5) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
@@ -192,8 +188,9 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         user: user === null || user === void 0 ? void 0 : user._id,
-        status: "ended", // Only ended consultations can be reviewed
-    });
+        status: "ended",
+    }).populate("astrologer", "accountId")
+        .populate("user", "fullName");
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not ended yet. You can only review ended consultations.");
     }
@@ -238,6 +235,7 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
     const updatedConsultation = yield consultation_model_1.default.findById(consultationId)
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
+    yield (0, sendSingleNotification_1.sendSingleNotification)((_b = consultation === null || consultation === void 0 ? void 0 : consultation.astrologer) === null || _b === void 0 ? void 0 : _b.accountId, `${(_c = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _c === void 0 ? void 0 : _c.fullName} has left a review for you with rating ${payload.rating}`, payload === null || payload === void 0 ? void 0 : payload.review);
     return {
         success: true,
         message: "Review added successfully",

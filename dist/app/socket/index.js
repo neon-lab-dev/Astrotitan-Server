@@ -24,10 +24,16 @@ exports.userSocketMap = new Map();
 const setupSocket = (server) => {
     exports.io = new socket_io_1.Server(server, {
         cors: {
-            origin: ["*"],
-            methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            origin: [
+                "*"
+            ],
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            allowedHeaders: ["Content-Type", "Authorization"],
             credentials: true,
         },
+        pingInterval: 25000,
+        pingTimeout: 60000,
+        transports: ["websocket", "polling"],
     });
     const sendMessage = (message) => __awaiter(void 0, void 0, void 0, function* () {
         const senderId = message.sender;

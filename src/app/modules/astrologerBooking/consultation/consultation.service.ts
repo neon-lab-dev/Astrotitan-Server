@@ -57,6 +57,12 @@ const requestConsultation = async (
     .populate("user", "firstName lastName email profilePicture")
     .populate("astrologer", "firstName lastName displayName profilePicture");
 
+  await sendSingleNotification(
+    accountId as any,
+    "Consultation Request Sent Successfully",
+    `Your consultation request with ${astrologer?.displayName} has been sent successfully. You will be notified once they accept your request.`
+  );
+
   return populatedConsultation;
 };
 
@@ -125,7 +131,7 @@ const getMyConsultationBookings = async (
     query.status = filters.status;
   }
 
-   if (filters.method && filters.method !== "all") {
+  if (filters.method && filters.method !== "all") {
     query.method = filters.method;
   }
 
@@ -168,7 +174,7 @@ const changeConsultationStatus = async (
   const consultation = await Consultation.findOne({
     _id: consultationId,
     astrologer: astrologer._id,
-  });
+  }).populate("user", "accountId");
 
   if (!consultation) {
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or you are not authorized");
@@ -182,9 +188,6 @@ const changeConsultationStatus = async (
     );
   }
 
-  // Store user ID before updating (for notification)
-  const userId = (consultation.user as any).accountId;
-
   // Update status
   const updateData: any = {
     status: payload.status,
@@ -193,10 +196,20 @@ const changeConsultationStatus = async (
   if (payload.status === "accepted") {
     updateData.acceptedAt = new Date();
     updateData.startedAt = new Date();
+    await sendSingleNotification(
+      (consultation?.user as any)?.accountId as any,
+      "Consultation Accepted!",
+      `Great news! Your consultation request with ${astrologer?.displayName} has been ACCEPTED. You can now start your session and get the guidance you seek.`
+    );
   }
 
   if (payload.status === "declined") {
     updateData.declinedAt = new Date();
+    await sendSingleNotification(
+      (consultation?.user as any)?.accountId as any,
+      "Consultation Declined",
+      `We're sorry, but ${astrologer?.displayName} is currently unavailable for your consultation. Please try another astrologer who can assist you on your spiritual journey.`
+    );
   }
 
   const updatedConsultation = await Consultation.findByIdAndUpdate(
@@ -206,18 +219,6 @@ const changeConsultationStatus = async (
   )
     .populate("user", "firstName lastName email profilePicture")
     .populate("astrologer", "firstName lastName displayName profilePicture");
-
-  // Send notification to user using stored userId
-  // const statusMessage =
-  //   payload.status === "accepted"
-  //     ? "accepted your consultation request"
-  //     : "declined your consultation request";
-
-  await sendSingleNotification(
-    userId,
-    `Consultation ${payload.status === "accepted" ? "Accepted" : "Declined"}`,
-    `Your consultation request has been ${payload.status} by the astrologer.`
-  );
 
   return updatedConsultation;
 };
@@ -290,8 +291,9 @@ const addReview = async (
   const consultation = await Consultation.findOne({
     _id: consultationId,
     user: user?._id,
-    status: "ended", // Only ended consultations can be reviewed
-  });
+    status: "ended",
+  }).populate("astrologer", "accountId")
+    .populate("user", "fullName");
 
   if (!consultation) {
     throw new AppError(
@@ -352,6 +354,13 @@ const addReview = async (
   const updatedConsultation = await Consultation.findById(consultationId)
     .populate("user", "firstName lastName email profilePicture")
     .populate("astrologer", "firstName lastName displayName profilePicture");
+
+
+  await sendSingleNotification(
+    (consultation?.astrologer as any)?.accountId as any,
+    `${(consultation?.user as any)?.fullName} has left a review for you with rating ${payload.rating}`,
+    payload?.review
+  );
 
   return {
     success: true,

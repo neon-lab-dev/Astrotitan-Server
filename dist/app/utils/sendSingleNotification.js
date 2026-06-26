@@ -18,36 +18,58 @@ const accounts_model_1 = require("../modules/accounts/accounts.model");
 const notification_model_1 = require("../modules/notification/notification.model");
 const socket_1 = require("../socket");
 const expo = new expo_server_sdk_1.default();
-console.log(expo);
-//Send a single-user Expo notification
+// Send a single-user Expo notification
 const sendSingleNotification = (userId, title, message) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield accounts_model_1.Accounts.findById(userId).select("expoPushToken");
-    if (!user)
-        return;
-    const token = user.expoPushToken;
-    console.log(token);
-    // if (!Expo.isExpoPushToken(token)) return;
-    // Save notification to DB
-    yield notification_model_1.Notification.create({
-        to: [userId],
-        title,
-        message,
-        deliveryStatus: "pending",
-    });
-    // Send the push
-    // await expo.sendPushNotificationsAsync([
-    //   {
-    //     to: token,
-    //     sound: "default",
-    //     title,
-    //     body: message,
-    //   },
-    // ]);
-    // Emit via Socket.io
-    socket_1.io.to(userId.toString()).emit("new-notification", {
-        title,
-        message,
-        createdAt: Date.now(),
-    });
+    try {
+        const user = yield accounts_model_1.Accounts.findById(userId).select("expoPushToken");
+        if (!user) {
+            console.log(`❌ User not found: ${userId}`);
+            return;
+        }
+        const token = user.expoPushToken;
+        console.log(`📱 Expo Push Token: ${token}`);
+        // Save notification to DB
+        yield notification_model_1.Notification.create({
+            to: [userId],
+            title,
+            message,
+            deliveryStatus: "pending",
+        });
+        // Send Expo push notification (if token exists)
+        if (token && expo_server_sdk_1.default.isExpoPushToken(token)) {
+            try {
+                yield expo.sendPushNotificationsAsync([
+                    {
+                        to: token,
+                        sound: "default",
+                        title,
+                        body: message,
+                    },
+                ]);
+                console.log(`✅ Expo push sent to: ${userId}`);
+            }
+            catch (pushError) {
+                console.error(`❌ Expo push failed:`, pushError);
+            }
+        }
+        // ✅ Emit via Socket.io - Get the socket ID from userSocketMap
+        const socketId = socket_1.userSocketMap.get(userId.toString());
+        if (socketId && socket_1.io) {
+            socket_1.io.to(socketId).emit("new-notification", {
+                title,
+                message,
+                createdAt: new Date().toISOString(),
+                userId: userId.toString(),
+            });
+            console.log(`✅ Socket notification sent to: ${userId} (Socket ID: ${socketId})`);
+        }
+        else {
+            console.log(`⚠️ Socket not found for user: ${userId}`);
+            console.log(`📊 Available sockets:`, Array.from(socket_1.userSocketMap.keys()));
+        }
+    }
+    catch (error) {
+        console.error(`❌ Error sending notification:`, error);
+    }
 });
 exports.sendSingleNotification = sendSingleNotification;

@@ -13,10 +13,16 @@ export const userSocketMap = new Map();
 const setupSocket = (server: Server) => {
     io = new SocketIOserver(server, {
         cors: {
-            origin: ["*"],
-            methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            origin: [
+                "*"
+            ],
+            methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            allowedHeaders: ["Content-Type", "Authorization"],
             credentials: true,
         },
+        pingInterval: 25000,
+        pingTimeout: 60000,
+        transports: ["websocket", "polling"],
     });
 
     const sendMessage = async (message: any) => {

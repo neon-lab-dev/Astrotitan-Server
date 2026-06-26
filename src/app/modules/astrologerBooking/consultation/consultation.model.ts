@@ -28,7 +28,6 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
         consultationFor: {
             type: String,
-            trim: true,
             required: true,
         },
         requestMessage: {
