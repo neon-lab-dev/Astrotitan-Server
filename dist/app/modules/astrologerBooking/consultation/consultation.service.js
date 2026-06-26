@@ -21,37 +21,31 @@ const AppError_1 = __importDefault(require("../../../errors/AppError"));
 const sendSingleNotification_1 = require("../../../utils/sendSingleNotification");
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
-const accounts_model_1 = require("../../accounts/accounts.model");
-const requestConsultation = (userId, // This is Account ID
+const requestConsultation = (accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // ✅ Check if user exists in Accounts
-    const user = yield accounts_model_1.Accounts.findById(userId);
+    // Check if user exists in Accounts
+    const user = yield user_model_1.User.findOne({ accountId });
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // ✅ Check if astrologer exists in Accounts
-    const astrologer = yield accounts_model_1.Accounts.findById(payload.astrologer);
+    // Check if astrologer exists in Accounts
+    const astrologer = yield astrologer_model_1.Astrologer.findById(payload.astrologer);
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // ✅ Check if astrologer has an Astrologer profile
-    const astrologerProfile = yield astrologer_model_1.Astrologer.findOne({ accountId: payload.astrologer });
-    if (!astrologerProfile) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer profile not found");
-    }
     // Check if there's already a pending consultation
     const existingConsultation = yield consultation_model_1.default.findOne({
-        user: userId,
+        user: user === null || user === void 0 ? void 0 : user._id,
         astrologer: payload.astrologer,
         status: "pending",
     });
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
-    // ✅ Create consultation with Account IDs
+    // Create consultation with Account IDs
     const consultation = yield consultation_model_1.default.create({
-        user: userId, // Account ID
-        astrologer: payload.astrologer, // Account ID
+        user: user === null || user === void 0 ? void 0 : user._id,
+        astrologer: payload.astrologer,
         method: payload.method,
         consultationFor: payload.consultationFor,
         requestMessage: payload.requestMessage,
@@ -65,47 +59,62 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
 });
 /* Get My Consultation Requests - User */
 const getMyConsultationRequests = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
-    // ✅ Use Account ID directly - no need to find User
-    const query = { user: accountId };
+    // Find the actual User document using accountId
+    const user = yield user_model_1.User.findOne({ accountId: accountId });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    // Use the User's _id for the query
+    const query = { user: user._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
-            select: "firstName lastName email profilePicture"
+            select: "firstName lastName fullName profilePicture accountId"
         },
         {
             path: "astrologer",
-            select: "firstName lastName displayName profilePicture"
+            select: "firstName lastName displayName profilePicture accountId"
         }
     ]);
     return result;
 });
 /* Get My Consultation Bookings - Astrologer */
 const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
-    // ✅ Use Account ID directly - no need to find Astrologer
-    const query = { astrologer: accountId };
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // Use Account ID directly - no need to find Astrologer
+    const query = { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
-    const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, []);
-    const bookingsWithDetails = yield Promise.all(result.data.map((booking) => __awaiter(void 0, void 0, void 0, function* () {
-        const user = yield user_model_1.User.findOne({ accountId: booking.user }, "firstName lastName fullName profilePicture");
-        const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: booking.astrologer }, "firstName lastName displayName profilePicture");
-        return Object.assign(Object.assign({}, booking.toObject()), { user,
-            astrologer });
-    })));
-    result.data = bookingsWithDetails;
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
+        {
+            path: "user",
+            select: "firstName lastName fullName email profilePicture accountId"
+        },
+        {
+            path: "astrologer",
+            select: "firstName lastName displayName profilePicture accountId"
+        }
+    ]);
     return result;
 });
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = (consultationId, accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
     // Find consultation using Account ID directly
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
-        astrologer: accountId, // ✅ Use Account ID directly
+        astrologer: astrologer._id,
     });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
@@ -114,7 +123,7 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (consultation.status !== "pending") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `This consultation is already ${consultation.status}`);
     }
-    // ✅ Store user ID before updating (for notification)
+    // Store user ID before updating (for notification)
     const userId = consultation.user.accountId;
     // Update status
     const updateData = {
@@ -130,7 +139,7 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     const updatedConsultation = yield consultation_model_1.default.findByIdAndUpdate(consultationId, updateData, { new: true })
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
-    // ✅ Send notification to user using stored userId
+    // Send notification to user using stored userId
     // const statusMessage =
     //   payload.status === "accepted"
     //     ? "accepted your consultation request"
@@ -152,8 +161,8 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
         _id: consultationId,
         $or: [{ user: user === null || user === void 0 ? void 0 : user._id }, { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id }],
     })
-        .populate("user", "firstName lastName email profilePicture")
-        .populate("astrologer", "firstName lastName displayName profilePicture");
+        .populate("user")
+        .populate("astrologer");
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }

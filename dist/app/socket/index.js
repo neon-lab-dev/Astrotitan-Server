@@ -18,6 +18,8 @@ const socket_io_1 = require("socket.io");
 const consultation_model_1 = __importDefault(require("../modules/astrologerBooking/consultation/consultation.model"));
 const consultationChat_model_1 = __importDefault(require("../modules/astrologerBooking/consultationChat/consultationChat.model"));
 const consultationChat_service_1 = require("../modules/astrologerBooking/consultationChat/consultationChat.service");
+const user_model_1 = require("../modules/users/user.model");
+const astrologer_model_1 = require("../modules/astrologer/astrologer.model");
 exports.userSocketMap = new Map();
 const setupSocket = (server) => {
     exports.io = new socket_io_1.Server(server, {
@@ -28,13 +30,8 @@ const setupSocket = (server) => {
         },
     });
     const sendMessage = (message) => __awaiter(void 0, void 0, void 0, function* () {
-        var _a, _b;
-        const senderId = typeof message.sender === 'string'
-            ? message.sender
-            : (_a = message.sender) === null || _a === void 0 ? void 0 : _a._id;
-        const receiverId = typeof message.receiver === 'string'
-            ? message.receiver
-            : (_b = message.receiver) === null || _b === void 0 ? void 0 : _b._id;
+        const senderId = message.sender;
+        const receiverId = message.receiver;
         const consultationId = message.consultationId;
         const senderSocketId = exports.userSocketMap.get(senderId);
         const receiverSocketId = exports.userSocketMap.get(receiverId);
@@ -54,20 +51,22 @@ const setupSocket = (server) => {
                 }
                 return;
             }
+            const user = yield user_model_1.User.findById(consultation === null || consultation === void 0 ? void 0 : consultation.user);
+            const astrologer = yield astrologer_model_1.Astrologer.findById(consultation === null || consultation === void 0 ? void 0 : consultation.astrologer);
             // Check if sender is part of this consultation (now using Account IDs directly)
-            const isUser = consultation.user.toString() === senderId;
-            const isAstrologer = consultation.astrologer.toString() === senderId;
+            const isUser = consultation.user.toString() === (user === null || user === void 0 ? void 0 : user._id.toString());
+            const isAstrologer = consultation.astrologer.toString() === (astrologer === null || astrologer === void 0 ? void 0 : astrologer._id.toString());
             // console.log("Consultation.user:", consultation.user.toString());
             // console.log("Consultation.astrologer:", consultation.astrologer.toString());
             // console.log("Sender ID:", senderId);
             // console.log("Is User:", isUser);
             // console.log("Is Astrologer:", isAstrologer);
-            console.log("📩 Sender ID:", senderId);
-            console.log("📩 Receiver ID:", receiverId);
-            console.log("📩 Sender Socket ID:", senderSocketId);
-            console.log("📩 Receiver Socket ID:", receiverSocketId);
-            console.log("📊 All online users:", Array.from(exports.userSocketMap.keys()));
-            console.log("📊 userSocketMap size:", exports.userSocketMap.size);
+            // console.log("📩 Sender ID:", senderId);
+            // console.log("📩 Receiver ID:", receiverId);
+            // console.log("📩 Sender Socket ID:", senderSocketId);
+            // console.log("📩 Receiver Socket ID:", receiverSocketId);
+            // console.log("📊 All online users:", Array.from(userSocketMap.keys()));
+            // console.log("📊 userSocketMap size:", userSocketMap.size);
             if (!isUser && !isAstrologer) {
                 console.log("❌ Sender is not part of this consultation");
                 if (senderSocketId) {
@@ -86,7 +85,7 @@ const setupSocket = (server) => {
                 content: message.content,
                 isRead: false,
             };
-            console.log("📝 Creating message:", messageData);
+            // console.log("📝 Creating message:", messageData);
             const createdMessage = yield consultationChat_model_1.default.create(messageData);
             // console.log("Message created:", createdMessage._id);
             // Populate message
