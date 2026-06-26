@@ -11,24 +11,24 @@ import { Astrologer } from "../../astrologer/astrologer.model";
 const getConsultationChatList = async (accountId: string) => {
     console.log("🔍 Getting chat list for accountId:", accountId);
 
-    // ✅ Find user and astrologer by accountId
+    // Find user and astrologer by accountId
     const user = await User.findById(accountId).lean();
     const astrologer = await Astrologer.findOne({ accountId });
 
     // console.log("📝 User found:", user?._id);
     // console.log("📝 Astrologer found:", astrologer?._id);
 
-    // ✅ Check if either user or astrologer exists
+    // Check if either user or astrologer exists
     if (!user && !astrologer) {
         console.log("❌ No user or astrologer found for accountId:", accountId);
         throw new AppError(httpStatus.NOT_FOUND, "User or Astrologer not found");
     }
 
-    // ✅ Get the ObjectId of the user or astrologer
+    // Get the ObjectId of the user or astrologer
     const userId = user?._id;
     const astrologerId = astrologer?._id;
 
-    // ✅ Build query with OR conditions
+    // Build query with OR conditions
     const orConditions = [];
     if (userId) {
         orConditions.push({ user: userId });
@@ -41,7 +41,7 @@ const getConsultationChatList = async (accountId: string) => {
         throw new AppError(httpStatus.NOT_FOUND, "No valid user or astrologer found");
     }
 
-    // ✅ Build query to find consultations
+    // Build query to find consultations
     const query: any = {
         $or: orConditions,
         status: { $in: ["accepted", "pending", "ended"] }
@@ -59,7 +59,7 @@ const getConsultationChatList = async (accountId: string) => {
 
     const chatList = await Promise.all(
         consultations.map(async (consultation) => {
-            // ✅ Get the other participant
+            // Get the other participant
             const consultationUserId = consultation.user && typeof consultation.user === "object" && "_id" in consultation.user
                 ? (consultation.user as any)._id.toString()
                 : consultation.user?.toString();
@@ -69,7 +69,7 @@ const getConsultationChatList = async (accountId: string) => {
 
             if (!otherUser) return null;
 
-            // ✅ Count unread messages for this consultation
+            // Count unread messages for this consultation
             const unreadCount = await ConsultationChat.countDocuments({
                 consultationId: consultation._id,
                 receiver: accountId,
@@ -83,7 +83,7 @@ const getConsultationChatList = async (accountId: string) => {
                 .sort({ createdAt: -1 })
                 .lean();
 
-            // ✅ Determine the role of the other participant
+            // Determine the role of the other participant
             const otherUserRole = isUser ? "astrologer" : "user";
 
             return {
@@ -128,20 +128,21 @@ const getConsultationMessages = async (
     limit = 50
 ) => {
 
-    // ✅ Build OR conditions for consultation lookup
+    const user = await User.findOne({accountId});
+    const astrologer = await Astrologer.findOne({accountId});
+
+    // Build OR conditions for consultation lookup
     const orConditions = [];
     if (accountId) {
-        orConditions.push({ user: accountId });
+        orConditions.push({ user: user?._id });
     }
     if (accountId) {
-        orConditions.push({ astrologer: accountId });
+        orConditions.push({ astrologer: astrologer?._id });
     }
 
-    if (orConditions.length === 0) {
-        throw new AppError(httpStatus.NOT_FOUND, "User or Astrologer not found");
-    }
+   
 
-    // ✅ Check if user is part of this consultation
+    // Check if user is part of this consultation
     const consultation = await Consultation.findOne({
         _id: consultationId,
         $or: orConditions,
@@ -151,7 +152,7 @@ const getConsultationMessages = async (
         throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or you are not authorized");
     }
 
-    // ✅ Get messages
+    // Get messages
     const messages = await ConsultationChat.find({
         consultationId: consultationId,
     })
@@ -162,7 +163,7 @@ const getConsultationMessages = async (
         .limit(limit)
         .lean();
 
-    // ✅ Mark messages as read
+    // Mark messages as read
     await ConsultationChat.updateMany(
         {
             consultationId: consultationId,
@@ -196,7 +197,7 @@ const markConsultationMessagesAsRead = async (
         }
     );
 
-    // ✅ Get updated chat list and send via socket
+    // Get updated chat list and send via socket
     if (io && result.modifiedCount > 0) {
         const updatedChatList = await getConsultationChatList(accountId);
 
