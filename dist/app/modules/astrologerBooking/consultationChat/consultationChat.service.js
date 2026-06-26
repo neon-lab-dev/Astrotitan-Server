@@ -142,8 +142,8 @@ const getConsultationMessages = (consultationId_1, accountId_1, ...args_1) => __
     const messages = yield consultationChat_model_1.default.find({
         consultationId: consultationId,
     })
-        .populate("sender", "firstName lastName accountId profilePicture")
-        .populate("receiver", "firstName lastName accountId profilePicture")
+        .populate("sender", "firstName lastName _id accountId profilePicture")
+        .populate("receiver", "firstName lastName _id accountId profilePicture")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

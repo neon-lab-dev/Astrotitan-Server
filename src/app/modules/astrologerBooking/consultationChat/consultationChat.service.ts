@@ -155,8 +155,8 @@ const getConsultationMessages = async (
     const messages = await ConsultationChat.find({
         consultationId: consultationId,
     })
-        .populate("sender", "firstName lastName accountId profilePicture")
-        .populate("receiver", "firstName lastName accountId profilePicture")
+        .populate("sender", "firstName lastName _id accountId profilePicture")
+        .populate("receiver", "firstName lastName _id accountId profilePicture")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
