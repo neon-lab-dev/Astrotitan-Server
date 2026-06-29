@@ -10,8 +10,9 @@ const productOrder_controller_1 = require("./productOrder.controller");
 const accounts_constants_1 = require("../../accounts/accounts.constants");
 const router = (0, express_1.Router)();
 router.post("/checkout", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user), productOrder_controller_1.ProductOrderControllers.checkout);
-router.post("/verify-payment", productOrder_controller_1.ProductOrderControllers.verifyPayment);
 router.post("/create", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user), productOrder_controller_1.ProductOrderControllers.createProductOrder);
+router.post("/verify-payment", productOrder_controller_1.ProductOrderControllers.verifyPayment);
+router.get("/status/:orderId", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user), productOrder_controller_1.ProductOrderControllers.checkPaymentStatus);
 router.get("/my-orders", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user), productOrder_controller_1.ProductOrderControllers.getMyProductOrders);
 // For admin/moderator only
 router.get("/", (0, auth_1.default)(accounts_constants_1.UserRole.admin), productOrder_controller_1.ProductOrderControllers.getAllProductOrders);

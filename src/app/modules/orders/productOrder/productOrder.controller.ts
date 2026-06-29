@@ -5,33 +5,63 @@ import { ProductOrderService } from "./productOrder.service";
 
 const checkout = catchAsync(async (req, res) => {
   const { amount } = req.body;
-  const razorpayOrder = await ProductOrderService.checkout(amount);
+
+  const result = await ProductOrderService.checkout(amount);
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Payment initiated successfully",
-    data: razorpayOrder,
+    message: "Checkout initiated successfully",
+    data: result,
   });
 });
 
-// Verify payment
+// ✅ Verify Payment (works for both web and app)
 const verifyPayment = catchAsync(async (req, res) => {
-  const { razorpay_payment_id } = req.body;
+  const { 
+    razorpayOrderId, 
+    razorpayPaymentId, 
+    razorpaySignature,
+    orderId // Optional - for web
+  } = req.body;
 
-  const redirectUrl =
-    await ProductOrderService.verifyPayment(razorpay_payment_id);
-
-  return res.redirect(redirectUrl);
-});
-
-// Create order (customer)
-const createProductOrder = catchAsync(async (req, res) => {
-  const result = await ProductOrderService.createProductOrder(req.user, req.body);
+  const result = await ProductOrderService.verifyPayment({
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature,
+    orderId,
+  });
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
+    message: "Payment verified successfully",
+    data: result,
+  });
+});
+
+// ✅ Create Product Order (with Razorpay order for app)
+const createProductOrder = catchAsync(async (req, res) => {
+  const user = req.user;
+  const result = await ProductOrderService.createProductOrder(user, req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.CREATED,
+    success: true,
     message: "Order created successfully",
+    data: result,
+  });
+});
+
+// ✅ Check payment status
+const checkPaymentStatus = catchAsync(async (req, res) => {
+  const { orderId } = req.params;
+  const result = await ProductOrderService.checkPaymentStatus(orderId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Payment status fetched successfully",
     data: result,
   });
 });
@@ -136,6 +166,7 @@ export const ProductOrderControllers = {
   checkout,
   verifyPayment,
   createProductOrder,
+  checkPaymentStatus,
   getAllProductOrders,
   getSingleProductOrderById,
   getProductOrdersByUserId,

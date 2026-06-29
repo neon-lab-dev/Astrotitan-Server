@@ -6,72 +6,175 @@ import { ProductOrder } from "./productOrder.model";
 import { razorpay } from "../../../utils/razorpay";
 import Product from "../../product/product.model";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
+import config from "../../../config";
+import crypto from "crypto";
 
 const checkout = async (amount: number) => {
   if (!amount || amount <= 0) {
-    throw new Error("Invalid payment amount");
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid payment amount");
   }
 
   const razorpayOrder = await razorpay.orders.create({
-    amount: amount * 100, //in paisa
+    amount: amount * 100, // in paisa
     currency: "INR",
   });
 
-  return razorpayOrder;
+  return {
+    razorpayOrder,
+    key_id: config.razorpay_api_key,
+  };
 };
 
-// Verify payment
-const verifyPayment = async (razorpayPaymentId: string) => {
-  return `${process.env.PAYMENT_REDIRECT_URL}-success?type=product&orderId=${razorpayPaymentId}`;
+// Verify payment (works for both web and app)
+const verifyPayment = async (payload: {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  orderId?: string; // For web
+}) => {
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = payload;
+
+  // Generate signature for verification
+  const generatedSignature = crypto
+    .createHmac("sha256", config.razorpay_api_secret!)
+    .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    .digest("hex");
+
+  // Compare signatures
+  if (generatedSignature !== razorpaySignature) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Payment verification failed: Invalid signature");
+  }
+
+  // Find order by razorpayOrderId or orderId
+  let order;
+  if (orderId) {
+    order = await ProductOrder.findById(orderId);
+  } else {
+    order = await ProductOrder.findOne({ razorpayOrderId });
+  }
+
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
+
+  // Update order status
+  order.paymentStatus = "paid";
+  order.status = "confirmed";
+  order.razorpayPaymentId = razorpayPaymentId;
+  order.paymentDate = new Date();
+  await order.save();
+
+  // Update product quantities (deduct stock)
+  for (const item of order.orderedItems) {
+    const product = await Product.findById(item.productId);
+    if (product) {
+      product.quantity -= item.quantity;
+      await product.save();
+    }
+  }
+
+  // Return redirect URL for web (if needed)
+  const redirectUrl = `${process.env.PAYMENT_REDIRECT_URL}-success?type=product&orderId=${order._id}`;
+
+  return {
+    success: true,
+    message: "Payment verified successfully",
+    order,
+    redirectUrl,
+  };
 };
 
-// Create Razorpay order
+// Create Product Order (with Razorpay order for app)
 const createProductOrder = async (user: any, payload: TProductOrder) => {
+  // Validate products and stock
   const productIds = payload.orderedItems.map((i) => i.productId);
   const products = await Product.find({ _id: { $in: productIds } });
 
   if (products.length !== payload.orderedItems.length) {
-    throw new Error("Some products not found");
+    throw new AppError(httpStatus.NOT_FOUND, "Some products not found");
   }
 
-  for (const item of payload.orderedItems) {
-    const product = products.find(
-      (p) => p._id.toString() === item.productId.toString()
-    );
-
-    if (!product) {
-      throw new Error(`Product ${item.productId} not found`);
-    }
-
-    //Check quantity availability
-    if (product.quantity < item.quantity) {
-      throw new Error(
-        `Not enough stock for product ${product.name}. Available: ${product.quantity}`
+  // Get product details and validate stock
+  const orderedItems = await Promise.all(
+    payload.orderedItems.map(async (item) => {
+      const product = products.find(
+        (p) => p._id.toString() === item.productId.toString()
       );
-    }
 
-    //Save updated product
-    await product.save();
-  }
+      if (!product) {
+        throw new AppError(httpStatus.NOT_FOUND, `Product ${item.productId} not found`);
+      }
 
+      if (product.quantity < item.quantity) {
+        throw new AppError(
+          httpStatus.BAD_REQUEST,
+          `Not enough stock for product ${product.name}. Available: ${product.quantity}`
+        );
+      }
 
-  const orderedItems = payload?.orderedItems;
+      return {
+        productId: product._id,
+        name: product.name,
+        quantity: item.quantity,
+        price: product.basePrice,
+      };
+    })
+  );
 
+  // Create order ID
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   const orderId = `AT-${randomNum}`;
 
-  const payloadData = {
+  // Create Razorpay order
+  const razorpayOrder = await razorpay.orders.create({
+    amount: payload.totalAmount * 100, // Convert to paisa
+    currency: "INR",
+    receipt: orderId,
+    notes: {
+      orderId: orderId,
+      userId: user._id.toString(),
+    },
+  });
+
+  // Create order in database
+  const order = await ProductOrder.create({
     orderId,
-    userId: user?._id,
+    userId: user._id,
     orderedItems,
     totalAmount: payload.totalAmount,
-    addressId : payload.addressId,
+    addressId: payload.addressId,
     status: "pending",
+    paymentStatus: "pending",
+    razorpayOrderId: razorpayOrder.id,
+  });
+
+  // Return both: Razorpay order (for app) and redirect URL (for web)
+  return {
+    order,
+    razorpayOrder: {
+      id: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      key_id: config.razorpay_api_key,
+    },
+    paymentUrl: `${process.env.PAYMENT_REDIRECT_URL}?type=product&orderId=${order._id}&razorpayOrderId=${razorpayOrder.id}`,
   };
+};
 
-  const order = await ProductOrder.create(payloadData);
+// Check payment status
+const checkPaymentStatus = async (orderId: string) => {
+  const order = await ProductOrder.findById(orderId);
+  if (!order) {
+    throw new AppError(httpStatus.NOT_FOUND, "Order not found");
+  }
 
-  return order;
+  return {
+    orderId: order._id,
+    orderNumber: order.orderId,
+    paymentStatus: order.paymentStatus,
+    status: order.status,
+    totalAmount: order.totalAmount,
+  };
 };
 
 // Get all orders
@@ -191,6 +294,7 @@ export const ProductOrderService = {
   checkout,
   verifyPayment,
   createProductOrder,
+  checkPaymentStatus,
   getAllProductOrders,
   getSingleProductOrderById,
   getProductOrdersByUserId,

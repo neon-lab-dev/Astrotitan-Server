@@ -13,5 +13,10 @@ export interface TProductOrder {
   addressId: ObjectId;
   orderedItems: TProductOrderItem[];
   totalAmount: number;
-  status: "pending" | "shipped" | "cancelled";
+  status: "pending" | "confirmed" | "shipped" | "cancelled";
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  paymentStatus?: "pending" | "paid" | "failed";
+  paymentDate?: Date;
 }

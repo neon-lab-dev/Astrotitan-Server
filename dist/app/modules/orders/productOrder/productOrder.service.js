@@ -20,52 +20,140 @@ const productOrder_model_1 = require("./productOrder.model");
 const razorpay_1 = require("../../../utils/razorpay");
 const product_model_1 = __importDefault(require("../../product/product.model"));
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
+const config_1 = __importDefault(require("../../../config"));
+const crypto_1 = __importDefault(require("crypto"));
 const checkout = (amount) => __awaiter(void 0, void 0, void 0, function* () {
     if (!amount || amount <= 0) {
-        throw new Error("Invalid payment amount");
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Invalid payment amount");
     }
     const razorpayOrder = yield razorpay_1.razorpay.orders.create({
-        amount: amount * 100, //in paisa
+        amount: amount * 100, // in paisa
         currency: "INR",
     });
-    return razorpayOrder;
+    return {
+        razorpayOrder,
+        key_id: config_1.default.razorpay_api_key,
+    };
 });
-// Verify payment
-const verifyPayment = (razorpayPaymentId) => __awaiter(void 0, void 0, void 0, function* () {
-    return `${process.env.PAYMENT_REDIRECT_URL}-success?type=product&orderId=${razorpayPaymentId}`;
+// Verify payment (works for both web and app)
+const verifyPayment = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = payload;
+    // Generate signature for verification
+    const generatedSignature = crypto_1.default
+        .createHmac("sha256", config_1.default.razorpay_api_secret)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest("hex");
+    // Compare signatures
+    if (generatedSignature !== razorpaySignature) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Payment verification failed: Invalid signature");
+    }
+    // Find order by razorpayOrderId or orderId
+    let order;
+    if (orderId) {
+        order = yield productOrder_model_1.ProductOrder.findById(orderId);
+    }
+    else {
+        order = yield productOrder_model_1.ProductOrder.findOne({ razorpayOrderId });
+    }
+    if (!order) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Order not found");
+    }
+    // Update order status
+    order.paymentStatus = "paid";
+    order.status = "confirmed";
+    order.razorpayPaymentId = razorpayPaymentId;
+    order.paymentDate = new Date();
+    yield order.save();
+    // Update product quantities (deduct stock)
+    for (const item of order.orderedItems) {
+        const product = yield product_model_1.default.findById(item.productId);
+        if (product) {
+            product.quantity -= item.quantity;
+            yield product.save();
+        }
+    }
+    // Return redirect URL for web (if needed)
+    const redirectUrl = `${process.env.PAYMENT_REDIRECT_URL}-success?type=product&orderId=${order._id}`;
+    return {
+        success: true,
+        message: "Payment verified successfully",
+        order,
+        redirectUrl,
+    };
 });
-// Create Razorpay order
+// Create Product Order (with Razorpay order for app)
 const createProductOrder = (user, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    // Validate products and stock
     const productIds = payload.orderedItems.map((i) => i.productId);
     const products = yield product_model_1.default.find({ _id: { $in: productIds } });
     if (products.length !== payload.orderedItems.length) {
-        throw new Error("Some products not found");
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Some products not found");
     }
-    for (const item of payload.orderedItems) {
+    // Get product details and validate stock
+    const orderedItems = yield Promise.all(payload.orderedItems.map((item) => __awaiter(void 0, void 0, void 0, function* () {
         const product = products.find((p) => p._id.toString() === item.productId.toString());
         if (!product) {
-            throw new Error(`Product ${item.productId} not found`);
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, `Product ${item.productId} not found`);
         }
-        //Check quantity availability
         if (product.quantity < item.quantity) {
-            throw new Error(`Not enough stock for product ${product.name}. Available: ${product.quantity}`);
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Not enough stock for product ${product.name}. Available: ${product.quantity}`);
         }
-        //Save updated product
-        yield product.save();
-    }
-    const orderedItems = payload === null || payload === void 0 ? void 0 : payload.orderedItems;
+        return {
+            productId: product._id,
+            name: product.name,
+            quantity: item.quantity,
+            price: product.basePrice,
+        };
+    })));
+    // Create order ID
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const orderId = `AT-${randomNum}`;
-    const payloadData = {
+    // Create Razorpay order
+    const razorpayOrder = yield razorpay_1.razorpay.orders.create({
+        amount: payload.totalAmount * 100, // Convert to paisa
+        currency: "INR",
+        receipt: orderId,
+        notes: {
+            orderId: orderId,
+            userId: user._id.toString(),
+        },
+    });
+    // Create order in database
+    const order = yield productOrder_model_1.ProductOrder.create({
         orderId,
-        userId: user === null || user === void 0 ? void 0 : user._id,
+        userId: user._id,
         orderedItems,
         totalAmount: payload.totalAmount,
         addressId: payload.addressId,
         status: "pending",
+        paymentStatus: "pending",
+        razorpayOrderId: razorpayOrder.id,
+    });
+    // Return both: Razorpay order (for app) and redirect URL (for web)
+    return {
+        order,
+        razorpayOrder: {
+            id: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            key_id: config_1.default.razorpay_api_key,
+        },
+        paymentUrl: `${process.env.PAYMENT_REDIRECT_URL}?type=product&orderId=${order._id}&razorpayOrderId=${razorpayOrder.id}`,
     };
-    const order = yield productOrder_model_1.ProductOrder.create(payloadData);
-    return order;
+});
+// Check payment status
+const checkPaymentStatus = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield productOrder_model_1.ProductOrder.findById(orderId);
+    if (!order) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Order not found");
+    }
+    return {
+        orderId: order._id,
+        orderNumber: order.orderId,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        totalAmount: order.totalAmount,
+    };
 });
 // Get all orders
 const getAllProductOrders = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
@@ -138,6 +226,7 @@ exports.ProductOrderService = {
     checkout,
     verifyPayment,
     createProductOrder,
+    checkPaymentStatus,
     getAllProductOrders,
     getSingleProductOrderById,
     getProductOrdersByUserId,

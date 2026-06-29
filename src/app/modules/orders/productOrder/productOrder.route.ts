@@ -5,9 +5,28 @@ import { UserRole } from "../../accounts/accounts.constants";
 
 const router = Router();
 
-router.post("/checkout", auth(UserRole.admin, UserRole.user), ProductOrderControllers.checkout);
-router.post("/verify-payment", ProductOrderControllers.verifyPayment);
-router.post("/create", auth(UserRole.admin, UserRole.user), ProductOrderControllers.createProductOrder);
+router.post(
+    "/checkout",
+    auth(UserRole.admin, UserRole.user),
+    ProductOrderControllers.checkout
+);
+router.post(
+    "/create",
+    auth(UserRole.admin, UserRole.user),
+    ProductOrderControllers.createProductOrder
+);
+
+router.post(
+    "/verify-payment",
+    ProductOrderControllers.verifyPayment
+);
+
+router.get(
+    "/status/:orderId",
+    auth(UserRole.admin, UserRole.user),
+    ProductOrderControllers.checkPaymentStatus
+);
+
 router.get("/my-orders", auth(UserRole.admin, UserRole.user), ProductOrderControllers.getMyProductOrders);
 
 // For admin/moderator only

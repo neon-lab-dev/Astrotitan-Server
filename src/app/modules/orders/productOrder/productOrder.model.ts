@@ -13,13 +13,28 @@ const ProductOrderSchema = new Schema<TProductOrder>(
     orderId: { type: String, required: true, unique: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     addressId: { type: Schema.Types.ObjectId, ref: "Address", required: true },
-
     orderedItems: [OrderItemSchema],
     totalAmount: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["pending", "shipped", "cancelled"],
+      enum: ["pending", "confirmed", "shipped", "cancelled"],
       default: "pending",
+    },
+    // Payment fields
+    razorpayOrderId: {
+      type: String,
+      index: true,
+    },
+    razorpayPaymentId: {
+      type: String,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed"],
+      default: "pending",
+    },
+    paymentDate: {
+      type: Date,
     },
   },
   { timestamps: true }

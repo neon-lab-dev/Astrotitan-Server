@@ -19,27 +19,50 @@ const sendResponse_1 = __importDefault(require("../../../utils/sendResponse"));
 const productOrder_service_1 = require("./productOrder.service");
 const checkout = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { amount } = req.body;
-    const razorpayOrder = yield productOrder_service_1.ProductOrderService.checkout(amount);
+    const result = yield productOrder_service_1.ProductOrderService.checkout(amount);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
-        message: "Payment initiated successfully",
-        data: razorpayOrder,
+        message: "Checkout initiated successfully",
+        data: result,
     });
 }));
-// Verify payment
+// ✅ Verify Payment (works for both web and app)
 const verifyPayment = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { razorpay_payment_id } = req.body;
-    const redirectUrl = yield productOrder_service_1.ProductOrderService.verifyPayment(razorpay_payment_id);
-    return res.redirect(redirectUrl);
-}));
-// Create order (customer)
-const createProductOrder = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield productOrder_service_1.ProductOrderService.createProductOrder(req.user, req.body);
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId // Optional - for web
+     } = req.body;
+    const result = yield productOrder_service_1.ProductOrderService.verifyPayment({
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+        orderId,
+    });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
+        message: "Payment verified successfully",
+        data: result,
+    });
+}));
+// ✅ Create Product Order (with Razorpay order for app)
+const createProductOrder = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = req.user;
+    const result = yield productOrder_service_1.ProductOrderService.createProductOrder(user, req.body);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.CREATED,
+        success: true,
         message: "Order created successfully",
+        data: result,
+    });
+}));
+// ✅ Check payment status
+const checkPaymentStatus = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { orderId } = req.params;
+    const result = yield productOrder_service_1.ProductOrderService.checkPaymentStatus(orderId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Payment status fetched successfully",
         data: result,
     });
 }));
@@ -113,6 +136,7 @@ exports.ProductOrderControllers = {
     checkout,
     verifyPayment,
     createProductOrder,
+    checkPaymentStatus,
     getAllProductOrders,
     getSingleProductOrderById,
     getProductOrdersByUserId,
