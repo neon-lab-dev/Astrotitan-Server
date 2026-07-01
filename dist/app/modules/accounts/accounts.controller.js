@@ -186,10 +186,10 @@ const updateProfile = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
     });
 }));
 /* Update Expo Push Token */
-const updateExpoPushToken = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const updatePushToken = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { _id } = req.user;
-    const { expoPushToken } = req.body;
-    const result = yield accounts_service_1.AuthServices.updateExpoPushToken(_id, expoPushToken);
+    const { pushToken } = req.body;
+    const result = yield accounts_service_1.AuthServices.updatePushToken(_id, pushToken);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -222,6 +222,6 @@ exports.AuthControllers = {
     activeAccount,
     getMe,
     updateProfile,
-    updateExpoPushToken,
+    updatePushToken,
     deleteAccount
 };

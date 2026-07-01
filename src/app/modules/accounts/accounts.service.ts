@@ -1112,9 +1112,9 @@ const updateProfile = async (
 };
 
 /* Update Expo Push Token */
-const updateExpoPushToken = async (
+const updatePushToken = async (
   accountId: string,
-  expoPushToken: string
+  pushToken: string
 ) => {
   // Find the account
   const account = await Accounts.findById(accountId);
@@ -1130,14 +1130,14 @@ const updateExpoPushToken = async (
     );
   }
 
-  // Update expoPushToken
-  await Accounts.findByIdAndUpdate(accountId, { expoPushToken });
+  // Update pushToken
+  await Accounts.findByIdAndUpdate(accountId, { pushToken });
 
   return {
     success: true,
     message: "Push notification token updated successfully",
     data: {
-      expoPushToken,
+      pushToken,
     },
   };
 };
@@ -1166,6 +1166,6 @@ export const AuthServices = {
   activeAccount,
   getMe,
   updateProfile,
-  updateExpoPushToken,
+  updatePushToken,
   deleteAccount
 };

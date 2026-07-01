@@ -105,7 +105,7 @@ const userSchema = new mongoose_1.Schema({
         trim: true,
         default: null,
     },
-    expoPushToken: {
+    pushToken: {
         type: String,
         default: null,
     },

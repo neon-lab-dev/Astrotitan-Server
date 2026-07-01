@@ -26,6 +26,7 @@
     "dotenv": "^16.6.1",
     "expo-server-sdk": "^3.15.0",
     "express": "^4.19.2",
+    "firebase-admin": "^14.1.0",
     "http-status": "^1.8.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.4.3",

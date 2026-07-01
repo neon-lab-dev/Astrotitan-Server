@@ -24,7 +24,7 @@ const socket_1 = require("../../socket");
 const expo = new expo_server_sdk_1.default();
 const sendNotification = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { userIds, title, message } = payload;
-    const users = yield accounts_model_1.Accounts.find({ _id: { $in: userIds } }).select("_id expoPushToken");
+    const users = yield accounts_model_1.Accounts.find({ _id: { $in: userIds } }).select("_id pushToken");
     if (!users || users.length === 0) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "No users found for provided ids");
     }
@@ -37,11 +37,11 @@ const sendNotification = (payload) => __awaiter(void 0, void 0, void 0, function
     // Expo push (unchanged)
     const messages = [];
     for (const user of users) {
-        if (!user.expoPushToken || !expo_server_sdk_1.default.isExpoPushToken(user.expoPushToken)) {
-            continue;
-        }
+        // if (!user.pushToken || !Expo.ispushToken(user.pushToken)) {
+        //   continue;
+        // }
         messages.push({
-            to: user.expoPushToken,
+            to: user.pushToken,
             sound: "default",
             title,
             body: message,

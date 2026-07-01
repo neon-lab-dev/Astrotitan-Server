@@ -90,7 +90,7 @@ router.put(
 router.patch(
   "/update-push-token",
   auth(UserRole.user, UserRole.astrologer),
-  AuthControllers.updateExpoPushToken
+  AuthControllers.updatePushToken
 );
 
 

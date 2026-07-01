@@ -29,7 +29,7 @@ export type TAccounts = {
   passwordChangedAt?: Date;
   suspensionReason?: string | null;
   accountDeleteReason?: string | null;
-  expoPushToken?: string | null;
+  pushToken?: string | null;
   password?: string; // Password will be just for admin
 };
 

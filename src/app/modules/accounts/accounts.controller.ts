@@ -211,11 +211,11 @@ const updateProfile = catchAsync(async (req, res) => {
 });
 
 /* Update Expo Push Token */
-const updateExpoPushToken = catchAsync(async (req, res) => {
+const updatePushToken = catchAsync(async (req, res) => {
   const { _id } = req.user;
-  const { expoPushToken } = req.body;
+  const { pushToken } = req.body;
 
-  const result = await AuthServices.updateExpoPushToken(_id, expoPushToken);
+  const result = await AuthServices.updatePushToken(_id, pushToken);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -251,6 +251,6 @@ export const AuthControllers = {
   activeAccount,
   getMe,
   updateProfile,
-  updateExpoPushToken,
+  updatePushToken,
   deleteAccount
 };

@@ -13,7 +13,7 @@ const sendNotification = async (payload: any) => {
   const { userIds, title, message } = payload;
 
   const users = await Accounts.find({ _id: { $in: userIds } }).select(
-    "_id expoPushToken"
+    "_id pushToken"
   );
 
   if (!users || users.length === 0) {
@@ -30,12 +30,12 @@ const sendNotification = async (payload: any) => {
   // Expo push (unchanged)
   const messages: any[] = [];
   for (const user of users) {
-    if (!user.expoPushToken || !Expo.isExpoPushToken(user.expoPushToken)) {
-      continue;
-    }
+    // if (!user.pushToken || !Expo.ispushToken(user.pushToken)) {
+    //   continue;
+    // }
 
     messages.push({
-      to: user.expoPushToken,
+      to: user.pushToken,
       sound: "default",
       title,
       body: message,

@@ -810,7 +810,7 @@ const updateProfile = (accountId, payload, file) => __awaiter(void 0, void 0, vo
     };
 });
 /* Update Expo Push Token */
-const updateExpoPushToken = (accountId, expoPushToken) => __awaiter(void 0, void 0, void 0, function* () {
+const updatePushToken = (accountId, pushToken) => __awaiter(void 0, void 0, void 0, function* () {
     // Find the account
     const account = yield accounts_model_1.Accounts.findById(accountId);
     if (!account) {
@@ -820,13 +820,13 @@ const updateExpoPushToken = (accountId, expoPushToken) => __awaiter(void 0, void
     if (account.isDeleted) {
         throw new AppError_1.default(http_status_1.default.FORBIDDEN, "Your account has been deleted. Please contact support.");
     }
-    // Update expoPushToken
-    yield accounts_model_1.Accounts.findByIdAndUpdate(accountId, { expoPushToken });
+    // Update pushToken
+    yield accounts_model_1.Accounts.findByIdAndUpdate(accountId, { pushToken });
     return {
         success: true,
         message: "Push notification token updated successfully",
         data: {
-            expoPushToken,
+            pushToken,
         },
     };
 });
@@ -852,6 +852,6 @@ exports.AuthServices = {
     activeAccount,
     getMe,
     updateProfile,
-    updateExpoPushToken,
+    updatePushToken,
     deleteAccount
 };

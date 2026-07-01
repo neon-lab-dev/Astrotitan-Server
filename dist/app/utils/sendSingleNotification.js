@@ -8,26 +8,74 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendSingleNotification = void 0;
-const expo_server_sdk_1 = __importDefault(require("expo-server-sdk"));
+exports.sendSingleNotification = exports.sendPushNotification = void 0;
 const accounts_model_1 = require("../modules/accounts/accounts.model");
 const notification_model_1 = require("../modules/notification/notification.model");
 const socket_1 = require("../socket");
-const expo = new expo_server_sdk_1.default();
-// Send a single-user Expo notification
+const app_1 = require("firebase-admin/app");
+const messaging_1 = require("firebase-admin/messaging");
+// ✅ Initialize Firebase Admin only once
+if (!(0, app_1.getApps)().length) {
+    try {
+        const serviceAccount = {
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: (_a = process.env.FIREBASE_PRIVATE_KEY) === null || _a === void 0 ? void 0 : _a.replace(/\\n/g, '\n'),
+        };
+        (0, app_1.initializeApp)({
+            credential: (0, app_1.cert)(serviceAccount),
+        });
+        console.log('✅ Firebase Admin initialized successfully');
+    }
+    catch (error) {
+        console.error('❌ Firebase Admin initialization failed:', error);
+    }
+}
+// ✅ Get messaging instance
+const messaging = (0, messaging_1.getMessaging)();
+// Function to send notification to a specific device
+const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!fcmToken) {
+        console.log('⚠️ No FCM token provided');
+        return;
+    }
+    const payload = {
+        notification: {
+            title: title,
+            body: message,
+        },
+        data: data || {},
+        token: fcmToken,
+    };
+    try {
+        const response = yield messaging.send(payload);
+        console.log('✅ Successfully sent notification:', response);
+        return response;
+    }
+    catch (error) {
+        console.error('❌ Error sending notification:', error);
+        // Handle specific FCM errors
+        if (error.code === 'messaging/invalid-registration-token' ||
+            error.code === 'messaging/registration-token-not-registered') {
+            console.log('⚠️ Invalid FCM token, removing from database');
+            yield accounts_model_1.Accounts.findOneAndUpdate({ pushToken: fcmToken }, { $unset: { pushToken: "" } });
+        }
+        throw error;
+    }
+});
+exports.sendPushNotification = sendPushNotification;
+// Send a single-user notification
 const sendSingleNotification = (userId, title, message) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const user = yield accounts_model_1.Accounts.findById(userId).select("expoPushToken");
+        const user = yield accounts_model_1.Accounts.findById(userId).select("pushToken");
         if (!user) {
             console.log(`❌ User not found: ${userId}`);
             return;
         }
-        const token = user.expoPushToken;
-        console.log(`📱 Expo Push Token: ${token}`);
+        const token = user.pushToken;
+        console.log(`📱 Push Token: ${token}`);
         // Save notification to DB
         yield notification_model_1.Notification.create({
             to: [userId],
@@ -35,24 +83,17 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
             message,
             deliveryStatus: "pending",
         });
-        // Send Expo push notification (if token exists)
-        if (token && expo_server_sdk_1.default.isExpoPushToken(token)) {
+        // Send push notification (if token exists)
+        if (token) {
             try {
-                yield expo.sendPushNotificationsAsync([
-                    {
-                        to: token,
-                        sound: "default",
-                        title,
-                        body: message,
-                    },
-                ]);
-                console.log(`✅ Expo push sent to: ${userId}`);
+                yield (0, exports.sendPushNotification)(token, title, message, { userId: userId.toString() });
+                console.log(`✅ Push notification sent to: ${userId}`);
             }
             catch (pushError) {
-                console.error(`❌ Expo push failed:`, pushError);
+                console.error(`❌ Push notification failed:`, pushError);
             }
         }
-        // ✅ Emit via Socket.io - Get the socket ID from userSocketMap
+        // ✅ Emit via Socket.io - Real-time notification
         const socketId = socket_1.userSocketMap.get(userId.toString());
         if (socketId && socket_1.io) {
             socket_1.io.to(socketId).emit("new-notification", {

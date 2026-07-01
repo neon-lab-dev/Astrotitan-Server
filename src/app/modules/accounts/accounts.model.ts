@@ -95,7 +95,7 @@ const userSchema = new Schema<TAccounts, UserModel>(
       trim: true,
       default: null,
     },
-    expoPushToken: {
+    pushToken: {
       type: String,
       default: null,
     },
