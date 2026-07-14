@@ -61,6 +61,11 @@ router.get(
 
 // Call Routes
 router.post(
+    '/call/test',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.testTwilioCredentials
+);
+router.post(
     '/call/start',
     auth(UserRole.user, UserRole.astrologer),
     ConsultationControllers.startCall

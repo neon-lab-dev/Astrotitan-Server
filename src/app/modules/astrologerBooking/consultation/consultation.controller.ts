@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import { ConsultationServices } from "./consultation.service";
 import catchAsync from "../../../utils/catchAsync";
 import sendResponse from "../../../utils/sendResponse";
+import { generateTwilioAccessToken } from "../../../utils/twilio";
 
 /* Request Consultation */
 const requestConsultation = catchAsync(async (req, res) => {
@@ -236,6 +237,39 @@ const getCallStatus = catchAsync(async (req, res) => {
   });
 });
 
+
+// Add a test endpoint in your backend
+const testTwilioCredentials = catchAsync(async (req, res) => {
+  try {
+    // Test generating a token
+    const token = generateTwilioAccessToken('test-user', 'test-room');
+    
+    // Decode token to check
+    const parts = token.split('.');
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Twilio credentials valid",
+      data: {
+        tokenPreview: token.substring(0, 50) + '...',
+        payload: payload,
+        hasVideoGrant: !!payload.grants?.video,
+        identity: payload.grants?.identity,
+      },
+    });
+  } catch (error: any) {
+    sendResponse(res, {
+      statusCode: httpStatus.INTERNAL_SERVER_ERROR,
+      success: false,
+      message: error.message || "Twilio credentials invalid",
+      data: null,
+    });
+  }
+});
+
+
 export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationBookings,
@@ -250,4 +284,5 @@ export const ConsultationControllers = {
   rejectCall,
   getCallToken,
   getCallStatus,
+  testTwilioCredentials
 };

@@ -10,44 +10,72 @@ const twimlAppSid = config.twilio_twiml_app_sid;
 
 const client = twilio(accountSid, authToken);
 
-// Generate Access Token for a user
+// ✅ FIXED: Generate Access Token with correct method
 export const generateTwilioAccessToken = (identity: string, roomName: string) => {
+  // ✅ Use the correct AccessToken from twilio.jwt
   const AccessToken = twilio.jwt.AccessToken;
-  const VoiceGrant = AccessToken.VoiceGrant;
   const VideoGrant = AccessToken.VideoGrant;
+  const VoiceGrant = AccessToken.VoiceGrant;
 
-  // Voice Grant for audio calls
-  const voiceGrant = new VoiceGrant({
-    outgoingApplicationSid: twimlAppSid,
-    incomingAllow: true,
-  });
+  // ✅ CORRECT way to create token with API Key
+  const token = new AccessToken(
+    accountSid,  // ✅ Account SID (issuer)
+    apiKey,      // ✅ API Key SID (SK...)
+    apiSecret,   // ✅ API Key Secret
+    {
+      identity: identity,
+      ttl: 3600,
+    }
+  );
 
-  // Video Grant for video calls (optional)
-  const videoGrant = new VideoGrant({
-    room: roomName,
-  });
+  // ✅ Add Video Grant
+  if (roomName) {
+    const videoGrant = new VideoGrant({
+      room: roomName,
+    });
+    token.addGrant(videoGrant);
+  }
 
-  const token = new AccessToken(accountSid, apiKey, apiSecret, {
-    identity: identity,
-    ttl: 3600, // 1 hour
-  });
+  // ✅ Add Voice Grant (if twimlAppSid is available)
+  if (twimlAppSid) {
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: twimlAppSid,
+      incomingAllow: true,
+    });
+    token.addGrant(voiceGrant);
+  }
 
-  token.addGrant(voiceGrant);
-  token.addGrant(videoGrant);
+  // ✅ Generate the JWT
+  const jwtToken = token.toJwt();
+  
+  // ✅ Debug: Decode and log the token payload
+  try {
+    const parts = jwtToken.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      console.log('🔑 Token payload:', {
+        iss: payload.iss,
+        sub: payload.sub,
+        identity: payload.grants?.identity,
+        hasVideoGrant: !!payload.grants?.video,
+        room: payload.grants?.video?.room,
+      });
+    }
+  } catch (e) {
+    console.log('⚠️ Could not decode token');
+  }
 
-  return token.toJwt();
+  return jwtToken;
 };
 
 // Create a Twilio Video Room
-// utils/twilio.ts
 export const createRoom = async (roomName: string) => {
   try {
     const room = await client.video.rooms.create({
       uniqueName: roomName,
-      type: 'group', // ✅ Use 'group' instead of 'go'
-      // type: 'peer-to-peer', // Alternative for peer-to-peer (max 2 participants)
-      recordParticipantsOnConnect: false, // Optional
-      statusCallback: `${process.env.YOUR_DOMAIN}/api/v1/twilio/call-status`, // Optional
+      type: 'group',
+      recordParticipantsOnConnect: false,
+      statusCallback: `${process.env.YOUR_DOMAIN}/api/v1/twilio/call-status`,
     });
     console.log('✅ Room created:', room.sid);
     return room;
