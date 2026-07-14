@@ -13,9 +13,15 @@ export type TConsultation = {
     endedAt?: Date;
     endedBy?: ObjectId;
     startedAt?: Date;                // When chat actually started
-    duration?: number;               // Duration in minutes (for call)
     rating?: number;
     review?: string;
+
+    // for call
+    callRoomId?: string;
+    callStatus?: "idle" | "ringing" | "connected" | "declined" | "ended";
+    callStartedAt?: Date;
+    callEndedAt?: Date;
+    callDuration?: number;
     createdAt?: Date;
     updatedAt?: Date;
 };

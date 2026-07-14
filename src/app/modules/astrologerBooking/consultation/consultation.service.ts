@@ -6,6 +6,8 @@ import AppError from "../../../errors/AppError";
 import { sendSingleNotification } from "../../../utils/sendSingleNotification";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
 import { User } from "../../users/user.model";
+import { createRoom, endRoom, generateTwilioAccessToken } from "../../../utils/twilio";
+import { io, userSocketMap } from "../../../socket";
 
 const requestConsultation = async (
   accountId: string, // This is Account ID
@@ -374,6 +376,336 @@ const addReview = async (
 };
 
 
+const startCall = async (
+  consultationId: string,
+  callerId: string,
+) => {
+  // 1. Find consultation
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  // 2. Verify consultation is accepted
+  if (consultation.status !== 'accepted') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'Consultation must be accepted before starting a call'
+    );
+  }
+
+  const astrologer = await Astrologer.findOne({ accountId: callerId });
+
+  const user = await User.findOne({ accountId: consultation.user });
+
+  
+  // 3. Check if caller is part of consultation
+  const isUser = user?.accountId?.toString() === callerId;
+  const isAstrologer = astrologer.accountId.toString() === callerId;
+  console.log(callerId);
+  console.log(astrologer);
+  if (!isUser && !isAstrologer) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to start a call for this consultation'
+    );
+  }
+
+  // 4. Get the receiver ID
+  const receiverId = isUser
+    ? consultation.astrologer.toString()
+    : consultation.user.toString();
+
+  // 5. Get user details for notification
+  const caller = await User.findById(callerId).select('firstName lastName');
+  const callerName = caller?.firstName || 'Someone';
+
+  // 6. Create unique room name
+  const roomName = `consultation-${consultationId}-${Date.now()}`;
+
+  // 7. Create Twilio room
+  let room;
+  try {
+    room = await createRoom(roomName);
+  } catch (error: any) {
+    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Failed to create call room');
+  }
+
+  // 8. Generate tokens for both participants
+  const callerToken = generateTwilioAccessToken(callerId, roomName);
+  const receiverToken = generateTwilioAccessToken(receiverId, roomName);
+
+  // 9. Update consultation
+  consultation.callRoomId = roomName;
+  consultation.callStatus = 'ringing';
+  consultation.callStartedAt = new Date();
+  await consultation.save();
+
+  // 10. Emit incoming call event to receiver
+  const receiverSocketId = userSocketMap.get(receiverId);
+  if (receiverSocketId && io) {
+    io.to(receiverSocketId).emit('incoming-call', {
+      consultationId: consultation._id,
+      callerId,
+      callerName,
+      roomName,
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`📞 Incoming call sent to: ${receiverId}`);
+  } else {
+    console.log(`⚠️ Receiver ${receiverId} is offline`);
+    // You might want to handle this - send push notification
+  }
+
+  return {
+    success: true,
+    roomName,
+    callerToken,
+    receiverToken,
+    message: 'Call initiated successfully',
+  };
+};
+
+// Accept a call
+const acceptCall = async (consultationId: string, receiverId: string) => {
+  // 1. Find consultation
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  // 2. Verify consultation is in ringing state
+  if (consultation.callStatus !== 'ringing') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Call is not in ringing state (current: ${consultation.callStatus})`
+    );
+  }
+
+  // 3. Verify receiver is part of consultation
+  const isUser = consultation.user.toString() === receiverId;
+  const isAstrologer = consultation.astrologer.toString() === receiverId;
+  if (!isUser && !isAstrologer) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to accept this call'
+    );
+  }
+
+  // 4. Get the caller ID
+  const callerId = isUser
+    ? consultation.astrologer.toString()
+    : consultation.user.toString();
+
+  // 5. Update consultation
+  consultation.callStatus = 'connected';
+  await consultation.save();
+
+  // 6. Generate receiver token (if not already generated)
+  const roomName = consultation.callRoomId;
+  const receiverToken = generateTwilioAccessToken(receiverId, roomName as string);
+
+  // 7. Emit call accepted event to caller
+  const callerSocketId = userSocketMap.get(callerId);
+  if (callerSocketId && io) {
+    io.to(callerSocketId).emit('call-accepted', {
+      consultationId: consultation._id,
+      receiverId,
+      roomName,
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`📞 Call accepted by: ${receiverId}`);
+  }
+
+  return {
+    success: true,
+    roomName,
+    receiverToken,
+    message: 'Call accepted successfully',
+  };
+};
+
+// Reject a call
+const rejectCall = async (consultationId: string, receiverId: string) => {
+  // 1. Find consultation
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  // 2. Verify consultation is in ringing state
+  if (consultation.callStatus !== 'ringing') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Call is not in ringing state (current: ${consultation.callStatus})`
+    );
+  }
+
+  // 3. Get caller ID
+  const isUser = consultation.user.toString() === receiverId;
+  const callerId = isUser
+    ? consultation.astrologer.toString()
+    : consultation.user.toString();
+
+  // 4. Update consultation
+  consultation.callStatus = 'idle';
+  await consultation.save();
+
+  // 5. End the Twilio room if it exists
+  if (consultation.callRoomId) {
+    try {
+      await endRoom(consultation.callRoomId);
+    } catch (error) {
+      console.error('Error ending room:', error);
+    }
+  }
+
+  // 6. Emit call rejected event to caller
+  const callerSocketId = userSocketMap.get(callerId);
+  if (callerSocketId && io) {
+    io.to(callerSocketId).emit('call-rejected', {
+      consultationId: consultation._id,
+      receiverId,
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`📞 Call rejected by: ${receiverId}`);
+  }
+
+  return {
+    success: true,
+    message: 'Call rejected successfully',
+  };
+};
+
+// End a call (by either participant)
+const endCall = async (consultationId: string, userId: string) => {
+  // 1. Find consultation
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  // 2. Verify user is part of consultation
+  const isUser = consultation.user.toString() === userId;
+  const isAstrologer = consultation.astrologer.toString() === userId;
+  if (!isUser && !isAstrologer) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to end this call'
+    );
+  }
+
+  // 3. Get the other participant ID
+  const otherParticipantId = isUser
+    ? consultation.astrologer.toString()
+    : consultation.user.toString();
+
+  // 4. Calculate call duration
+  let callDuration = 0;
+  if (consultation.callStartedAt) {
+    callDuration = Math.floor(
+      (new Date().getTime() - consultation.callStartedAt.getTime()) / 1000
+    );
+  }
+
+  // 5. Update consultation
+  consultation.callStatus = 'ended';
+  consultation.callEndedAt = new Date();
+  // consultation.callEndedBy = isUser ? 'user' : 'astrologer';
+  consultation.callDuration = callDuration;
+  await consultation.save();
+
+  // 6. End the Twilio room if it exists
+  if (consultation.callRoomId) {
+    try {
+      await endRoom(consultation.callRoomId);
+    } catch (error) {
+      console.error('Error ending room:', error);
+    }
+  }
+
+  // 7. Emit call ended event to both participants
+  const participants = [userId, otherParticipantId];
+  participants.forEach((participantId) => {
+    const socketId = userSocketMap.get(participantId);
+    if (socketId && io) {
+      io.to(socketId).emit('call-ended', {
+        consultationId: consultation._id,
+        endedBy: userId,
+        duration: callDuration,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  console.log(`📞 Call ended by: ${userId} (Duration: ${callDuration}s)`);
+
+  return {
+    success: true,
+    duration: callDuration,
+    message: 'Call ended successfully',
+  };
+};
+
+// Get call token for joining an existing call
+const getCallToken = async (consultationId: string, userId: string) => {
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  // Verify user is part of consultation
+  const isUser = consultation.user.toString() === userId;
+  const isAstrologer = consultation.astrologer.toString() === userId;
+  if (!isUser && !isAstrologer) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to join this call'
+    );
+  }
+
+  // Verify call is in connected state
+  if (consultation.callStatus !== 'connected') {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Call is not in connected state (current: ${consultation.callStatus})`
+    );
+  }
+
+  const roomName = consultation.callRoomId;
+  if (!roomName) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      'No active call room found for this consultation'
+    );
+  }
+
+  const token = generateTwilioAccessToken(userId, roomName);
+
+  return {
+    success: true,
+    roomName,
+    token,
+    callType: 'audio', // or 'video' based on your implementation
+  };
+};
+
+// Get call status
+const getCallStatus = async (consultationId: string) => {
+  const consultation = await Consultation.findById(consultationId);
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
+  }
+
+  return {
+    status: consultation.callStatus,
+    roomId: consultation.callRoomId,
+    startedAt: consultation.callStartedAt,
+    duration: consultation.callDuration,
+  };
+};
+
+
 export const ConsultationServices = {
   requestConsultation,
   getMyConsultationBookings,
@@ -381,5 +713,13 @@ export const ConsultationServices = {
   changeConsultationStatus,
   getSingleConsultation,
   endConsultationSession,
-  addReview
+  addReview,
+  startCall,
+  endCall,
+  acceptCall,
+  rejectCall,
+  getCallToken,
+  getCallStatus,
+
+
 };

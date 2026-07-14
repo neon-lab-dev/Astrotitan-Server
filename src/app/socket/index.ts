@@ -6,6 +6,7 @@ import ConsultationChat from "../modules/astrologerBooking/consultationChat/cons
 import { ConsultationChatServices } from "../modules/astrologerBooking/consultationChat/consultationChat.service";
 import { User } from "../modules/users/user.model";
 import { Astrologer } from "../modules/astrologer/astrologer.model";
+import { ConsultationServices } from "../modules/astrologerBooking/consultation/consultation.service";
 
 export let io: SocketIOserver;
 export const userSocketMap = new Map();
@@ -234,6 +235,65 @@ const setupSocket = (server: Server) => {
                     io.emit("onlineUsers", onlineUsers);
                     break;
                 }
+            }
+        });
+
+
+
+        // In socket/index.ts - inside the connection handler
+
+        // ✅ Handle call events
+        socket.on('call-start', async (data) => {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId as string;
+
+                // Call the service directly
+                const result = await ConsultationServices.startCall(
+                    consultationId,
+                    userId
+                );
+
+                // Send success response back to caller
+                socket.emit('call-started', result);
+            } catch (error: any) {
+                socket.emit('call-error', { message: error.message });
+            }
+        });
+
+        socket.on('call-accept', async (data) => {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId as string;
+
+                const result = await ConsultationServices.acceptCall(consultationId, userId);
+                socket.emit('call-accepted-response', result);
+            } catch (error: any) {
+                socket.emit('call-error', { message: error.message });
+            }
+        });
+
+        socket.on('call-reject', async (data) => {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId as string;
+
+                const result = await ConsultationServices.rejectCall(consultationId, userId);
+                socket.emit('call-rejected-response', result);
+            } catch (error: any) {
+                socket.emit('call-error', { message: error.message });
+            }
+        });
+
+        socket.on('call-end', async (data) => {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId as string;
+
+                const result = await ConsultationServices.endCall(consultationId, userId);
+                socket.emit('call-ended-response', result);
+            } catch (error: any) {
+                socket.emit('call-error', { message: error.message });
             }
         });
     });

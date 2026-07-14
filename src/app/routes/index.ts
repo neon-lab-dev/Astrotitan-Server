@@ -14,6 +14,7 @@ import { ConsultationRoutes } from "../modules/astrologerBooking/consultation/co
 import { ConsultationChatRoutes } from "../modules/astrologerBooking/consultationChat/consultationChat.route";
 import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
+import { TwilioRoutes } from "../modules/twilio/twilio.route";
 
 const router = Router();
 
@@ -77,6 +78,10 @@ const moduleRoutes = [
   {
     path: "/notification",
     route: NotificationRoutes,
+  },
+  {
+    path: "/twilio",
+    route: TwilioRoutes,
   },
 ];
 

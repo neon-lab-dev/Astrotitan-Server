@@ -50,4 +50,50 @@ router.get(
     ConsultationControllers.getSingleConsultation
 );
 
+
+// user token
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTRkZTMxODkzNGMwZjVhYTYxMDc4MzEiLCJlbWFpbCI6InJhaHVsY2hhbmRyYXN1dHJhZGhhcjNAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOm51bGwsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzg0MDA4MDc2LCJleHAiOjE3ODQ2MTI4NzZ9.Rrc_GUmBzuNVHEv-VSUBqDHVI7OsUkYDEOFcy3qOvaA
+
+// Astorloger token
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTM4YjhhYTBkZjhhMzZkZDc5MmI1ZGEiLCJlbWFpbCI6InJhaHVsc2QzODBAZ21haWwuY29tIiwicGhvbmVOdW1iZXIiOiIrOTE5ODc2NTQzMjE1Iiwicm9sZSI6ImFzdHJvbG9nZXIiLCJpYXQiOjE3ODQwMDgxNTAsImV4cCI6MTc4NDYxMjk1MH0.v8CvJMzTMqS3SjPc4aWN-anXSnot_R_vipWM1ass1Cw
+
+
+
+// Call Routes
+router.post(
+    '/call/start',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.startCall
+);
+
+router.post(
+    '/call/accept',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.acceptCall
+);
+
+router.post(
+    '/call/reject',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.rejectCall
+);
+
+router.post(
+    '/call/end',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.endCall
+);
+
+router.get(
+    '/call/token/:consultationId',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.getCallToken
+);
+
+router.get(
+    '/call/status/:consultationId',
+    auth(UserRole.user, UserRole.astrologer),
+    ConsultationControllers.getCallStatus
+);
+
 export const ConsultationRoutes = router;

@@ -106,20 +106,20 @@ const getSingleConsultation = catchAsync(async (req, res) => {
 });
 
 const endConsultationSession = catchAsync(async (req, res) => {
-    const accountId = req.user._id;
-    const { consultationId } = req.params;
+  const accountId = req.user._id;
+  const { consultationId } = req.params;
 
-    const result = await ConsultationServices.endConsultationSession(
-        consultationId,
-        accountId
-    );
+  const result = await ConsultationServices.endConsultationSession(
+    consultationId,
+    accountId
+  );
 
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: "Session ended successfully!",
-        data: result,
-    });
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Session ended successfully!",
+    data: result,
+  });
 });
 
 
@@ -143,6 +143,99 @@ const addReview = catchAsync(async (req, res) => {
   });
 });
 
+
+// Start a call
+const startCall = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.body;
+
+  const result = await ConsultationServices.startCall(
+    consultationId,
+    userId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call initiated successfully',
+    data: result,
+  });
+});
+
+// Accept a call
+const acceptCall = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.body;
+
+  const result = await ConsultationServices.acceptCall(consultationId, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call accepted successfully',
+    data: result,
+  });
+});
+
+// Reject a call
+const rejectCall = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.body;
+
+  const result = await ConsultationServices.rejectCall(consultationId, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call rejected successfully',
+    data: result,
+  });
+});
+
+// End a call
+const endCall = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.body;
+
+  const result = await ConsultationServices.endCall(consultationId, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call ended successfully',
+    data: result,
+  });
+});
+
+// Get call token
+const getCallToken = catchAsync(async (req, res) => {
+  const userId = req.user._id;
+  const { consultationId } = req.params;
+
+  const result = await ConsultationServices.getCallToken(consultationId, userId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call token generated successfully',
+    data: result,
+  });
+});
+
+// Get call status
+const getCallStatus = catchAsync(async (req, res) => {
+  const { consultationId } = req.params;
+
+  const result = await ConsultationServices.getCallStatus(consultationId);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Call status fetched successfully',
+    data: result,
+  });
+});
+
 export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationBookings,
@@ -150,5 +243,11 @@ export const ConsultationControllers = {
   changeConsultationStatus,
   getSingleConsultation,
   endConsultationSession,
-  addReview
+  addReview,
+  startCall,
+  endCall,
+  acceptCall,
+  rejectCall,
+  getCallToken,
+  getCallStatus,
 };
