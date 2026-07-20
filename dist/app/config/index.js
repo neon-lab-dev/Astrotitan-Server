@@ -28,4 +28,9 @@ exports.default = {
     subscription_plan_id: process.env.SUBSCRIPTION_PLAN_ID,
     resend_api_key: process.env.RESEND_API_KEY,
     email_from: process.env.EMAIL_FROM,
+    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID,
+    twilio_auth_token: process.env.TWILIO_AUTH_TOKEN,
+    twilio_api_key: process.env.TWILIO_API_KEY,
+    twilio_api_secret: process.env.TWILIO_API_SECRET,
+    twilio_twiml_app_sid: process.env.TWILIO_TWIML_APP_SID
 };

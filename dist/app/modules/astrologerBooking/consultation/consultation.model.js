@@ -47,9 +47,6 @@ const ConsultationSchema = new mongoose_1.Schema({
     startedAt: {
         type: Date,
     },
-    duration: {
-        type: Number, // in minutes
-    },
     rating: {
         type: Number,
         min: 1,
@@ -58,6 +55,29 @@ const ConsultationSchema = new mongoose_1.Schema({
     review: {
         type: String,
         trim: true,
+    },
+    // Call fields
+    callRoomId: {
+        type: String,
+        index: true,
+    },
+    callStatus: {
+        type: String,
+        enum: ['idle', 'ringing', 'connected', 'ended'],
+        default: 'idle',
+    },
+    callStartedAt: {
+        type: Date,
+    },
+    callEndedAt: {
+        type: Date,
+    },
+    // callEndedBy: {
+    //   type: String,
+    //   enum: ['user', 'astrologer'],
+    // },
+    callDuration: {
+        type: Number, // in seconds
     },
 }, {
     timestamps: true,

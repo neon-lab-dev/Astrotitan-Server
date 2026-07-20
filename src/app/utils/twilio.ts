@@ -19,9 +19,9 @@ export const generateTwilioAccessToken = (identity: string, roomName: string) =>
 
   // ✅ CORRECT way to create token with API Key
   const token = new AccessToken(
-    accountSid,  // ✅ Account SID (issuer)
-    apiKey,      // ✅ API Key SID (SK...)
-    apiSecret,   // ✅ API Key Secret
+    accountSid as string,  // ✅ Account SID (issuer)
+    apiKey as string,      // ✅ API Key SID (SK...)
+    apiSecret as string,   // ✅ API Key Secret
     {
       identity: identity,
       ttl: 3600,

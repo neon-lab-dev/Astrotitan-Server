@@ -423,6 +423,7 @@ const startCall = async (
     const receiverUser = await User.findById(consultation.user);
     receiverAccountId = receiverUser?.accountId?.toString() || '';
     receiverUserObjectId = consultation.user.toString();
+    console.log(receiverUserObjectId);
   }
 
   // ✅ Get caller name for notification
@@ -437,9 +438,9 @@ const startCall = async (
   const roomName = `consultation-${consultationId}-${Date.now()}`;
 
   // 7. Create Twilio room
-  let room;
+  // let room;
   try {
-    room = await createRoom(roomName);
+    await createRoom(roomName);
   } catch (error: any) {
     throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Failed to create call room');
   }
