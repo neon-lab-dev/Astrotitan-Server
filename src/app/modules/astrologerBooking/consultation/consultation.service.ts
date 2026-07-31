@@ -6,8 +6,10 @@ import AppError from "../../../errors/AppError";
 import { sendSingleNotification } from "../../../utils/sendSingleNotification";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
 import { User } from "../../users/user.model";
-import { createRoom, endRoom, generateTwilioAccessToken } from "../../../utils/twilio";
+// import { createRoom, endRoom, generateTwilioAccessToken } from "../../../utils/twilio";
 import { io, userSocketMap } from "../../../socket";
+import { generateCallTokens, generateLiveKitToken } from "../../../utils/livekit";
+import config from "../../../config";
 
 const requestConsultation = async (
   accountId: string, // This is Account ID
@@ -376,6 +378,7 @@ const addReview = async (
 };
 
 
+// Start a call
 const startCall = async (
   consultationId: string,
   callerId: string,
@@ -394,13 +397,13 @@ const startCall = async (
     );
   }
 
-  // ✅ Find both user and astrologer by accountId
+  // 3. Find both user and astrologer by accountId
   const user = await User.findOne({ accountId: callerId });
   const astrologer = await Astrologer.findOne({ accountId: callerId });
 
-  // ✅ Check if caller is part of consultation
+  // 4. Check if caller is part of consultation
   const isUser = user && user?.accountId?.toString() === callerId;
-  const isAstrologer = astrologer && astrologer.accountId.toString() === callerId;
+  const isAstrologer = astrologer && astrologer.accountId?.toString() === callerId;
 
   if (!isUser && !isAstrologer) {
     throw new AppError(
@@ -409,24 +412,26 @@ const startCall = async (
     );
   }
 
-  // ✅ Get the receiver ID - THIS IS THE ACCOUNT ID
+  // 5. Get the receiver's Account ID
   let receiverAccountId: string;
-  let receiverUserObjectId: string;
-
   if (isUser) {
     // Caller is User, receiver is Astrologer
     const receiverAstrologer = await Astrologer.findById(consultation.astrologer);
     receiverAccountId = receiverAstrologer?.accountId?.toString() || '';
-    receiverUserObjectId = consultation.astrologer.toString();
   } else {
     // Caller is Astrologer, receiver is User
     const receiverUser = await User.findById(consultation.user);
     receiverAccountId = receiverUser?.accountId?.toString() || '';
-    receiverUserObjectId = consultation.user.toString();
-    console.log(receiverUserObjectId);
   }
 
-  // ✅ Get caller name for notification
+  if (!receiverAccountId) {
+    throw new AppError(
+      httpStatus.NOT_FOUND,
+      'Receiver account not found'
+    );
+  }
+
+  // 6. Get caller name for notification
   let callerName = 'Someone';
   if (isUser && user) {
     callerName = user.firstName || 'User';
@@ -434,20 +439,15 @@ const startCall = async (
     callerName = astrologer.displayName || astrologer.firstName || 'Astrologer';
   }
 
-  // 6. Create unique room name
+  // 7. Create unique room name
   const roomName = `consultation-${consultationId}-${Date.now()}`;
 
-  // 7. Create Twilio room
-  // let room;
-  try {
-    await createRoom(roomName);
-  } catch (error: any) {
-    throw new AppError(httpStatus.INTERNAL_SERVER_ERROR, error.message || 'Failed to create call room');
-  }
-
-  // 8. Generate tokens for both participants using Account IDs
-  const callerToken = generateTwilioAccessToken(callerId, roomName);
-  const receiverToken = generateTwilioAccessToken(receiverAccountId, roomName);
+  // 8. Generate LiveKit tokens for both participants
+  const { callerToken, receiverToken } = generateCallTokens(
+    callerId,
+    receiverAccountId,
+    roomName
+  );
 
   // 9. Update consultation
   consultation.callRoomId = roomName;
@@ -455,22 +455,23 @@ const startCall = async (
   consultation.callStartedAt = new Date();
   await consultation.save();
 
-  // 10. ✅ Emit incoming call event to receiver using ACCOUNT ID
+  // 10. Emit incoming call event to receiver
   const receiverSocketId = userSocketMap.get(receiverAccountId);
   if (receiverSocketId && io) {
     io.to(receiverSocketId).emit('incoming-call', {
       consultationId: consultation._id,
-      callerId: callerId, // Caller's Account ID
+      callerId: callerId,
       callerName,
       callerImage: isUser ? user?.profilePicture : astrologer?.profilePicture,
       roomName,
+      token: receiverToken,
+      serverUrl: config.livekit_ws_url,
       receiverAccountId,
       timestamp: new Date().toISOString(),
     });
     console.log(`📞 Incoming call sent to: ${receiverAccountId} (Socket: ${receiverSocketId})`);
   } else {
     console.log(`⚠️ Receiver ${receiverAccountId} is offline`);
-    // TODO: Send push notification
   }
 
   return {
@@ -478,6 +479,7 @@ const startCall = async (
     roomName,
     callerToken,
     receiverToken,
+    serverUrl: config.livekit_ws_url,
     message: 'Call initiated successfully',
   };
 };
@@ -498,7 +500,7 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
     );
   }
 
-  // 3. Verify receiver is part of consultation using accountId
+  // 3. Verify receiver is part of consultation
   const user = await User.findOne({ accountId: receiverId });
   const astrologer = await Astrologer.findOne({ accountId: receiverId });
 
@@ -515,11 +517,9 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
   // 4. Get the caller's Account ID
   let callerAccountId: string;
   if (isUser) {
-    // Current user is the receiver (User), caller is Astrologer
     const callerAstrologer = await Astrologer.findById(consultation.astrologer);
     callerAccountId = callerAstrologer?.accountId?.toString() || '';
   } else {
-    // Current user is the receiver (Astrologer), caller is User
     const callerUser = await User.findById(consultation.user);
     callerAccountId = callerUser?.accountId?.toString() || '';
   }
@@ -528,17 +528,22 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
   consultation.callStatus = 'connected';
   await consultation.save();
 
-  // 6. Generate receiver token
+  // 6. Generate receiver token (if needed)
   const roomName = consultation.callRoomId;
-  const receiverToken = generateTwilioAccessToken(receiverId, roomName as string);
+  const receiverToken = generateLiveKitToken(receiverId, roomName as string, {
+    role: 'receiver',
+    userId: receiverId,
+  });
 
-  // 7. Emit call accepted event to caller using Account ID
+  // 7. Emit call accepted event to caller
   const callerSocketId = userSocketMap.get(callerAccountId);
   if (callerSocketId && io) {
     io.to(callerSocketId).emit('call-accepted', {
       consultationId: consultation._id,
       receiverId,
       roomName,
+      token: receiverToken,
+      serverUrl: config.livekit_ws_url,
       timestamp: new Date().toISOString(),
     });
     console.log(`📞 Call accepted by: ${receiverId} (Caller socket: ${callerSocketId})`);
@@ -550,6 +555,7 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
     success: true,
     roomName,
     receiverToken,
+    serverUrl: config.livekit_ws_url,
     message: 'Call accepted successfully',
   };
 };
@@ -570,7 +576,7 @@ const rejectCall = async (consultationId: string, receiverId: string) => {
     );
   }
 
-  // 3. Verify receiver is part of consultation using accountId
+  // 3. Verify receiver is part of consultation
   const user = await User.findOne({ accountId: receiverId });
   const astrologer = await Astrologer.findOne({ accountId: receiverId });
 
@@ -598,16 +604,11 @@ const rejectCall = async (consultationId: string, receiverId: string) => {
   consultation.callStatus = 'idle';
   await consultation.save();
 
-  // 6. End the Twilio room if it exists
-  if (consultation.callRoomId) {
-    try {
-      await endRoom(consultation.callRoomId);
-    } catch (error) {
-      console.error('Error ending room:', error);
-    }
-  }
+  // 6. Clear the room
+  consultation.callRoomId = undefined;
+  await consultation.save();
 
-  // 7. Emit call rejected event to caller using Account ID
+  // 7. Emit call rejected event to caller
   const callerSocketId = userSocketMap.get(callerAccountId);
   if (callerSocketId && io) {
     io.to(callerSocketId).emit('call-rejected', {
@@ -626,7 +627,7 @@ const rejectCall = async (consultationId: string, receiverId: string) => {
   };
 };
 
-// End a call (by either participant)
+// End a call
 const endCall = async (consultationId: string, userId: string) => {
   // 1. Find consultation
   const consultation = await Consultation.findById(consultationId);
@@ -634,7 +635,7 @@ const endCall = async (consultationId: string, userId: string) => {
     throw new AppError(httpStatus.NOT_FOUND, 'Consultation not found');
   }
 
-  // 2. Verify user is part of consultation using accountId
+  // 2. Verify user is part of consultation
   const user = await User.findOne({ accountId: userId });
   const astrologer = await Astrologer.findOne({ accountId: userId });
 
@@ -669,20 +670,14 @@ const endCall = async (consultationId: string, userId: string) => {
   // 5. Update consultation
   consultation.callStatus = 'ended';
   consultation.callEndedAt = new Date();
-  // consultation.callEndedBy = isUser ? 'user' : 'astrologer';
   consultation.callDuration = callDuration;
   await consultation.save();
 
-  // 6. End the Twilio room if it exists
-  if (consultation.callRoomId) {
-    try {
-      await endRoom(consultation.callRoomId);
-    } catch (error) {
-      console.error('Error ending room:', error);
-    }
-  }
+  // 6. Clear the room (optional)
+  consultation.callRoomId = undefined;
+  await consultation.save();
 
-  // 7. Emit call ended event to both participants using Account IDs
+  // 7. Emit call ended event to both participants
   const participants = [userId, otherParticipantAccountId];
   participants.forEach((participantId) => {
     if (participantId) {
@@ -718,8 +713,12 @@ const getCallToken = async (consultationId: string, userId: string) => {
   }
 
   // Verify user is part of consultation
-  const isUser = consultation.user.toString() === userId;
-  const isAstrologer = consultation.astrologer.toString() === userId;
+  const user = await User.findOne({ accountId: userId });
+  const astrologer = await Astrologer.findOne({ accountId: userId });
+
+  const isUser = user && user?.accountId?.toString() === userId;
+  const isAstrologer = astrologer && astrologer.accountId?.toString() === userId;
+
   if (!isUser && !isAstrologer) {
     throw new AppError(
       httpStatus.FORBIDDEN,
@@ -743,13 +742,17 @@ const getCallToken = async (consultationId: string, userId: string) => {
     );
   }
 
-  const token = generateTwilioAccessToken(userId, roomName);
+  const token = generateLiveKitToken(userId, roomName, {
+    role: 'participant',
+    userId: userId,
+  });
 
   return {
     success: true,
     roomName,
     token,
-    callType: 'audio', // or 'video' based on your implementation
+    serverUrl: config.livekit_ws_url,
+    callType: 'audio',
   };
 };
 
@@ -767,7 +770,6 @@ const getCallStatus = async (consultationId: string) => {
     duration: consultation.callDuration,
   };
 };
-
 
 export const ConsultationServices = {
   requestConsultation,

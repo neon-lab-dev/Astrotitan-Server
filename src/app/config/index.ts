@@ -24,9 +24,17 @@ export default {
   subscription_plan_id: process.env.SUBSCRIPTION_PLAN_ID,
   resend_api_key: process.env.RESEND_API_KEY,
   email_from: process.env.EMAIL_FROM,
+
+  // TWILIO
   twilio_account_sid: process.env.TWILIO_ACCOUNT_SID,
   twilio_auth_token: process.env.TWILIO_AUTH_TOKEN,
   twilio_api_key: process.env.TWILIO_API_KEY,
   twilio_api_secret: process.env.TWILIO_API_SECRET,
-  twilio_twiml_app_sid: process.env.TWILIO_TWIML_APP_SID
+  twilio_twiml_app_sid: process.env.TWILIO_TWIML_APP_SID,
+
+  // Livekit
+  livekit_api_key: process.env.LIVEKIT_API_KEY,
+  livekit_api_secret: process.env.LIVEKIT_API_SECRET,
+  livekit_project_id: process.env.LIVEKIT_PROJECT_ID,
+  livekit_ws_url: process.env.LIVEKIT_WS_URL,
 };
