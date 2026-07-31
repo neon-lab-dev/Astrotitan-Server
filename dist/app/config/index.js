@@ -35,8 +35,8 @@ exports.default = {
     twilio_api_secret: process.env.TWILIO_API_SECRET,
     twilio_twiml_app_sid: process.env.TWILIO_TWIML_APP_SID,
     // Livekit
-    livekit_api_key: process.env.LIVEKIT_API_KEY,
-    livekit_api_secret: process.env.LIVEKIT_API_SECRET,
-    livekit_project_id: process.env.LIVEKIT_PROJECT_ID,
-    livekit_ws_url: process.env.LIVEKIT_WS_URL,
+    agora_app_id: process.env.AGORA_APP_ID,
+    agora_app_certificate: process.env.AGORA_APP_CERTIFICATE,
+    agora_customer_id: process.env.AGORA_CUSTOMER_ID,
+    agora_customer_secret: process.env.AGORA_CUSTOMER_SECRET,
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from "http-status";
 import Consultation from "./consultation.model";
@@ -8,8 +9,6 @@ import { infinitePaginate } from "../../../utils/infinitePaginate";
 import { User } from "../../users/user.model";
 // import { createRoom, endRoom, generateTwilioAccessToken } from "../../../utils/twilio";
 import { io, userSocketMap } from "../../../socket";
-import { generateCallTokens, generateLiveKitToken } from "../../../utils/livekit";
-import config from "../../../config";
 
 const requestConsultation = async (
   accountId: string, // This is Account ID
@@ -377,8 +376,9 @@ const addReview = async (
   };
 };
 
-
-// Start a call
+/**
+ * Start a call - Caller initiates the call
+ */
 const startCall = async (
   consultationId: string,
   callerId: string,
@@ -414,14 +414,21 @@ const startCall = async (
 
   // 5. Get the receiver's Account ID
   let receiverAccountId: string;
+  let receiverName: string;
+  let receiverObjectId: string;
+
   if (isUser) {
     // Caller is User, receiver is Astrologer
     const receiverAstrologer = await Astrologer.findById(consultation.astrologer);
     receiverAccountId = receiverAstrologer?.accountId?.toString() || '';
+    receiverName = receiverAstrologer?.displayName || 'Astrologer';
+    receiverObjectId = consultation.astrologer.toString();
   } else {
     // Caller is Astrologer, receiver is User
     const receiverUser = await User.findById(consultation.user);
     receiverAccountId = receiverUser?.accountId?.toString() || '';
+    receiverName = receiverUser?.firstName || 'User';
+    receiverObjectId = consultation.user.toString();
   }
 
   if (!receiverAccountId) {
@@ -442,20 +449,13 @@ const startCall = async (
   // 7. Create unique room name
   const roomName = `consultation-${consultationId}-${Date.now()}`;
 
-  // 8. Generate LiveKit tokens for both participants
-  const { callerToken, receiverToken } = generateCallTokens(
-    callerId,
-    receiverAccountId,
-    roomName
-  );
-
-  // 9. Update consultation
+  // 8. Update consultation
   consultation.callRoomId = roomName;
   consultation.callStatus = 'ringing';
   consultation.callStartedAt = new Date();
   await consultation.save();
 
-  // 10. Emit incoming call event to receiver
+  // 9. Emit incoming call event to receiver
   const receiverSocketId = userSocketMap.get(receiverAccountId);
   if (receiverSocketId && io) {
     io.to(receiverSocketId).emit('incoming-call', {
@@ -464,8 +464,6 @@ const startCall = async (
       callerName,
       callerImage: isUser ? user?.profilePicture : astrologer?.profilePicture,
       roomName,
-      token: receiverToken,
-      serverUrl: config.livekit_ws_url,
       receiverAccountId,
       timestamp: new Date().toISOString(),
     });
@@ -477,14 +475,17 @@ const startCall = async (
   return {
     success: true,
     roomName,
-    callerToken,
-    receiverToken,
-    serverUrl: config.livekit_ws_url,
+    callerId,
+    callerName,
+    receiverAccountId,
+    receiverName,
     message: 'Call initiated successfully',
   };
 };
 
-// Accept a call
+/**
+ * Accept a call - Receiver accepts the incoming call
+ */
 const acceptCall = async (consultationId: string, receiverId: string) => {
   // 1. Find consultation
   const consultation = await Consultation.findById(consultationId);
@@ -516,24 +517,28 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
 
   // 4. Get the caller's Account ID
   let callerAccountId: string;
+  let callerName: string;
+
   if (isUser) {
+    // Receiver is User, caller is Astrologer
     const callerAstrologer = await Astrologer.findById(consultation.astrologer);
     callerAccountId = callerAstrologer?.accountId?.toString() || '';
+    callerName = callerAstrologer?.displayName || 'Astrologer';
   } else {
+    // Receiver is Astrologer, caller is User
     const callerUser = await User.findById(consultation.user);
     callerAccountId = callerUser?.accountId?.toString() || '';
+    callerName = callerUser?.firstName || 'User';
   }
 
-  // 5. Update consultation
+  // 5. Get receiver name
+  let receiverName = 'User';
+  if (user) receiverName = user.firstName || 'User';
+  else if (astrologer) receiverName = astrologer.displayName || 'Astrologer';
+
+  // 6. Update consultation
   consultation.callStatus = 'connected';
   await consultation.save();
-
-  // 6. Generate receiver token (if needed)
-  const roomName = consultation.callRoomId;
-  const receiverToken = generateLiveKitToken(receiverId, roomName as string, {
-    role: 'receiver',
-    userId: receiverId,
-  });
 
   // 7. Emit call accepted event to caller
   const callerSocketId = userSocketMap.get(callerAccountId);
@@ -541,9 +546,8 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
     io.to(callerSocketId).emit('call-accepted', {
       consultationId: consultation._id,
       receiverId,
-      roomName,
-      token: receiverToken,
-      serverUrl: config.livekit_ws_url,
+      receiverName,
+      roomName: consultation.callRoomId,
       timestamp: new Date().toISOString(),
     });
     console.log(`📞 Call accepted by: ${receiverId} (Caller socket: ${callerSocketId})`);
@@ -553,14 +557,18 @@ const acceptCall = async (consultationId: string, receiverId: string) => {
 
   return {
     success: true,
-    roomName,
-    receiverToken,
-    serverUrl: config.livekit_ws_url,
+    roomName: consultation.callRoomId,
+    callerAccountId,
+    callerName,
+    receiverId,
+    receiverName,
     message: 'Call accepted successfully',
   };
 };
 
-// Reject a call
+/**
+ * Reject a call - Receiver rejects the incoming call
+ */
 const rejectCall = async (consultationId: string, receiverId: string) => {
   // 1. Find consultation
   const consultation = await Consultation.findById(consultationId);
@@ -602,13 +610,10 @@ const rejectCall = async (consultationId: string, receiverId: string) => {
 
   // 5. Update consultation
   consultation.callStatus = 'idle';
-  await consultation.save();
-
-  // 6. Clear the room
   consultation.callRoomId = undefined;
   await consultation.save();
 
-  // 7. Emit call rejected event to caller
+  // 6. Emit call rejected event to caller
   const callerSocketId = userSocketMap.get(callerAccountId);
   if (callerSocketId && io) {
     io.to(callerSocketId).emit('call-rejected', {
@@ -627,7 +632,9 @@ const rejectCall = async (consultationId: string, receiverId: string) => {
   };
 };
 
-// End a call
+/**
+ * End a call - Either participant can end the call
+ */
 const endCall = async (consultationId: string, userId: string) => {
   // 1. Find consultation
   const consultation = await Consultation.findById(consultationId);
@@ -663,7 +670,7 @@ const endCall = async (consultationId: string, userId: string) => {
   let callDuration = 0;
   if (consultation.callStartedAt) {
     callDuration = Math.floor(
-      (new Date().getTime() - consultation.callStartedAt.getTime()) / 1000
+      (Date.now() - consultation.callStartedAt.getTime()) / 1000
     );
   }
 
@@ -671,13 +678,10 @@ const endCall = async (consultationId: string, userId: string) => {
   consultation.callStatus = 'ended';
   consultation.callEndedAt = new Date();
   consultation.callDuration = callDuration;
-  await consultation.save();
-
-  // 6. Clear the room (optional)
   consultation.callRoomId = undefined;
   await consultation.save();
 
-  // 7. Emit call ended event to both participants
+  // 6. Emit call ended event to both participants
   const participants = [userId, otherParticipantAccountId];
   participants.forEach((participantId) => {
     if (participantId) {
@@ -705,7 +709,9 @@ const endCall = async (consultationId: string, userId: string) => {
   };
 };
 
-// Get call token for joining an existing call
+/**
+ * Get call token for rejoining an existing call
+ */
 const getCallToken = async (consultationId: string, userId: string) => {
   const consultation = await Consultation.findById(consultationId);
   if (!consultation) {
@@ -742,21 +748,17 @@ const getCallToken = async (consultationId: string, userId: string) => {
     );
   }
 
-  const token = generateLiveKitToken(userId, roomName, {
-    role: 'participant',
-    userId: userId,
-  });
-
   return {
     success: true,
     roomName,
-    token,
-    serverUrl: config.livekit_ws_url,
     callType: 'audio',
+    message: 'Call token generated successfully',
   };
 };
 
-// Get call status
+/**
+ * Get call status
+ */
 const getCallStatus = async (consultationId: string) => {
   const consultation = await Consultation.findById(consultationId);
   if (!consultation) {
@@ -767,9 +769,11 @@ const getCallStatus = async (consultationId: string) => {
     status: consultation.callStatus,
     roomId: consultation.callRoomId,
     startedAt: consultation.callStartedAt,
+    endedAt: consultation.callEndedAt,
     duration: consultation.callDuration,
   };
 };
+
 
 export const ConsultationServices = {
   requestConsultation,
@@ -785,6 +789,4 @@ export const ConsultationServices = {
   rejectCall,
   getCallToken,
   getCallStatus,
-
-
 };
