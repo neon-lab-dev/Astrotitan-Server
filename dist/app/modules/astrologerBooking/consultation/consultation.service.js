@@ -13,7 +13,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultationServices = void 0;
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const http_status_1 = __importDefault(require("http-status"));
 const consultation_model_1 = __importDefault(require("./consultation.model"));
@@ -22,7 +21,7 @@ const AppError_1 = __importDefault(require("../../../errors/AppError"));
 const sendSingleNotification_1 = require("../../../utils/sendSingleNotification");
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
-// import { createRoom, endRoom, generateTwilioAccessToken } from "../../../utils/twilio";
+const twilio_1 = require("../../../utils/twilio");
 const socket_1 = require("../../../socket");
 const requestConsultation = (accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -249,11 +248,8 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
         },
     };
 });
-/**
- * Start a call - Caller initiates the call
- */
 const startCall = (consultationId, callerId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     // 1. Find consultation
     const consultation = yield consultation_model_1.default.findById(consultationId);
     if (!consultation) {
@@ -263,37 +259,32 @@ const startCall = (consultationId, callerId) => __awaiter(void 0, void 0, void 0
     if (consultation.status !== 'accepted') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Consultation must be accepted before starting a call');
     }
-    // 3. Find both user and astrologer by accountId
+    // ✅ Find both user and astrologer by accountId
     const user = yield user_model_1.User.findOne({ accountId: callerId });
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: callerId });
-    // 4. Check if caller is part of consultation
+    // ✅ Check if caller is part of consultation
     const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === callerId;
-    const isAstrologer = astrologer && ((_b = astrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) === callerId;
+    const isAstrologer = astrologer && astrologer.accountId.toString() === callerId;
     if (!isUser && !isAstrologer) {
         throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to start a call for this consultation');
     }
-    // 5. Get the receiver's Account ID
+    // ✅ Get the receiver ID - THIS IS THE ACCOUNT ID
     let receiverAccountId;
-    let receiverName;
-    let receiverObjectId;
+    let receiverUserObjectId;
     if (isUser) {
         // Caller is User, receiver is Astrologer
         const receiverAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-        receiverAccountId = ((_c = receiverAstrologer === null || receiverAstrologer === void 0 ? void 0 : receiverAstrologer.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-        receiverName = (receiverAstrologer === null || receiverAstrologer === void 0 ? void 0 : receiverAstrologer.displayName) || 'Astrologer';
-        receiverObjectId = consultation.astrologer.toString();
+        receiverAccountId = ((_b = receiverAstrologer === null || receiverAstrologer === void 0 ? void 0 : receiverAstrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) || '';
+        receiverUserObjectId = consultation.astrologer.toString();
     }
     else {
         // Caller is Astrologer, receiver is User
         const receiverUser = yield user_model_1.User.findById(consultation.user);
-        receiverAccountId = ((_d = receiverUser === null || receiverUser === void 0 ? void 0 : receiverUser.accountId) === null || _d === void 0 ? void 0 : _d.toString()) || '';
-        receiverName = (receiverUser === null || receiverUser === void 0 ? void 0 : receiverUser.firstName) || 'User';
-        receiverObjectId = consultation.user.toString();
+        receiverAccountId = ((_c = receiverUser === null || receiverUser === void 0 ? void 0 : receiverUser.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
+        receiverUserObjectId = consultation.user.toString();
+        console.log(receiverUserObjectId);
     }
-    if (!receiverAccountId) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Receiver account not found');
-    }
-    // 6. Get caller name for notification
+    // ✅ Get caller name for notification
     let callerName = 'Someone';
     if (isUser && user) {
         callerName = user.firstName || 'User';
@@ -301,19 +292,30 @@ const startCall = (consultationId, callerId) => __awaiter(void 0, void 0, void 0
     else if (isAstrologer && astrologer) {
         callerName = astrologer.displayName || astrologer.firstName || 'Astrologer';
     }
-    // 7. Create unique room name
+    // 6. Create unique room name
     const roomName = `consultation-${consultationId}-${Date.now()}`;
-    // 8. Update consultation
+    // 7. Create Twilio room
+    // let room;
+    try {
+        yield (0, twilio_1.createRoom)(roomName);
+    }
+    catch (error) {
+        throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, error.message || 'Failed to create call room');
+    }
+    // 8. Generate tokens for both participants using Account IDs
+    const callerToken = (0, twilio_1.generateTwilioAccessToken)(callerId, roomName);
+    const receiverToken = (0, twilio_1.generateTwilioAccessToken)(receiverAccountId, roomName);
+    // 9. Update consultation
     consultation.callRoomId = roomName;
     consultation.callStatus = 'ringing';
     consultation.callStartedAt = new Date();
     yield consultation.save();
-    // 9. Emit incoming call event to receiver
+    // 10. ✅ Emit incoming call event to receiver using ACCOUNT ID
     const receiverSocketId = socket_1.userSocketMap.get(receiverAccountId);
     if (receiverSocketId && socket_1.io) {
         socket_1.io.to(receiverSocketId).emit('incoming-call', {
             consultationId: consultation._id,
-            callerId: callerId,
+            callerId: callerId, // Caller's Account ID
             callerName,
             callerImage: isUser ? user === null || user === void 0 ? void 0 : user.profilePicture : astrologer === null || astrologer === void 0 ? void 0 : astrologer.profilePicture,
             roomName,
@@ -324,20 +326,17 @@ const startCall = (consultationId, callerId) => __awaiter(void 0, void 0, void 0
     }
     else {
         console.log(`⚠️ Receiver ${receiverAccountId} is offline`);
+        // TODO: Send push notification
     }
     return {
         success: true,
         roomName,
-        callerId,
-        callerName,
-        receiverAccountId,
-        receiverName,
+        callerToken,
+        receiverToken,
         message: 'Call initiated successfully',
     };
 });
-/**
- * Accept a call - Receiver accepts the incoming call
- */
+// Accept a call
 const acceptCall = (consultationId, receiverId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d;
     // 1. Find consultation
@@ -349,7 +348,7 @@ const acceptCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
     if (consultation.callStatus !== 'ringing') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Call is not in ringing state (current: ${consultation.callStatus})`);
     }
-    // 3. Verify receiver is part of consultation
+    // 3. Verify receiver is part of consultation using accountId
     const user = yield user_model_1.User.findOne({ accountId: receiverId });
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: receiverId });
     const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === receiverId;
@@ -359,36 +358,29 @@ const acceptCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
     }
     // 4. Get the caller's Account ID
     let callerAccountId;
-    let callerName;
     if (isUser) {
-        // Receiver is User, caller is Astrologer
+        // Current user is the receiver (User), caller is Astrologer
         const callerAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
         callerAccountId = ((_c = callerAstrologer === null || callerAstrologer === void 0 ? void 0 : callerAstrologer.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-        callerName = (callerAstrologer === null || callerAstrologer === void 0 ? void 0 : callerAstrologer.displayName) || 'Astrologer';
     }
     else {
-        // Receiver is Astrologer, caller is User
+        // Current user is the receiver (Astrologer), caller is User
         const callerUser = yield user_model_1.User.findById(consultation.user);
         callerAccountId = ((_d = callerUser === null || callerUser === void 0 ? void 0 : callerUser.accountId) === null || _d === void 0 ? void 0 : _d.toString()) || '';
-        callerName = (callerUser === null || callerUser === void 0 ? void 0 : callerUser.firstName) || 'User';
     }
-    // 5. Get receiver name
-    let receiverName = 'User';
-    if (user)
-        receiverName = user.firstName || 'User';
-    else if (astrologer)
-        receiverName = astrologer.displayName || 'Astrologer';
-    // 6. Update consultation
+    // 5. Update consultation
     consultation.callStatus = 'connected';
     yield consultation.save();
-    // 7. Emit call accepted event to caller
+    // 6. Generate receiver token
+    const roomName = consultation.callRoomId;
+    const receiverToken = (0, twilio_1.generateTwilioAccessToken)(receiverId, roomName);
+    // 7. Emit call accepted event to caller using Account ID
     const callerSocketId = socket_1.userSocketMap.get(callerAccountId);
     if (callerSocketId && socket_1.io) {
         socket_1.io.to(callerSocketId).emit('call-accepted', {
             consultationId: consultation._id,
             receiverId,
-            receiverName,
-            roomName: consultation.callRoomId,
+            roomName,
             timestamp: new Date().toISOString(),
         });
         console.log(`📞 Call accepted by: ${receiverId} (Caller socket: ${callerSocketId})`);
@@ -398,17 +390,12 @@ const acceptCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
     }
     return {
         success: true,
-        roomName: consultation.callRoomId,
-        callerAccountId,
-        callerName,
-        receiverId,
-        receiverName,
+        roomName,
+        receiverToken,
         message: 'Call accepted successfully',
     };
 });
-/**
- * Reject a call - Receiver rejects the incoming call
- */
+// Reject a call
 const rejectCall = (consultationId, receiverId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d;
     // 1. Find consultation
@@ -420,7 +407,7 @@ const rejectCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
     if (consultation.callStatus !== 'ringing') {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Call is not in ringing state (current: ${consultation.callStatus})`);
     }
-    // 3. Verify receiver is part of consultation
+    // 3. Verify receiver is part of consultation using accountId
     const user = yield user_model_1.User.findOne({ accountId: receiverId });
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: receiverId });
     const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === receiverId;
@@ -440,9 +427,17 @@ const rejectCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
     }
     // 5. Update consultation
     consultation.callStatus = 'idle';
-    consultation.callRoomId = undefined;
     yield consultation.save();
-    // 6. Emit call rejected event to caller
+    // 6. End the Twilio room if it exists
+    if (consultation.callRoomId) {
+        try {
+            yield (0, twilio_1.endRoom)(consultation.callRoomId);
+        }
+        catch (error) {
+            console.error('Error ending room:', error);
+        }
+    }
+    // 7. Emit call rejected event to caller using Account ID
     const callerSocketId = socket_1.userSocketMap.get(callerAccountId);
     if (callerSocketId && socket_1.io) {
         socket_1.io.to(callerSocketId).emit('call-rejected', {
@@ -460,9 +455,7 @@ const rejectCall = (consultationId, receiverId) => __awaiter(void 0, void 0, voi
         message: 'Call rejected successfully',
     };
 });
-/**
- * End a call - Either participant can end the call
- */
+// End a call (by either participant)
 const endCall = (consultationId, userId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c, _d;
     // 1. Find consultation
@@ -470,7 +463,7 @@ const endCall = (consultationId, userId) => __awaiter(void 0, void 0, void 0, fu
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
     }
-    // 2. Verify user is part of consultation
+    // 2. Verify user is part of consultation using accountId
     const user = yield user_model_1.User.findOne({ accountId: userId });
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
     const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === userId;
@@ -491,15 +484,24 @@ const endCall = (consultationId, userId) => __awaiter(void 0, void 0, void 0, fu
     // 4. Calculate call duration
     let callDuration = 0;
     if (consultation.callStartedAt) {
-        callDuration = Math.floor((Date.now() - consultation.callStartedAt.getTime()) / 1000);
+        callDuration = Math.floor((new Date().getTime() - consultation.callStartedAt.getTime()) / 1000);
     }
     // 5. Update consultation
     consultation.callStatus = 'ended';
     consultation.callEndedAt = new Date();
+    // consultation.callEndedBy = isUser ? 'user' : 'astrologer';
     consultation.callDuration = callDuration;
-    consultation.callRoomId = undefined;
     yield consultation.save();
-    // 6. Emit call ended event to both participants
+    // 6. End the Twilio room if it exists
+    if (consultation.callRoomId) {
+        try {
+            yield (0, twilio_1.endRoom)(consultation.callRoomId);
+        }
+        catch (error) {
+            console.error('Error ending room:', error);
+        }
+    }
+    // 7. Emit call ended event to both participants using Account IDs
     const participants = [userId, otherParticipantAccountId];
     participants.forEach((participantId) => {
         if (participantId) {
@@ -525,20 +527,15 @@ const endCall = (consultationId, userId) => __awaiter(void 0, void 0, void 0, fu
         message: 'Call ended successfully',
     };
 });
-/**
- * Get call token for rejoining an existing call
- */
+// Get call token for joining an existing call
 const getCallToken = (consultationId, userId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
     const consultation = yield consultation_model_1.default.findById(consultationId);
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
     }
     // Verify user is part of consultation
-    const user = yield user_model_1.User.findOne({ accountId: userId });
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
-    const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === userId;
-    const isAstrologer = astrologer && ((_b = astrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) === userId;
+    const isUser = consultation.user.toString() === userId;
+    const isAstrologer = consultation.astrologer.toString() === userId;
     if (!isUser && !isAstrologer) {
         throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to join this call');
     }
@@ -550,16 +547,15 @@ const getCallToken = (consultationId, userId) => __awaiter(void 0, void 0, void 
     if (!roomName) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'No active call room found for this consultation');
     }
+    const token = (0, twilio_1.generateTwilioAccessToken)(userId, roomName);
     return {
         success: true,
         roomName,
-        callType: 'audio',
-        message: 'Call token generated successfully',
+        token,
+        callType: 'audio', // or 'video' based on your implementation
     };
 });
-/**
- * Get call status
- */
+// Get call status
 const getCallStatus = (consultationId) => __awaiter(void 0, void 0, void 0, function* () {
     const consultation = yield consultation_model_1.default.findById(consultationId);
     if (!consultation) {
@@ -569,7 +565,6 @@ const getCallStatus = (consultationId) => __awaiter(void 0, void 0, void 0, func
         status: consultation.callStatus,
         roomId: consultation.callRoomId,
         startedAt: consultation.callStartedAt,
-        endedAt: consultation.callEndedAt,
         duration: consultation.callDuration,
     };
 });

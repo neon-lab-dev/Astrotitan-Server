@@ -13,7 +13,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.userSocketMap = exports.io = void 0;
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const socket_io_1 = require("socket.io");
 const consultation_model_1 = __importDefault(require("../modules/astrologerBooking/consultation/consultation.model"));
@@ -23,12 +22,12 @@ const user_model_1 = require("../modules/users/user.model");
 const astrologer_model_1 = require("../modules/astrologer/astrologer.model");
 const consultation_service_1 = require("../modules/astrologerBooking/consultation/consultation.service");
 exports.userSocketMap = new Map();
-// ✅ Store active calls for tracking
-const activeCalls = new Map();
 const setupSocket = (server) => {
     exports.io = new socket_io_1.Server(server, {
         cors: {
-            origin: ["*"],
+            origin: [
+                "*"
+            ],
             methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
             allowedHeaders: ["Content-Type", "Authorization"],
             credentials: true,
@@ -37,7 +36,6 @@ const setupSocket = (server) => {
         pingTimeout: 60000,
         transports: ["websocket", "polling"],
     });
-    // ✅ Send message function (existing)
     const sendMessage = (message) => __awaiter(void 0, void 0, void 0, function* () {
         const senderId = message.sender;
         const receiverId = message.receiver;
@@ -45,6 +43,7 @@ const setupSocket = (server) => {
         const senderSocketId = exports.userSocketMap.get(senderId);
         const receiverSocketId = exports.userSocketMap.get(receiverId);
         try {
+            // ✅ Find consultation
             const consultation = yield consultation_model_1.default.findOne({
                 _id: consultationId,
                 status: { $in: ["accepted", "pending"] },
@@ -61,8 +60,20 @@ const setupSocket = (server) => {
             }
             const user = yield user_model_1.User.findById(consultation === null || consultation === void 0 ? void 0 : consultation.user);
             const astrologer = yield astrologer_model_1.Astrologer.findById(consultation === null || consultation === void 0 ? void 0 : consultation.astrologer);
+            // Check if sender is part of this consultation (now using Account IDs directly)
             const isUser = consultation.user.toString() === (user === null || user === void 0 ? void 0 : user._id.toString());
             const isAstrologer = consultation.astrologer.toString() === (astrologer === null || astrologer === void 0 ? void 0 : astrologer._id.toString());
+            // console.log("Consultation.user:", consultation.user.toString());
+            // console.log("Consultation.astrologer:", consultation.astrologer.toString());
+            // console.log("Sender ID:", senderId);
+            // console.log("Is User:", isUser);
+            // console.log("Is Astrologer:", isAstrologer);
+            // console.log("📩 Sender ID:", senderId);
+            // console.log("📩 Receiver ID:", receiverId);
+            // console.log("📩 Sender Socket ID:", senderSocketId);
+            // console.log("📩 Receiver Socket ID:", receiverSocketId);
+            // console.log("📊 All online users:", Array.from(userSocketMap.keys()));
+            // console.log("📊 userSocketMap size:", userSocketMap.size);
             if (!isUser && !isAstrologer) {
                 console.log("❌ Sender is not part of this consultation");
                 if (senderSocketId) {
@@ -73,6 +84,7 @@ const setupSocket = (server) => {
                 }
                 return;
             }
+            // Create message with Account IDs
             const messageData = {
                 consultationId: consultationId,
                 sender: senderId,
@@ -80,15 +92,20 @@ const setupSocket = (server) => {
                 content: message.content,
                 isRead: false,
             };
+            // console.log("📝 Creating message:", messageData);
             const createdMessage = yield consultationChat_model_1.default.create(messageData);
+            // console.log("Message created:", createdMessage._id);
+            // Populate message
             const populatedMessage = yield consultationChat_model_1.default.findById(createdMessage._id)
                 .populate("sender", "_id firstName lastName email profilePicture")
                 .populate("receiver", "_id firstName lastName email profilePicture");
             const responseMessage = Object.assign(Object.assign({}, populatedMessage === null || populatedMessage === void 0 ? void 0 : populatedMessage.toObject()), { tempId: message.tempId });
+            // Send to receiver
             if (receiverSocketId) {
                 exports.io.to(receiverSocketId).emit("receiveConsultationMessage", populatedMessage);
                 console.log("📤 Sent to receiver:", receiverId);
             }
+            // Send confirmation to sender
             if (senderSocketId) {
                 exports.io.to(senderSocketId).emit("consultationMessageSent", responseMessage);
                 console.log("📤 Sent confirmation to sender:", senderId);
@@ -108,9 +125,9 @@ const setupSocket = (server) => {
         const userId = socket.handshake.query.userId;
         if (userId) {
             exports.userSocketMap.set(userId, socket.id);
-            console.log(`🟢 User connected: ${userId} with socket ID: ${socket.id}`);
+            console.log(`User connected: ${userId} with socket ID: ${socket.id}`);
             console.log(`📊 Online users: ${exports.userSocketMap.size}`);
-            // Send initial chat list
+            // Send initial chat list on connection
             (() => __awaiter(void 0, void 0, void 0, function* () {
                 try {
                     const chatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
@@ -127,218 +144,6 @@ const setupSocket = (server) => {
         else {
             console.log("❌ User ID not provided during connection.");
         }
-        // ============================================================
-        // 📞 PEER-TO-PEER CALL HANDLING
-        // ============================================================
-        // ✅ 1. START CALL - Caller initiates call
-        socket.on('call-start', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId, receiverId, roomID } = data;
-                const callerId = socket.handshake.query.userId;
-                console.log(`📞 ${callerId} is calling ${receiverId}`);
-                console.log(`📋 Consultation: ${consultationId}, Room: ${roomID}`);
-                // Check if receiver is online
-                const receiverSocketId = exports.userSocketMap.get(receiverId);
-                if (!receiverSocketId) {
-                    console.log(`❌ Receiver ${receiverId} is offline`);
-                    socket.emit('call-error', {
-                        message: 'User is offline. Please try again later.'
-                    });
-                    return;
-                }
-                // Call the service to update consultation status
-                const result = yield consultation_service_1.ConsultationServices.startCall(consultationId, callerId);
-                // Store active call
-                activeCalls.set(consultationId, {
-                    callerId,
-                    receiverId,
-                    roomID,
-                    consultationId,
-                    startTime: new Date(),
-                });
-                // Emit incoming-call to receiver
-                exports.io.to(receiverSocketId).emit('incoming-call', {
-                    consultationId,
-                    callerId,
-                    roomID,
-                    callerName: result.callerName || 'Someone',
-                    timestamp: new Date().toISOString(),
-                });
-                console.log(`✅ Incoming call sent to: ${receiverId}`);
-                // Send success response to caller
-                socket.emit('call-started', {
-                    success: true,
-                    consultationId,
-                    roomID,
-                    message: 'Call initiated successfully',
-                });
-            }
-            catch (error) {
-                console.error('❌ Error starting call:', error);
-                socket.emit('call-error', {
-                    message: error.message || 'Failed to start call'
-                });
-            }
-        }));
-        // ✅ 2. ACCEPT CALL - Receiver accepts the call
-        socket.on('call-accept', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const receiverId = socket.handshake.query.userId;
-                console.log(`✅ ${receiverId} accepted the call`);
-                // Get the active call
-                const activeCall = activeCalls.get(consultationId);
-                if (!activeCall) {
-                    console.log(`❌ No active call found for consultation: ${consultationId}`);
-                    socket.emit('call-error', {
-                        message: 'No active call found'
-                    });
-                    return;
-                }
-                // Call service to update consultation status
-                const result = yield consultation_service_1.ConsultationServices.acceptCall(consultationId, receiverId);
-                // Update active call status
-                activeCalls.set(consultationId, Object.assign(Object.assign({}, activeCall), { acceptedAt: new Date() }));
-                // Get caller socket
-                const callerSocketId = exports.userSocketMap.get(activeCall.callerId);
-                if (callerSocketId) {
-                    // Emit call-accepted to caller
-                    exports.io.to(callerSocketId).emit('call-accepted', {
-                        consultationId,
-                        roomID: activeCall.roomID,
-                        receiverId,
-                        receiverName: result.receiverName || 'User',
-                        timestamp: new Date().toISOString(),
-                    });
-                    console.log(`✅ Call accepted notification sent to: ${activeCall.callerId}`);
-                }
-                else {
-                    console.log(`❌ Caller ${activeCall.callerId} is offline`);
-                    socket.emit('call-error', {
-                        message: 'Caller is offline'
-                    });
-                    return;
-                }
-                // Send success response to receiver
-                socket.emit('call-accepted-response', {
-                    success: true,
-                    consultationId,
-                    roomID: activeCall.roomID,
-                    message: 'Call accepted successfully',
-                });
-            }
-            catch (error) {
-                console.error('❌ Error accepting call:', error);
-                socket.emit('call-error', {
-                    message: error.message || 'Failed to accept call'
-                });
-            }
-        }));
-        // ✅ 3. REJECT CALL - Receiver rejects the call
-        socket.on('call-reject', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const receiverId = socket.handshake.query.userId;
-                console.log(`❌ ${receiverId} rejected the call`);
-                // Get the active call
-                const activeCall = activeCalls.get(consultationId);
-                if (!activeCall) {
-                    console.log(`❌ No active call found for consultation: ${consultationId}`);
-                    socket.emit('call-error', {
-                        message: 'No active call found'
-                    });
-                    return;
-                }
-                // Call service to update consultation status
-                yield consultation_service_1.ConsultationServices.rejectCall(consultationId, receiverId);
-                // Get caller socket
-                const callerSocketId = exports.userSocketMap.get(activeCall.callerId);
-                if (callerSocketId) {
-                    // Emit call-rejected to caller
-                    exports.io.to(callerSocketId).emit('call-rejected', {
-                        consultationId,
-                        receiverId,
-                        timestamp: new Date().toISOString(),
-                    });
-                    console.log(`❌ Call rejected notification sent to: ${activeCall.callerId}`);
-                }
-                // Remove active call
-                activeCalls.delete(consultationId);
-                // Send success response to receiver
-                socket.emit('call-rejected-response', {
-                    success: true,
-                    consultationId,
-                    message: 'Call rejected successfully',
-                });
-            }
-            catch (error) {
-                console.error('❌ Error rejecting call:', error);
-                socket.emit('call-error', {
-                    message: error.message || 'Failed to reject call'
-                });
-            }
-        }));
-        // ✅ 4. END CALL - Either participant ends the call
-        socket.on('call-end', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const userId = socket.handshake.query.userId;
-                console.log(`📞 ${userId} ended the call`);
-                // Get the active call
-                const activeCall = activeCalls.get(consultationId);
-                // Call service to end consultation
-                const result = yield consultation_service_1.ConsultationServices.endCall(consultationId, userId);
-                // If active call exists, notify the other participant
-                if (activeCall) {
-                    const otherParticipantId = activeCall.callerId === userId
-                        ? activeCall.receiverId
-                        : activeCall.callerId;
-                    const otherSocketId = exports.userSocketMap.get(otherParticipantId);
-                    if (otherSocketId) {
-                        exports.io.to(otherSocketId).emit('call-ended', {
-                            consultationId,
-                            endedBy: userId,
-                            duration: result.duration || 0,
-                            timestamp: new Date().toISOString(),
-                        });
-                        console.log(`📞 Call ended notification sent to: ${otherParticipantId}`);
-                    }
-                    // Remove active call
-                    activeCalls.delete(consultationId);
-                }
-                // Send success response to ender
-                socket.emit('call-ended-response', {
-                    success: true,
-                    consultationId,
-                    duration: result.duration || 0,
-                    message: 'Call ended successfully',
-                });
-            }
-            catch (error) {
-                console.error('❌ Error ending call:', error);
-                socket.emit('call-error', {
-                    message: error.message || 'Failed to end call'
-                });
-            }
-        }));
-        // ✅ 5. CHECK USER ONLINE STATUS
-        socket.on('check-user-online', (data) => {
-            const { userId } = data;
-            const isOnline = exports.userSocketMap.has(userId);
-            socket.emit('user-online-status', {
-                userId,
-                isOnline,
-                socketId: isOnline ? exports.userSocketMap.get(userId) : null,
-            });
-        });
-        // ✅ 6. GET ONLINE USERS LIST
-        socket.on('get-online-users', () => {
-            const onlineUsers = Array.from(exports.userSocketMap.keys());
-            socket.emit('online-users-list', onlineUsers);
-        });
-        // ============================================================
-        // 📝 CHAT HANDLING (Existing)
-        // ============================================================
         // Handle send consultation message
         socket.on("sendConsultationMessage", (message) => {
             console.log("📩 Received sendConsultationMessage event:", message);
@@ -353,7 +158,9 @@ const setupSocket = (server) => {
                     isRead: false,
                 }, { isRead: true, readAt: new Date() });
                 console.log(`Messages marked as read for consultation: ${consultationId}`);
+                // Update chat list after marking as read
                 const updatedChatList = yield consultationChat_service_1.ConsultationChatServices.getConsultationChatList(userId);
+                // Get the other participant's accountId
                 const consultation = yield consultation_model_1.default.findById(consultationId);
                 if (consultation) {
                     const otherAccountId = consultation.user.toString() === userId
@@ -369,6 +176,7 @@ const setupSocket = (server) => {
                         exports.io.to(otherSocketId).emit("updateConsultationChatList", otherChatList);
                     }
                 }
+                // Notify sender that messages were read
                 const senderSocketId = exports.userSocketMap.get(userId);
                 if (senderSocketId) {
                     exports.io.to(senderSocketId).emit("consultationMessagesRead", {
@@ -392,43 +200,67 @@ const setupSocket = (server) => {
                 });
             }
         });
-        // ✅ Disconnect handler
         socket.on("disconnect", () => {
             console.log(`❌ Client Disconnected: ${socket.id}`);
-            // Remove user from map
-            let disconnectedUserId = null;
             for (const [userId, socketId] of exports.userSocketMap.entries()) {
                 if (socketId === socket.id) {
                     exports.userSocketMap.delete(userId);
-                    disconnectedUserId = userId;
                     console.log(`👤 User removed: ${userId}`);
                     socket.broadcast.emit("userOffline", userId);
-                    // Clean up active calls for this user
-                    for (const [consultationId, call] of activeCalls.entries()) {
-                        if (call.callerId === userId || call.receiverId === userId) {
-                            // Notify other participant if call was active
-                            const otherParticipantId = call.callerId === userId
-                                ? call.receiverId
-                                : call.callerId;
-                            const otherSocketId = exports.userSocketMap.get(otherParticipantId);
-                            if (otherSocketId) {
-                                exports.io.to(otherSocketId).emit('call-ended', {
-                                    consultationId,
-                                    endedBy: userId,
-                                    reason: 'User disconnected',
-                                    timestamp: new Date().toISOString(),
-                                });
-                            }
-                            activeCalls.delete(consultationId);
-                            console.log(`🧹 Removed active call for consultation: ${consultationId}`);
-                        }
-                    }
                     const onlineUsers = Array.from(exports.userSocketMap.keys());
                     exports.io.emit("onlineUsers", onlineUsers);
                     break;
                 }
             }
         });
+        // In socket/index.ts - inside the connection handler
+        // ✅ Handle call events
+        socket.on('call-start', (data) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId;
+                // Call the service directly
+                const result = yield consultation_service_1.ConsultationServices.startCall(consultationId, userId);
+                // Send success response back to caller
+                socket.emit('call-started', result);
+            }
+            catch (error) {
+                socket.emit('call-error', { message: error.message });
+            }
+        }));
+        socket.on('call-accept', (data) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId;
+                const result = yield consultation_service_1.ConsultationServices.acceptCall(consultationId, userId);
+                socket.emit('call-accepted-response', result);
+            }
+            catch (error) {
+                socket.emit('call-error', { message: error.message });
+            }
+        }));
+        socket.on('call-reject', (data) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId;
+                const result = yield consultation_service_1.ConsultationServices.rejectCall(consultationId, userId);
+                socket.emit('call-rejected-response', result);
+            }
+            catch (error) {
+                socket.emit('call-error', { message: error.message });
+            }
+        }));
+        socket.on('call-end', (data) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const { consultationId } = data;
+                const userId = socket.handshake.query.userId;
+                const result = yield consultation_service_1.ConsultationServices.endCall(consultationId, userId);
+                socket.emit('call-ended-response', result);
+            }
+            catch (error) {
+                socket.emit('call-error', { message: error.message });
+            }
+        }));
     });
     return exports.io;
 };
