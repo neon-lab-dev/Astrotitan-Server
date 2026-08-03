@@ -68,4 +68,10 @@ router.get(
     ConsultationControllers.getSingleConsultation
 );
 
+router.post(
+    '/add-recommendations/:consultationId',
+    auth(UserRole.astrologer),
+    ConsultationControllers.addRecommendations
+);
+
 export const ConsultationRoutes = router;

@@ -38,15 +38,15 @@ const subscriptionSchema = new mongoose_1.Schema({
 }, {
     timestamps: true,
 });
-// ✅ Indexes for better query performance
+// Indexes for better query performance
 subscriptionSchema.index({ user: 1, status: 1 });
 subscriptionSchema.index({ status: 1, endDate: 1 });
 subscriptionSchema.index({ endDate: 1 }); // For expired subscriptions cleanup
-// ✅ Virtual: Check if subscription is active
+// Virtual: Check if subscription is active
 subscriptionSchema.virtual("isActive").get(function () {
     return this.status === "active" && new Date() < this.endDate;
 });
-// ✅ Virtual: Get remaining days
+// Virtual: Get remaining days
 subscriptionSchema.virtual("remainingDays").get(function () {
     if (this.status !== "active")
         return 0;
@@ -54,7 +54,7 @@ subscriptionSchema.virtual("remainingDays").get(function () {
     const diffTime = this.endDate.getTime() - now.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 });
-// ✅ Ensure virtuals are included in JSON output
+// Ensure virtuals are included in JSON output
 subscriptionSchema.set("toJSON", { virtuals: true });
 subscriptionSchema.set("toObject", { virtuals: true });
 const Subscription = (0, mongoose_1.model)("Subscription", subscriptionSchema);

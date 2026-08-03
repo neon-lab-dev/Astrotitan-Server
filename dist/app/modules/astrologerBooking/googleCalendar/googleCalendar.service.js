@@ -38,7 +38,7 @@ class GoogleCalendarService {
                 scope: scopes,
                 prompt: 'consent',
                 state: astrologerId, // Pass astrologer ID to identify them
-                // ✅ Explicitly set redirect_uri to match Google Console
+                // Explicitly set redirect_uri to match Google Console
                 redirect_uri: config_1.default.google_redirect_uri,
             });
             return {
@@ -63,7 +63,7 @@ class GoogleCalendarService {
                 const oauth2Client = this.getOAuth2Client();
                 const { tokens } = yield oauth2Client.getToken({
                     code: code,
-                    // ✅ Explicitly set redirect_uri to match Google Console
+                    // Explicitly set redirect_uri to match Google Console
                     redirect_uri: config_1.default.google_redirect_uri,
                 });
                 // 3. Get user info
@@ -77,7 +77,7 @@ class GoogleCalendarService {
                     "googleCalendar.email": userInfo.data.email || '',
                     "googleCalendar.calendarId": "primary",
                     "googleCalendar.isConnected": true,
-                    "googleCalendar.connectedAt": new Date(), // ✅ Add connectedAt timestamp
+                    "googleCalendar.connectedAt": new Date(), // Add connectedAt timestamp
                 };
                 // Only update refresh token if provided (happens on first connection)
                 if (tokens.refresh_token) {
@@ -162,7 +162,7 @@ class GoogleCalendarService {
         return __awaiter(this, void 0, void 0, function* () {
             var _a;
             console.log(astrologer, "test");
-            // ✅ Now accepts the astrologer object directly
+            // Now accepts the astrologer object directly
             if (!((_a = astrologer.googleCalendar) === null || _a === void 0 ? void 0 : _a.refreshToken)) {
                 throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Astrologer hasn't connected Google Calendar");
             }
@@ -184,12 +184,12 @@ class GoogleCalendarService {
                         : undefined,
                 };
                 yield astrologer_model_1.Astrologer.findByIdAndUpdate(astrologer._id, { $set: updateData });
-                // ✅ Update the object reference
+                // Update the object reference
                 astrologer.googleCalendar.accessToken = credentials.access_token;
                 astrologer.googleCalendar.tokenExpiry = credentials.expiry_date
                     ? new Date(credentials.expiry_date)
                     : undefined;
-                console.log('✅ Token refreshed for astrologer:', astrologer._id);
+                console.log('Token refreshed for astrologer:', astrologer._id);
             }
             catch (error) {
                 console.error('❌ Token refresh failed:', error);
@@ -205,9 +205,9 @@ class GoogleCalendarService {
     }
     /**
      * Create a meeting in astrologer's Google Calendar
-     * ✅ Now accepts the astrologer object instead of ID
+     * Now accepts the astrologer object instead of ID
      */
-    createMeeting(astrologer, // ✅ Pass the already fetched astrologer object
+    createMeeting(astrologer, // Pass the already fetched astrologer object
     params) {
         return __awaiter(this, void 0, void 0, function* () {
             var _a, _b;

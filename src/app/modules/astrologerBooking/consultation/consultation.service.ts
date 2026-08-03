@@ -379,7 +379,6 @@ const scheduleMeeting = async (
   accountId: string,
   payload: {
     scheduledAt: Date;
-    notes?: string;
   }
 ) => {
   // 1. Find astrologer
@@ -432,8 +431,6 @@ const scheduleMeeting = async (
       summary: `Astrology Consultation: ${consultation.consultationFor}`,
       description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
-        ${payload.notes ? `\nNotes: ${payload.notes}` : ''}
-        \nConsultation ID: ${consultation._id}
       `,
       startTime: payload.scheduledAt,
       endTime: endTime,
@@ -446,7 +443,6 @@ const scheduleMeeting = async (
   consultation.meeting = {
     link: meeting.meetLink,
     scheduledAt: payload.scheduledAt,
-    notes: payload.notes,
   };
   consultation.status = "scheduled";
   await consultation.save();
@@ -634,6 +630,49 @@ const rescheduleMeeting = async (
   }
 };
 
+const addRecommendations = async (
+  consultationId: string,
+  accountId: string,
+  payload: {
+    recommendations: string;
+  }
+) => {
+  // 1. Find astrologer
+  const astrologer = await Astrologer.findOne({ accountId });
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // 2. Find consultation
+  const consultation = await Consultation.findOne({
+    _id: consultationId,
+    astrologer: astrologer._id,
+  });
+
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or not authorized");
+  }
+
+  // 3. Verify consultation is ended
+  if (consultation.status !== "ended") {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      `Recommendations can only be added after the consultation is ended. Current status: ${consultation.status}`
+    );
+  }
+
+  // 4. Update consultation with recommendations
+  consultation.recommendations = payload.recommendations.trim();
+  await consultation.save();
+
+  return {
+    success: true,
+    message: "Recommendations added successfully",
+    data: consultation,
+  };
+};
+
+
 export const ConsultationServices = {
   requestConsultation,
   getMyConsultationBookings,
@@ -645,4 +684,5 @@ export const ConsultationServices = {
   scheduleMeeting,
   sendRescheduleRequest,
   rescheduleMeeting,
+  addRecommendations,
 };

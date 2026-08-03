@@ -22,7 +22,7 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
         status: {
             type: String,
-            enum: ["pending", "accepted", "declined","scheduled", "ended"],
+            enum: ["pending", "accepted", "declined", "scheduled", "ended"],
             default: "pending",
             index: true,
         },
@@ -60,6 +60,9 @@ const ConsultationSchema = new Schema<TConsultation>(
 
         // Meeting fields
 
+        recommendations: {
+            type: String,
+        },
         meeting: {
             link: {
                 type: String,
@@ -67,9 +70,6 @@ const ConsultationSchema = new Schema<TConsultation>(
             scheduledAt: {
                 type: Date,
                 index: true,
-            },
-            notes: {
-                type: String,
             },
             rescheduleRequest: {
                 requestedTime: {

@@ -16,7 +16,7 @@ const checkout = catchAsync(async (req, res) => {
   });
 });
 
-// ✅ Verify Payment (works for both web and app)
+// Verify Payment (works for both web and app)
 const verifyPayment = catchAsync(async (req, res) => {
   const { 
     razorpayOrderId, 
@@ -40,7 +40,7 @@ const verifyPayment = catchAsync(async (req, res) => {
   });
 });
 
-// ✅ Create Product Order (with Razorpay order for app)
+// Create Product Order (with Razorpay order for app)
 const createProductOrder = catchAsync(async (req, res) => {
   const user = req.user;
   const result = await ProductOrderService.createProductOrder(user, req.body);
@@ -53,7 +53,7 @@ const createProductOrder = catchAsync(async (req, res) => {
   });
 });
 
-// ✅ Check payment status
+// Check payment status
 const checkPaymentStatus = catchAsync(async (req, res) => {
   const { orderId } = req.params;
   const result = await ProductOrderService.checkPaymentStatus(orderId);

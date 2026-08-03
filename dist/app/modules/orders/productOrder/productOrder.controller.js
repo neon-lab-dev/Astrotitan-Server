@@ -27,7 +27,7 @@ const checkout = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 
         data: result,
     });
 }));
-// ✅ Verify Payment (works for both web and app)
+// Verify Payment (works for both web and app)
 const verifyPayment = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId // Optional - for web
      } = req.body;
@@ -44,7 +44,7 @@ const verifyPayment = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
         data: result,
     });
 }));
-// ✅ Create Product Order (with Razorpay order for app)
+// Create Product Order (with Razorpay order for app)
 const createProductOrder = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const user = req.user;
     const result = yield productOrder_service_1.ProductOrderService.createProductOrder(user, req.body);
@@ -55,7 +55,7 @@ const createProductOrder = (0, catchAsync_1.default)((req, res) => __awaiter(voi
         data: result,
     });
 }));
-// ✅ Check payment status
+// Check payment status
 const checkPaymentStatus = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { orderId } = req.params;
     const result = yield productOrder_service_1.ProductOrderService.checkPaymentStatus(orderId);

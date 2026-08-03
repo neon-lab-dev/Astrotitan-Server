@@ -57,6 +57,9 @@ const ConsultationSchema = new mongoose_1.Schema({
         trim: true,
     },
     // Meeting fields
+    recommendations: {
+        type: String,
+    },
     meeting: {
         link: {
             type: String,
@@ -64,9 +67,6 @@ const ConsultationSchema = new mongoose_1.Schema({
         scheduledAt: {
             type: Date,
             index: true,
-        },
-        notes: {
-            type: String,
         },
         rescheduleRequest: {
             requestedTime: {

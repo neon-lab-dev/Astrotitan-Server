@@ -16,7 +16,7 @@ const notification_model_1 = require("../modules/notification/notification.model
 const socket_1 = require("../socket");
 const app_1 = require("firebase-admin/app");
 const messaging_1 = require("firebase-admin/messaging");
-// ✅ Initialize Firebase Admin only once
+// Initialize Firebase Admin only once
 if (!(0, app_1.getApps)().length) {
     try {
         const serviceAccount = {
@@ -27,13 +27,13 @@ if (!(0, app_1.getApps)().length) {
         (0, app_1.initializeApp)({
             credential: (0, app_1.cert)(serviceAccount),
         });
-        console.log('✅ Firebase Admin initialized successfully');
+        console.log('Firebase Admin initialized successfully');
     }
     catch (error) {
         console.error('❌ Firebase Admin initialization failed:', error);
     }
 }
-// ✅ Get messaging instance
+// Get messaging instance
 const messaging = (0, messaging_1.getMessaging)();
 // Function to send notification to a specific device
 const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 0, void 0, void 0, function* () {
@@ -51,7 +51,7 @@ const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 
     };
     try {
         const response = yield messaging.send(payload);
-        console.log('✅ Successfully sent notification:', response);
+        console.log('Successfully sent notification:', response);
         return response;
     }
     catch (error) {
@@ -87,13 +87,13 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
         if (token) {
             try {
                 yield (0, exports.sendPushNotification)(token, title, message, { userId: userId.toString() });
-                console.log(`✅ Push notification sent to: ${userId}`);
+                console.log(`Push notification sent to: ${userId}`);
             }
             catch (pushError) {
                 console.error(`❌ Push notification failed:`, pushError);
             }
         }
-        // ✅ Emit via Socket.io - Real-time notification
+        // Emit via Socket.io - Real-time notification
         const socketId = socket_1.userSocketMap.get(userId.toString());
         if (socketId && socket_1.io) {
             socket_1.io.to(socketId).emit("new-notification", {
@@ -102,7 +102,7 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
                 createdAt: new Date().toISOString(),
                 userId: userId.toString(),
             });
-            console.log(`✅ Socket notification sent to: ${userId} (Socket ID: ${socketId})`);
+            console.log(`Socket notification sent to: ${userId} (Socket ID: ${socketId})`);
         }
         else {
             console.log(`⚠️ Socket not found for user: ${userId}`);

@@ -285,8 +285,6 @@ const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0
         summary: `Astrology Consultation: ${consultation.consultationFor}`,
         description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
-        ${payload.notes ? `\nNotes: ${payload.notes}` : ''}
-        \nConsultation ID: ${consultation._id}
       `,
         startTime: payload.scheduledAt,
         endTime: endTime,
@@ -297,7 +295,6 @@ const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0
     consultation.meeting = {
         link: meeting.meetLink,
         scheduledAt: payload.scheduledAt,
-        notes: payload.notes,
     };
     consultation.status = "scheduled";
     yield consultation.save();
@@ -412,6 +409,33 @@ const rescheduleMeeting = (consultationId, accountId, payload) => __awaiter(void
         };
     }
 });
+const addRecommendations = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    // 1. Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // 2. Find consultation
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        astrologer: astrologer._id,
+    });
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
+    }
+    // 3. Verify consultation is ended
+    if (consultation.status !== "ended") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Recommendations can only be added after the consultation is ended. Current status: ${consultation.status}`);
+    }
+    // 4. Update consultation with recommendations
+    consultation.recommendations = payload.recommendations.trim();
+    yield consultation.save();
+    return {
+        success: true,
+        message: "Recommendations added successfully",
+        data: consultation,
+    };
+});
 exports.ConsultationServices = {
     requestConsultation,
     getMyConsultationBookings,
@@ -423,4 +447,5 @@ exports.ConsultationServices = {
     scheduleMeeting,
     sendRescheduleRequest,
     rescheduleMeeting,
+    addRecommendations,
 };

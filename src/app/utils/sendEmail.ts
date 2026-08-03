@@ -21,7 +21,7 @@ export const sendEmail = async (
       html,
     });
 
-    // console.log("✅ Email Sent:", response);
+    // console.log("Email Sent:", response);
 
     return response;
   } catch (error) {

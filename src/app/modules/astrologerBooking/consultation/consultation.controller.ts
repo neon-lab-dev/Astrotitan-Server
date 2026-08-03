@@ -145,12 +145,12 @@ const addReview = catchAsync(async (req, res) => {
 const scheduleMeeting = catchAsync(async (req, res) => {
   const accountId = req.user._id;
   const { consultationId } = req.params;
-  const { scheduledAt, notes } = req.body;
+  const { scheduledAt } = req.body;
 
   const result = await ConsultationServices.scheduleMeeting(
     consultationId,
     accountId,
-    { scheduledAt: new Date(scheduledAt), notes }
+    { scheduledAt: new Date(scheduledAt) }
   );
 
   sendResponse(res, {
@@ -201,6 +201,34 @@ const rescheduleMeeting = catchAsync(async (req, res) => {
   });
 });
 
+const addRecommendations = catchAsync(async (req, res) => {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const { recommendations } = req.body;
+
+    if (!recommendations || !recommendations.trim()) {
+        return sendResponse(res, {
+            statusCode: httpStatus.BAD_REQUEST,
+            success: false,
+            message: "Recommendations content is required",
+            data: null,
+        });
+    }
+
+    const result = await ConsultationServices.addRecommendations(
+        consultationId,
+        accountId,
+        { recommendations: recommendations.trim() }
+    );
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: result.message,
+        data: result.data,
+    });
+});
+
 export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationBookings,
@@ -212,4 +240,5 @@ export const ConsultationControllers = {
   scheduleMeeting,
   sendRescheduleRequest,
   rescheduleMeeting,
+  addRecommendations,
 };

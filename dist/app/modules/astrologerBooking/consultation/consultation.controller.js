@@ -113,8 +113,8 @@ const addReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void
 const scheduleMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
     const { consultationId } = req.params;
-    const { scheduledAt, notes } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.scheduleMeeting(consultationId, accountId, { scheduledAt: new Date(scheduledAt), notes });
+    const { scheduledAt } = req.body;
+    const result = yield consultation_service_1.ConsultationServices.scheduleMeeting(consultationId, accountId, { scheduledAt: new Date(scheduledAt) });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -148,6 +148,26 @@ const rescheduleMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void
         data: result,
     });
 }));
+const addRecommendations = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const { recommendations } = req.body;
+    if (!recommendations || !recommendations.trim()) {
+        return (0, sendResponse_1.default)(res, {
+            statusCode: http_status_1.default.BAD_REQUEST,
+            success: false,
+            message: "Recommendations content is required",
+            data: null,
+        });
+    }
+    const result = yield consultation_service_1.ConsultationServices.addRecommendations(consultationId, accountId, { recommendations: recommendations.trim() });
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: result.message,
+        data: result.data,
+    });
+}));
 exports.ConsultationControllers = {
     requestConsultation,
     getMyConsultationBookings,
@@ -159,4 +179,5 @@ exports.ConsultationControllers = {
     scheduleMeeting,
     sendRescheduleRequest,
     rescheduleMeeting,
+    addRecommendations,
 };

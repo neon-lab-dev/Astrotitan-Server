@@ -17,10 +17,10 @@ export type TConsultation = {
     review?: string;
 
     // If method is call, then meeting link will be generated and stored here
+    recommendations?: string;
     meeting: {
         link: string;
         scheduledAt: Date;
-        notes?: string;
 
         rescheduleRequest?: {
             requestedTime: Date;

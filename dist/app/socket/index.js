@@ -20,7 +20,6 @@ const consultationChat_model_1 = __importDefault(require("../modules/astrologerB
 const consultationChat_service_1 = require("../modules/astrologerBooking/consultationChat/consultationChat.service");
 const user_model_1 = require("../modules/users/user.model");
 const astrologer_model_1 = require("../modules/astrologer/astrologer.model");
-const consultation_service_1 = require("../modules/astrologerBooking/consultation/consultation.service");
 exports.userSocketMap = new Map();
 const setupSocket = (server) => {
     exports.io = new socket_io_1.Server(server, {
@@ -43,7 +42,7 @@ const setupSocket = (server) => {
         const senderSocketId = exports.userSocketMap.get(senderId);
         const receiverSocketId = exports.userSocketMap.get(receiverId);
         try {
-            // ✅ Find consultation
+            // Find consultation
             const consultation = yield consultation_model_1.default.findOne({
                 _id: consultationId,
                 status: { $in: ["accepted", "pending"] },
@@ -213,54 +212,6 @@ const setupSocket = (server) => {
                 }
             }
         });
-        // In socket/index.ts - inside the connection handler
-        // ✅ Handle call events
-        socket.on('call-start', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const userId = socket.handshake.query.userId;
-                // Call the service directly
-                const result = yield consultation_service_1.ConsultationServices.startCall(consultationId, userId);
-                // Send success response back to caller
-                socket.emit('call-started', result);
-            }
-            catch (error) {
-                socket.emit('call-error', { message: error.message });
-            }
-        }));
-        socket.on('call-accept', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const userId = socket.handshake.query.userId;
-                const result = yield consultation_service_1.ConsultationServices.acceptCall(consultationId, userId);
-                socket.emit('call-accepted-response', result);
-            }
-            catch (error) {
-                socket.emit('call-error', { message: error.message });
-            }
-        }));
-        socket.on('call-reject', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const userId = socket.handshake.query.userId;
-                const result = yield consultation_service_1.ConsultationServices.rejectCall(consultationId, userId);
-                socket.emit('call-rejected-response', result);
-            }
-            catch (error) {
-                socket.emit('call-error', { message: error.message });
-            }
-        }));
-        socket.on('call-end', (data) => __awaiter(void 0, void 0, void 0, function* () {
-            try {
-                const { consultationId } = data;
-                const userId = socket.handshake.query.userId;
-                const result = yield consultation_service_1.ConsultationServices.endCall(consultationId, userId);
-                socket.emit('call-ended-response', result);
-            }
-            catch (error) {
-                socket.emit('call-error', { message: error.message });
-            }
-        }));
     });
     return exports.io;
 };

@@ -7,7 +7,7 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import type { ServiceAccount } from 'firebase-admin';
 
-// ✅ Initialize Firebase Admin only once
+// Initialize Firebase Admin only once
 if (!getApps().length) {
   try {
     const serviceAccount: ServiceAccount = {
@@ -19,13 +19,13 @@ if (!getApps().length) {
     initializeApp({
       credential: cert(serviceAccount),
     });
-    console.log('✅ Firebase Admin initialized successfully');
+    console.log('Firebase Admin initialized successfully');
   } catch (error) {
     console.error('❌ Firebase Admin initialization failed:', error);
   }
 }
 
-// ✅ Get messaging instance
+// Get messaging instance
 const messaging = getMessaging();
 
 // Function to send notification to a specific device
@@ -51,7 +51,7 @@ export const sendPushNotification = async (
 
   try {
     const response = await messaging.send(payload);
-    console.log('✅ Successfully sent notification:', response);
+    console.log('Successfully sent notification:', response);
     return response;
   } catch (error: any) {
     console.error('❌ Error sending notification:', error);
@@ -97,13 +97,13 @@ export const sendSingleNotification = async (
     if (token) {
       try {
         await sendPushNotification(token, title, message, { userId: userId.toString() });
-        console.log(`✅ Push notification sent to: ${userId}`);
+        console.log(`Push notification sent to: ${userId}`);
       } catch (pushError) {
         console.error(`❌ Push notification failed:`, pushError);
       }
     }
 
-    // ✅ Emit via Socket.io - Real-time notification
+    // Emit via Socket.io - Real-time notification
     const socketId = userSocketMap.get(userId.toString());
     if (socketId && io) {
       io.to(socketId).emit("new-notification", {
@@ -112,7 +112,7 @@ export const sendSingleNotification = async (
         createdAt: new Date().toISOString(),
         userId: userId.toString(),
       });
-      console.log(`✅ Socket notification sent to: ${userId} (Socket ID: ${socketId})`);
+      console.log(`Socket notification sent to: ${userId} (Socket ID: ${socketId})`);
     } else {
       console.log(`⚠️ Socket not found for user: ${userId}`);
       console.log(`📊 Available sockets:`, Array.from(userSocketMap.keys()));

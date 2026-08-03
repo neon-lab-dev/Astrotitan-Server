@@ -31,7 +31,7 @@ class GoogleCalendarService {
             scope: scopes,
             prompt: 'consent',
             state: astrologerId, // Pass astrologer ID to identify them
-            // ✅ Explicitly set redirect_uri to match Google Console
+            // Explicitly set redirect_uri to match Google Console
             redirect_uri: config.google_redirect_uri,
         });
 
@@ -56,7 +56,7 @@ class GoogleCalendarService {
             const oauth2Client = this.getOAuth2Client();
             const { tokens } = await oauth2Client.getToken({
                 code: code,
-                // ✅ Explicitly set redirect_uri to match Google Console
+                // Explicitly set redirect_uri to match Google Console
                 redirect_uri: config.google_redirect_uri,
             });
 
@@ -72,7 +72,7 @@ class GoogleCalendarService {
                 "googleCalendar.email": userInfo.data.email || '',
                 "googleCalendar.calendarId": "primary",
                 "googleCalendar.isConnected": true,
-                "googleCalendar.connectedAt": new Date(), // ✅ Add connectedAt timestamp
+                "googleCalendar.connectedAt": new Date(), // Add connectedAt timestamp
             };
 
             // Only update refresh token if provided (happens on first connection)
@@ -174,7 +174,7 @@ class GoogleCalendarService {
      */
     async refreshTokenIfNeeded(astrologer: any) {
         console.log(astrologer, "test");
-        // ✅ Now accepts the astrologer object directly
+        // Now accepts the astrologer object directly
         if (!astrologer.googleCalendar?.refreshToken) {
             throw new AppError(
                 httpStatus.BAD_REQUEST,
@@ -208,13 +208,13 @@ class GoogleCalendarService {
                 { $set: updateData }
             );
 
-            // ✅ Update the object reference
+            // Update the object reference
             astrologer.googleCalendar.accessToken = credentials.access_token;
             astrologer.googleCalendar.tokenExpiry = credentials.expiry_date
                 ? new Date(credentials.expiry_date)
                 : undefined;
 
-            console.log('✅ Token refreshed for astrologer:', astrologer._id);
+            console.log('Token refreshed for astrologer:', astrologer._id);
         } catch (error: any) {
             console.error('❌ Token refresh failed:', error);
 
@@ -237,10 +237,10 @@ class GoogleCalendarService {
 
     /**
      * Create a meeting in astrologer's Google Calendar
-     * ✅ Now accepts the astrologer object instead of ID
+     * Now accepts the astrologer object instead of ID
      */
     async createMeeting(
-        astrologer: any, // ✅ Pass the already fetched astrologer object
+        astrologer: any, // Pass the already fetched astrologer object
         params: {
             summary: string;
             description: string;
