@@ -21,8 +21,7 @@ const AppError_1 = __importDefault(require("../../../errors/AppError"));
 const sendSingleNotification_1 = require("../../../utils/sendSingleNotification");
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
-const twilio_1 = require("../../../utils/twilio");
-const socket_1 = require("../../../socket");
+const googleCalendar_service_1 = __importDefault(require("../googleCalendar/googleCalendar.service"));
 const requestConsultation = (accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
     // Check if user exists in Accounts
@@ -248,325 +247,170 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
         },
     };
 });
-const startCall = (consultationId, callerId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
-    // 1. Find consultation
-    const consultation = yield consultation_model_1.default.findById(consultationId);
+//Schedule a meeting for a consultation (Astrologer)
+const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // 1. Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId }).select("+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected");
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // 2. Find consultation
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        astrologer: astrologer._id,
+    }).populate("user", "firstName lastName email");
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
-    // 2. Verify consultation is accepted
-    if (consultation.status !== 'accepted') {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Consultation must be accepted before starting a call');
+    // 3. Verify consultation is accepted
+    if (consultation.status !== "accepted") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation must be accepted first. Current status: ${consultation.status}`);
     }
-    // ✅ Find both user and astrologer by accountId
-    const user = yield user_model_1.User.findOne({ accountId: callerId });
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: callerId });
-    // ✅ Check if caller is part of consultation
-    const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === callerId;
-    const isAstrologer = astrologer && astrologer.accountId.toString() === callerId;
-    if (!isUser && !isAstrologer) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to start a call for this consultation');
+    // 4. Verify method is call
+    if (consultation.method !== "call") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
     }
-    // ✅ Get the receiver ID - THIS IS THE ACCOUNT ID
-    let receiverAccountId;
-    let receiverUserObjectId;
-    if (isUser) {
-        // Caller is User, receiver is Astrologer
-        const receiverAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-        receiverAccountId = ((_b = receiverAstrologer === null || receiverAstrologer === void 0 ? void 0 : receiverAstrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) || '';
-        receiverUserObjectId = consultation.astrologer.toString();
+    const DEFAULT_DURATION = 60;
+    // 5. Calculate end time
+    const endTime = new Date(payload.scheduledAt);
+    endTime.setMinutes(endTime.getMinutes() + DEFAULT_DURATION);
+    // 6. Get user email
+    const user = yield user_model_1.User.findById(consultation.user).populate("accountId", "email");
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    else {
-        // Caller is Astrologer, receiver is User
-        const receiverUser = yield user_model_1.User.findById(consultation.user);
-        receiverAccountId = ((_c = receiverUser === null || receiverUser === void 0 ? void 0 : receiverUser.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-        receiverUserObjectId = consultation.user.toString();
-        console.log(receiverUserObjectId);
-    }
-    // ✅ Get caller name for notification
-    let callerName = 'Someone';
-    if (isUser && user) {
-        callerName = user.firstName || 'User';
-    }
-    else if (isAstrologer && astrologer) {
-        callerName = astrologer.displayName || astrologer.firstName || 'Astrologer';
-    }
-    // 6. Create unique room name
-    const roomName = `consultation-${consultationId}-${Date.now()}`;
-    // 7. Create Twilio room
-    // let room;
-    try {
-        yield (0, twilio_1.createRoom)(roomName);
-    }
-    catch (error) {
-        throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, error.message || 'Failed to create call room');
-    }
-    // 8. Generate tokens for both participants using Account IDs
-    const callerToken = (0, twilio_1.generateTwilioAccessToken)(callerId, roomName);
-    const receiverToken = (0, twilio_1.generateTwilioAccessToken)(receiverAccountId, roomName);
-    // 9. Update consultation
-    consultation.callRoomId = roomName;
-    consultation.callStatus = 'ringing';
-    consultation.callStartedAt = new Date();
-    yield consultation.save();
-    // 10. ✅ Emit incoming call event to receiver using ACCOUNT ID
-    const receiverSocketId = socket_1.userSocketMap.get(receiverAccountId);
-    if (receiverSocketId && socket_1.io) {
-        socket_1.io.to(receiverSocketId).emit('incoming-call', {
-            consultationId: consultation._id,
-            callerId: callerId, // Caller's Account ID
-            callerName,
-            callerImage: isUser ? user === null || user === void 0 ? void 0 : user.profilePicture : astrologer === null || astrologer === void 0 ? void 0 : astrologer.profilePicture,
-            roomName,
-            receiverAccountId,
-            timestamp: new Date().toISOString(),
-        });
-        console.log(`📞 Incoming call sent to: ${receiverAccountId} (Socket: ${receiverSocketId})`);
-    }
-    else {
-        console.log(`⚠️ Receiver ${receiverAccountId} is offline`);
-        // TODO: Send push notification
-    }
-    return {
-        success: true,
-        roomName,
-        callerToken,
-        receiverToken,
-        message: 'Call initiated successfully',
-    };
-});
-// Accept a call
-const acceptCall = (consultationId, receiverId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
-    // 1. Find consultation
-    const consultation = yield consultation_model_1.default.findById(consultationId);
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
-    }
-    // 2. Verify consultation is in ringing state
-    if (consultation.callStatus !== 'ringing') {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Call is not in ringing state (current: ${consultation.callStatus})`);
-    }
-    // 3. Verify receiver is part of consultation using accountId
-    const user = yield user_model_1.User.findOne({ accountId: receiverId });
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: receiverId });
-    const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === receiverId;
-    const isAstrologer = astrologer && ((_b = astrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) === receiverId;
-    if (!isUser && !isAstrologer) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to accept this call');
-    }
-    // 4. Get the caller's Account ID
-    let callerAccountId;
-    if (isUser) {
-        // Current user is the receiver (User), caller is Astrologer
-        const callerAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-        callerAccountId = ((_c = callerAstrologer === null || callerAstrologer === void 0 ? void 0 : callerAstrologer.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-    }
-    else {
-        // Current user is the receiver (Astrologer), caller is User
-        const callerUser = yield user_model_1.User.findById(consultation.user);
-        callerAccountId = ((_d = callerUser === null || callerUser === void 0 ? void 0 : callerUser.accountId) === null || _d === void 0 ? void 0 : _d.toString()) || '';
-    }
-    // 5. Update consultation
-    consultation.callStatus = 'connected';
-    yield consultation.save();
-    // 6. Generate receiver token
-    const roomName = consultation.callRoomId;
-    const receiverToken = (0, twilio_1.generateTwilioAccessToken)(receiverId, roomName);
-    // 7. Emit call accepted event to caller using Account ID
-    const callerSocketId = socket_1.userSocketMap.get(callerAccountId);
-    if (callerSocketId && socket_1.io) {
-        socket_1.io.to(callerSocketId).emit('call-accepted', {
-            consultationId: consultation._id,
-            receiverId,
-            roomName,
-            timestamp: new Date().toISOString(),
-        });
-        console.log(`📞 Call accepted by: ${receiverId} (Caller socket: ${callerSocketId})`);
-    }
-    else {
-        console.log(`⚠️ Caller ${callerAccountId} is offline`);
-    }
-    return {
-        success: true,
-        roomName,
-        receiverToken,
-        message: 'Call accepted successfully',
-    };
-});
-// Reject a call
-const rejectCall = (consultationId, receiverId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
-    // 1. Find consultation
-    const consultation = yield consultation_model_1.default.findById(consultationId);
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
-    }
-    // 2. Verify consultation is in ringing state
-    if (consultation.callStatus !== 'ringing') {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Call is not in ringing state (current: ${consultation.callStatus})`);
-    }
-    // 3. Verify receiver is part of consultation using accountId
-    const user = yield user_model_1.User.findOne({ accountId: receiverId });
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: receiverId });
-    const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === receiverId;
-    const isAstrologer = astrologer && ((_b = astrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) === receiverId;
-    if (!isUser && !isAstrologer) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to reject this call');
-    }
-    // 4. Get the caller's Account ID
-    let callerAccountId;
-    if (isUser) {
-        const callerAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-        callerAccountId = ((_c = callerAstrologer === null || callerAstrologer === void 0 ? void 0 : callerAstrologer.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-    }
-    else {
-        const callerUser = yield user_model_1.User.findById(consultation.user);
-        callerAccountId = ((_d = callerUser === null || callerUser === void 0 ? void 0 : callerUser.accountId) === null || _d === void 0 ? void 0 : _d.toString()) || '';
-    }
-    // 5. Update consultation
-    consultation.callStatus = 'idle';
-    yield consultation.save();
-    // 6. End the Twilio room if it exists
-    if (consultation.callRoomId) {
-        try {
-            yield (0, twilio_1.endRoom)(consultation.callRoomId);
-        }
-        catch (error) {
-            console.error('Error ending room:', error);
-        }
-    }
-    // 7. Emit call rejected event to caller using Account ID
-    const callerSocketId = socket_1.userSocketMap.get(callerAccountId);
-    if (callerSocketId && socket_1.io) {
-        socket_1.io.to(callerSocketId).emit('call-rejected', {
-            consultationId: consultation._id,
-            receiverId,
-            timestamp: new Date().toISOString(),
-        });
-        console.log(`📞 Call rejected by: ${receiverId}`);
-    }
-    else {
-        console.log(`⚠️ Caller ${callerAccountId} is offline`);
-    }
-    return {
-        success: true,
-        message: 'Call rejected successfully',
-    };
-});
-// End a call (by either participant)
-const endCall = (consultationId, userId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d;
-    // 1. Find consultation
-    const consultation = yield consultation_model_1.default.findById(consultationId);
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
-    }
-    // 2. Verify user is part of consultation using accountId
-    const user = yield user_model_1.User.findOne({ accountId: userId });
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
-    const isUser = user && ((_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.toString()) === userId;
-    const isAstrologer = astrologer && ((_b = astrologer.accountId) === null || _b === void 0 ? void 0 : _b.toString()) === userId;
-    if (!isUser && !isAstrologer) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to end this call');
-    }
-    // 3. Get the other participant's Account ID
-    let otherParticipantAccountId;
-    if (isUser) {
-        const otherAstrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-        otherParticipantAccountId = ((_c = otherAstrologer === null || otherAstrologer === void 0 ? void 0 : otherAstrologer.accountId) === null || _c === void 0 ? void 0 : _c.toString()) || '';
-    }
-    else {
-        const otherUser = yield user_model_1.User.findById(consultation.user);
-        otherParticipantAccountId = ((_d = otherUser === null || otherUser === void 0 ? void 0 : otherUser.accountId) === null || _d === void 0 ? void 0 : _d.toString()) || '';
-    }
-    // 4. Calculate call duration
-    let callDuration = 0;
-    if (consultation.callStartedAt) {
-        callDuration = Math.floor((new Date().getTime() - consultation.callStartedAt.getTime()) / 1000);
-    }
-    // 5. Update consultation
-    consultation.callStatus = 'ended';
-    consultation.callEndedAt = new Date();
-    // consultation.callEndedBy = isUser ? 'user' : 'astrologer';
-    consultation.callDuration = callDuration;
-    yield consultation.save();
-    // 6. End the Twilio room if it exists
-    if (consultation.callRoomId) {
-        try {
-            yield (0, twilio_1.endRoom)(consultation.callRoomId);
-        }
-        catch (error) {
-            console.error('Error ending room:', error);
-        }
-    }
-    // 7. Emit call ended event to both participants using Account IDs
-    const participants = [userId, otherParticipantAccountId];
-    participants.forEach((participantId) => {
-        if (participantId) {
-            const socketId = socket_1.userSocketMap.get(participantId);
-            if (socketId && socket_1.io) {
-                socket_1.io.to(socketId).emit('call-ended', {
-                    consultationId: consultation._id,
-                    endedBy: userId,
-                    duration: callDuration,
-                    timestamp: new Date().toISOString(),
-                });
-                console.log(`📞 Call ended sent to: ${participantId}`);
-            }
-            else {
-                console.log(`⚠️ Participant ${participantId} is offline`);
-            }
-        }
+    // 7. FIX: Use createMeeting instead of createMeetingEvent
+    const meeting = yield googleCalendar_service_1.default.createMeeting(astrologer, {
+        summary: `Astrology Consultation: ${consultation.consultationFor}`,
+        description: `
+        Consultation with ${astrologer.displayName || astrologer.firstName}
+        ${payload.notes ? `\nNotes: ${payload.notes}` : ''}
+        \nConsultation ID: ${consultation._id}
+      `,
+        startTime: payload.scheduledAt,
+        endTime: endTime,
+        attendeeEmail: (_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.email,
+        timezone: 'Asia/Kolkata',
     });
-    console.log(`📞 Call ended by: ${userId} (Duration: ${callDuration}s)`);
+    // 8. Update consultation with meeting details
+    consultation.meeting = {
+        link: meeting.meetLink,
+        scheduledAt: payload.scheduledAt,
+        notes: payload.notes,
+    };
+    consultation.status = "scheduled";
+    yield consultation.save();
+    // 9. Send notifications
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(payload.scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${new Date(payload.scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`);
     return {
         success: true,
-        duration: callDuration,
-        message: 'Call ended successfully',
+        consultation,
+        meeting: {
+            link: meeting.meetLink,
+            scheduledAt: payload.scheduledAt,
+        },
     };
 });
-// Get call token for joining an existing call
-const getCallToken = (consultationId, userId) => __awaiter(void 0, void 0, void 0, function* () {
-    const consultation = yield consultation_model_1.default.findById(consultationId);
+//Send reschedule request (User)
+const sendRescheduleRequest = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    // 1. Find user
+    const user = yield user_model_1.User.findOne({ accountId });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    // 2. Find consultation
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        user: user._id,
+    }).populate("astrologer", "accountId firstName lastName displayName email");
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
-    // Verify user is part of consultation
-    const isUser = consultation.user.toString() === userId;
-    const isAstrologer = consultation.astrologer.toString() === userId;
-    if (!isUser && !isAstrologer) {
-        throw new AppError_1.default(http_status_1.default.FORBIDDEN, 'You are not authorized to join this call');
+    // 3. Verify consultation is scheduled
+    if (consultation.status !== "scheduled") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
     }
-    // Verify call is in connected state
-    if (consultation.callStatus !== 'connected') {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Call is not in connected state (current: ${consultation.callStatus})`);
+    // 4. Check if there's already a pending reschedule request
+    if ((_b = (_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.rescheduleRequest) === null || _b === void 0 ? void 0 : _b.isRescheduled) {
+        throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending reschedule request");
     }
-    const roomName = consultation.callRoomId;
-    if (!roomName) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'No active call room found for this consultation');
-    }
-    const token = (0, twilio_1.generateTwilioAccessToken)(userId, roomName);
+    // 5. Add reschedule request
+    consultation.meeting = Object.assign(Object.assign({}, consultation.meeting), { rescheduleRequest: {
+            requestedTime: payload.requestedTime,
+            reason: payload.reason,
+            isRescheduled: false,
+        } });
+    yield consultation.save();
+    // 6. Notify astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer === null || astrologer === void 0 ? void 0 : astrologer.accountId, "Reschedule Request Received", `${user.firstName} has requested to reschedule the meeting. Reason: ${payload.reason}`);
     return {
         success: true,
-        roomName,
-        token,
-        callType: 'audio', // or 'video' based on your implementation
+        message: "Reschedule request sent successfully",
+        rescheduleRequest: (_c = consultation.meeting) === null || _c === void 0 ? void 0 : _c.rescheduleRequest,
     };
 });
-// Get call status
-const getCallStatus = (consultationId) => __awaiter(void 0, void 0, void 0, function* () {
-    const consultation = yield consultation_model_1.default.findById(consultationId);
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, 'Consultation not found');
+//Accept or reject reschedule request (Astrologer)
+const rescheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // 1. Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    return {
-        status: consultation.callStatus,
-        roomId: consultation.callRoomId,
-        startedAt: consultation.callStartedAt,
-        duration: consultation.callDuration,
-    };
+    // 2. Find consultation
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        astrologer: astrologer._id,
+    }).populate("user", "accountId firstName lastName email");
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
+    }
+    // 3. Verify consultation is scheduled
+    if (consultation.status !== "scheduled") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
+    }
+    // 4. Verify there's a reschedule request
+    if (!((_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.rescheduleRequest)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No reschedule request found");
+    }
+    const rescheduleRequest = consultation.meeting.rescheduleRequest;
+    // 5. Check if already processed
+    if (rescheduleRequest.isRescheduled === true) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This reschedule request has already been processed");
+    }
+    if (payload.action === "accept") {
+        // 6a. Update Google Calendar event
+        const newStartTime = new Date(rescheduleRequest.requestedTime);
+        // 6b. Update consultation with new meeting time
+        consultation.meeting.scheduledAt = newStartTime;
+        consultation.meeting.rescheduleRequest.isRescheduled = true;
+        yield consultation.save();
+        // 6c. Notify user
+        const user = yield user_model_1.User.findById(consultation.user);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Meeting Rescheduled", `Your meeting has been rescheduled to ${newStartTime.toLocaleString()}.`);
+        return {
+            success: true,
+            message: "Reschedule request accepted",
+            newTime: newStartTime,
+        };
+    }
+    else {
+        // 7. Reject reschedule
+        consultation.meeting.rescheduleRequest.isRescheduled = false;
+        yield consultation.save();
+        // 8. Notify user
+        const user = yield user_model_1.User.findById(consultation.user);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Reschedule Request Rejected", "Your reschedule request was not approved. The original meeting time remains unchanged.");
+        return {
+            success: true,
+            message: "Reschedule request rejected",
+            originalTime: consultation.meeting.scheduledAt,
+        };
+    }
 });
 exports.ConsultationServices = {
     requestConsultation,
@@ -576,10 +420,7 @@ exports.ConsultationServices = {
     getSingleConsultation,
     endConsultationSession,
     addReview,
-    startCall,
-    endCall,
-    acceptCall,
-    rejectCall,
-    getCallToken,
-    getCallStatus,
+    scheduleMeeting,
+    sendRescheduleRequest,
+    rescheduleMeeting,
 };

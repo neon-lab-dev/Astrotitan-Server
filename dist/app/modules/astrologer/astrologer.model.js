@@ -162,6 +162,31 @@ const astrologerSchema = new mongoose_1.Schema({
             },
         }
     },
+    // For Google Calendar integration
+    googleCalendar: {
+        accessToken: {
+            type: String,
+            select: false,
+        },
+        refreshToken: {
+            type: String,
+            select: false,
+        },
+        tokenExpiry: {
+            type: Date,
+        },
+        email: {
+            type: String,
+        },
+        calendarId: {
+            type: String,
+            default: "primary",
+        },
+        isConnected: {
+            type: Boolean,
+            default: false,
+        },
+    },
 }, {
     timestamps: true,
 });

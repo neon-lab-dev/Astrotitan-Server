@@ -208,5 +208,5 @@ exports.AstrologerServices = {
     getSingleAstrologerById,
     updateIdentityStatus,
     getPendingIdentityRequests,
-    updateAvailability,
+    updateAvailability
 };

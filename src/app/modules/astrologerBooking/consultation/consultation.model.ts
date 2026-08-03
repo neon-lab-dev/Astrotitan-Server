@@ -22,7 +22,7 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
         status: {
             type: String,
-            enum: ["pending", "accepted", "declined", "ended"],
+            enum: ["pending", "accepted", "declined","scheduled", "ended"],
             default: "pending",
             index: true,
         },
@@ -57,28 +57,32 @@ const ConsultationSchema = new Schema<TConsultation>(
             type: String,
             trim: true,
         },
-        // Call fields
-        callRoomId: {
-            type: String,
-            index: true,
-        },
-        callStatus: {
-            type: String,
-            enum: ['idle', 'ringing', 'connected', 'ended'],
-            default: 'idle',
-        },
-        callStartedAt: {
-            type: Date,
-        },
-        callEndedAt: {
-            type: Date,
-        },
-        // callEndedBy: {
-        //   type: String,
-        //   enum: ['user', 'astrologer'],
-        // },
-        callDuration: {
-            type: Number, // in seconds
+
+        // Meeting fields
+
+        meeting: {
+            link: {
+                type: String,
+            },
+            scheduledAt: {
+                type: Date,
+                index: true,
+            },
+            notes: {
+                type: String,
+            },
+            rescheduleRequest: {
+                requestedTime: {
+                    type: Date,
+                },
+                reason: {
+                    type: String,
+                },
+                isRescheduled: {
+                    type: Boolean,
+                    default: false,
+                },
+            },
         },
     },
     {

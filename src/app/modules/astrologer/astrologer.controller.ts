@@ -122,5 +122,5 @@ export const AstrologerControllers = {
   getSingleAstrologerById,
   updateIdentityStatus,
   getPendingIdentityRequests,
-  updateAvailability,
+  updateAvailability
 };

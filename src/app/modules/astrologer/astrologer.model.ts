@@ -136,7 +136,7 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
           min: 1,
           max: 5,
         },
-        createdAt : {
+        createdAt: {
           type: Date,
           default: Date.now,
         }
@@ -159,6 +159,32 @@ const astrologerSchema = new Schema<TAstrologer, AstrologerModel>(
         },
       }
 
+    },
+
+    // For Google Calendar integration
+    googleCalendar: {
+      accessToken: {
+        type: String,
+        select: false,
+      },
+      refreshToken: {
+        type: String,
+        select: false,
+      },
+      tokenExpiry: {
+        type: Date,
+      },
+      email: {
+        type: String,
+      },
+      calendarId: {
+        type: String,
+        default: "primary",
+      },
+      isConnected: {
+        type: Boolean,
+        default: false,
+      },
     },
   },
   {

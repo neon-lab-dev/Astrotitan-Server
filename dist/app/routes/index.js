@@ -16,7 +16,7 @@ const consultation_route_1 = require("../modules/astrologerBooking/consultation/
 const consultationChat_route_1 = require("../modules/astrologerBooking/consultationChat/consultationChat.route");
 const subscription_route_1 = require("../modules/subscription/subscription.route");
 const notification_route_1 = require("../modules/notification/notification.route");
-const twilio_route_1 = require("../modules/twilio/twilio.route");
+const googleCalendar_routes_1 = require("../modules/astrologerBooking/googleCalendar/googleCalendar.routes");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -80,8 +80,8 @@ const moduleRoutes = [
         route: notification_route_1.NotificationRoutes,
     },
     {
-        path: "/twilio",
-        route: twilio_route_1.TwilioRoutes,
+        path: "/google-calendar",
+        route: googleCalendar_routes_1.GoogleCalendarRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

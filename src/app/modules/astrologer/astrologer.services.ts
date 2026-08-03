@@ -300,11 +300,10 @@ const updateAvailability = async (
   };
 };
 
-
 export const AstrologerServices = {
   getAllAstrologer,
   getSingleAstrologerById,
   updateIdentityStatus,
   getPendingIdentityRequests,
-  updateAvailability,
+  updateAvailability
 };

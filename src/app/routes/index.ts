@@ -14,7 +14,7 @@ import { ConsultationRoutes } from "../modules/astrologerBooking/consultation/co
 import { ConsultationChatRoutes } from "../modules/astrologerBooking/consultationChat/consultationChat.route";
 import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
-import { TwilioRoutes } from "../modules/twilio/twilio.route";
+import { GoogleCalendarRoutes } from "../modules/astrologerBooking/googleCalendar/googleCalendar.routes";
 
 const router = Router();
 
@@ -80,8 +80,8 @@ const moduleRoutes = [
     route: NotificationRoutes,
   },
   {
-    path: "/twilio",
-    route: TwilioRoutes,
+    path: "/google-calendar",
+    route: GoogleCalendarRoutes,
   },
 ];
 

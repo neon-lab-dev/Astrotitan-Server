@@ -103,5 +103,5 @@ exports.AstrologerControllers = {
     getSingleAstrologerById,
     updateIdentityStatus,
     getPendingIdentityRequests,
-    updateAvailability,
+    updateAvailability
 };

@@ -28,15 +28,8 @@ exports.default = {
     subscription_plan_id: process.env.SUBSCRIPTION_PLAN_ID,
     resend_api_key: process.env.RESEND_API_KEY,
     email_from: process.env.EMAIL_FROM,
-    // TWILIO
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID,
-    twilio_auth_token: process.env.TWILIO_AUTH_TOKEN,
-    twilio_api_key: process.env.TWILIO_API_KEY,
-    twilio_api_secret: process.env.TWILIO_API_SECRET,
-    twilio_twiml_app_sid: process.env.TWILIO_TWIML_APP_SID,
-    // Livekit
-    agora_app_id: process.env.AGORA_APP_ID,
-    agora_app_certificate: process.env.AGORA_APP_CERTIFICATE,
-    agora_customer_id: process.env.AGORA_CUSTOMER_ID,
-    agora_customer_secret: process.env.AGORA_CUSTOMER_SECRET,
+    // Google Calendar API
+    google_client_id: process.env.GOOGLE_CLIENT_ID,
+    google_client_secret: process.env.GOOGLE_CLIENT_SECRET,
+    google_redirect_uri: process.env.GOOGLE_REDIRECT_URI,
 };

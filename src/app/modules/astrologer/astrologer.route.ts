@@ -35,4 +35,6 @@ router.put(
   auth(UserRole.astrologer),
   AstrologerControllers.updateAvailability
 );
+
+
 export const AstrologerRoutes = router;

@@ -47,6 +47,15 @@ export type TAstrologer = {
             endTime: string;
         };
     };
+
+    googleCalendar?: {
+        accessToken?: string;
+        refreshToken?: string;
+        tokenExpiry?: Date;
+        email?: string;
+        calendarId?: string;
+        isConnected?: boolean;
+    };
 };
 
 export interface AstrologerModel extends Model<TAstrologer> {
