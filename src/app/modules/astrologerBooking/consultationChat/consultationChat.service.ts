@@ -9,8 +9,6 @@ import { Astrologer } from "../../astrologer/astrologer.model";
 
 /* Get Consultation Chat List (Inbox) */
 const getConsultationChatList = async (accountId: string) => {
-    console.log("🔍 Getting chat list for accountId:", accountId);
-
     // Find user and astrologer by accountId
     const user = await User.findById(accountId).lean();
     const astrologer = await Astrologer.findOne({ accountId });

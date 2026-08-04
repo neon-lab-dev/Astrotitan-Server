@@ -25,7 +25,7 @@ const handleCallback = catchAsync(async (req, res) => {
   // Check for errors from Google
   if (error) {
     console.error('❌ Google OAuth error:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}/astrologer/bookings?error=${error}`);
+    return res.redirect(`${process.env.FRONTEND_URL}`);
   }
 
   // Validate required params
@@ -56,7 +56,7 @@ const handleCallback = catchAsync(async (req, res) => {
     if (result.success) {
       return res.redirect(`${process.env.FRONTEND_URL}`);
     } else {
-      return res.redirect(`${process.env.FRONTEND_URL}/astrologer/bookings?error=connection_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL}`);
     }
   } catch (error: any) {
     return {

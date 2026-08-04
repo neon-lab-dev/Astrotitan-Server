@@ -23,7 +23,6 @@ const user_model_1 = require("../../users/user.model");
 const astrologer_model_1 = require("../../astrologer/astrologer.model");
 /* Get Consultation Chat List (Inbox) */
 const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("🔍 Getting chat list for accountId:", accountId);
     // Find user and astrologer by accountId
     const user = yield user_model_1.User.findById(accountId).lean();
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
