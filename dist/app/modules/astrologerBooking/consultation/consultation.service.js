@@ -22,19 +22,20 @@ const sendSingleNotification_1 = require("../../../utils/sendSingleNotification"
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
 const googleCalendar_service_1 = __importDefault(require("../googleCalendar/googleCalendar.service"));
+const slot_model_1 = __importDefault(require("../../astrologer/slot/slot.model"));
 const requestConsultation = (accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // Check if user exists in Accounts
+    // 1. Check if user exists
     const user = yield user_model_1.User.findOne({ accountId });
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // Check if astrologer exists in Accounts
+    // 2. Check if astrologer exists
     const astrologer = yield astrologer_model_1.Astrologer.findById(payload.astrologer);
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // Check if there's already a pending consultation
+    // 3. Check if there's already a pending consultation
     const existingConsultation = yield consultation_model_1.default.findOne({
         user: user === null || user === void 0 ? void 0 : user._id,
         astrologer: payload.astrologer,
@@ -43,19 +44,46 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
-    // Create consultation with Account IDs
-    const consultation = yield consultation_model_1.default.create({
-        user: user === null || user === void 0 ? void 0 : user._id,
-        astrologer: payload.astrologer,
-        method: payload.method,
-        consultationFor: payload.consultationFor,
-        requestMessage: payload.requestMessage,
-        status: "pending",
-    });
-    // Populate with Account details
+    // 4. If method is "call" and slotId is provided, verify and book the slot
+    let slotDoc = null;
+    let slotIndex = -1;
+    let slotList = [];
+    if (payload.method === "call" && payload.slotId) {
+        // Find the slot document
+        slotDoc = yield slot_model_1.default.findOne({
+            astrologerId: payload.astrologer,
+            "slots._id": payload.slotId,
+        });
+        if (!slotDoc) {
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
+        }
+        slotList = Array.isArray(slotDoc.slots)
+            ? slotDoc.slots
+            : [];
+        // Find the specific slot
+        slotIndex = slotList.findIndex((slot) => slot._id.toString() === payload.slotId);
+        if (slotIndex === -1) {
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
+        }
+        // Check if slot is already booked
+        if (slotList[slotIndex].isBooked) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This slot is already booked");
+        }
+    }
+    // 5. Create consultation
+    const consultation = yield consultation_model_1.default.create(Object.assign({ user: user === null || user === void 0 ? void 0 : user._id, astrologer: payload.astrologer, method: payload.method, consultationFor: payload.consultationFor, requestMessage: payload.requestMessage, status: "pending" }, (payload.method === "call" && payload.slotId && {
+        slotId: payload.slotId,
+    })));
+    // 6. Mark slot as booked
+    if (payload.method === "call" && payload.slotId && slotDoc && slotIndex !== -1) {
+        slotDoc.slots[slotIndex].isBooked = true;
+        yield slotDoc.save();
+    }
+    // 7. Populate consultation
     const populatedConsultation = yield consultation_model_1.default.findById(consultation._id)
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
+    // 8. Send notification
     yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
     return populatedConsultation;
 });
@@ -112,7 +140,6 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = (consultationId, accountId, // This is Account ID
 payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
@@ -133,15 +160,6 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     const updateData = {
         status: payload.status,
     };
-    if (payload.status === "accepted") {
-        updateData.acceptedAt = new Date();
-        updateData.startedAt = new Date();
-        yield (0, sendSingleNotification_1.sendSingleNotification)((_a = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _a === void 0 ? void 0 : _a.accountId, "Consultation Accepted!", `Great news! Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been ACCEPTED. You can now start your session and get the guidance you seek.`);
-    }
-    if (payload.status === "declined") {
-        updateData.declinedAt = new Date();
-        yield (0, sendSingleNotification_1.sendSingleNotification)((_b = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _b === void 0 ? void 0 : _b.accountId, "Consultation Declined", `We're sorry, but ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} is currently unavailable for your consultation. Please try another astrologer who can assist you on your spiritual journey.`);
-    }
     const updatedConsultation = yield consultation_model_1.default.findByIdAndUpdate(consultationId, updateData, { new: true })
         .populate("user", "firstName lastName email profilePicture")
         .populate("astrologer", "firstName lastName displayName profilePicture");
@@ -262,10 +280,6 @@ const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0
     }).populate("user", "firstName lastName email");
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
-    }
-    // 3. Verify consultation is accepted
-    if (consultation.status !== "accepted") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation must be accepted first. Current status: ${consultation.status}`);
     }
     // 4. Verify method is call
     if (consultation.method !== "call") {

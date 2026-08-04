@@ -231,7 +231,7 @@ exports.sendConsultationBookingEmail = sendConsultationBookingEmail;
 const sendConsultationStatusEmail = (user, consultationDetails, status) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const userName = getUserName(user);
-    const statusEmoji = status === "accepted" ? "✅" : status === "declined" ? "❌" : "📌";
+    const statusEmoji = status === "accepted" ? "" : status === "declined" ? "❌" : "📌";
     const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
     const content = `
     <p style="font-size:16px; color:#333; margin-bottom:10px;">Namaste <strong>${userName}</strong>,</p>

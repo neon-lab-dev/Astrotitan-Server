@@ -7,6 +7,7 @@ import { sendSingleNotification } from "../../../utils/sendSingleNotification";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
 import { User } from "../../users/user.model";
 import googleCalendarService from "../googleCalendar/googleCalendar.service";
+import Slot from "../../astrologer/slot/slot.model";
 
 const requestConsultation = async (
   accountId: string, // This is Account ID
@@ -15,21 +16,22 @@ const requestConsultation = async (
     method: "chat" | "call";
     consultationFor: string;
     requestMessage?: string;
+    slotId?: string; // Only for call
   }
 ) => {
-  // Check if user exists in Accounts
+  // 1. Check if user exists
   const user = await User.findOne({ accountId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // Check if astrologer exists in Accounts
+  // 2. Check if astrologer exists
   const astrologer = await Astrologer.findById(payload.astrologer);
   if (!astrologer) {
     throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
   }
 
-  // Check if there's already a pending consultation
+  // 3. Check if there's already a pending consultation
   const existingConsultation = await Consultation.findOne({
     user: user?._id,
     astrologer: payload.astrologer,
@@ -43,7 +45,42 @@ const requestConsultation = async (
     );
   }
 
-  // Create consultation with Account IDs
+  // 4. If method is "call" and slotId is provided, verify and book the slot
+  let slotDoc: any = null;
+  let slotIndex = -1;
+  let slotList: Array<{ _id: { toString: () => string }; isBooked: boolean }> = [];
+
+  if (payload.method === "call" && payload.slotId) {
+    // Find the slot document
+    slotDoc = await Slot.findOne({
+      astrologerId: payload.astrologer,
+      "slots._id": payload.slotId,
+    });
+
+    if (!slotDoc) {
+      throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
+    }
+
+    slotList = Array.isArray(slotDoc.slots)
+      ? (slotDoc.slots as Array<{ _id: { toString: () => string }; isBooked: boolean }>)
+      : [];
+
+    // Find the specific slot
+    slotIndex = slotList.findIndex(
+      (slot) => slot._id.toString() === payload.slotId
+    );
+
+    if (slotIndex === -1) {
+      throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
+    }
+
+    // Check if slot is already booked
+    if (slotList[slotIndex].isBooked) {
+      throw new AppError(httpStatus.BAD_REQUEST, "This slot is already booked");
+    }
+  }
+
+  // 5. Create consultation
   const consultation = await Consultation.create({
     user: user?._id,
     astrologer: payload.astrologer,
@@ -51,13 +88,24 @@ const requestConsultation = async (
     consultationFor: payload.consultationFor,
     requestMessage: payload.requestMessage,
     status: "pending",
+    // Store slot reference if call method
+    ...(payload.method === "call" && payload.slotId && {
+      slotId: payload.slotId,
+    }),
   });
 
-  // Populate with Account details
+  // 6. Mark slot as booked
+  if (payload.method === "call" && payload.slotId && slotDoc && slotIndex !== -1) {
+    slotDoc.slots[slotIndex].isBooked = true;
+    await slotDoc.save();
+  }
+
+  // 7. Populate consultation
   const populatedConsultation = await Consultation.findById(consultation._id)
     .populate("user", "firstName lastName email profilePicture")
     .populate("astrologer", "firstName lastName displayName profilePicture");
 
+  // 8. Send notification
   await sendSingleNotification(
     accountId as any,
     "Consultation Request Sent Successfully",
@@ -162,7 +210,7 @@ const changeConsultationStatus = async (
   consultationId: string,
   accountId: string, // This is Account ID
   payload: {
-    status: "accepted" | "declined";
+    status: "scheduled" | "ended";
   }
 ) => {
   const astrologer = await Astrologer.findOne({ accountId });
@@ -193,25 +241,6 @@ const changeConsultationStatus = async (
   const updateData: any = {
     status: payload.status,
   };
-
-  if (payload.status === "accepted") {
-    updateData.acceptedAt = new Date();
-    updateData.startedAt = new Date();
-    await sendSingleNotification(
-      (consultation?.user as any)?.accountId as any,
-      "Consultation Accepted!",
-      `Great news! Your consultation request with ${astrologer?.displayName} has been ACCEPTED. You can now start your session and get the guidance you seek.`
-    );
-  }
-
-  if (payload.status === "declined") {
-    updateData.declinedAt = new Date();
-    await sendSingleNotification(
-      (consultation?.user as any)?.accountId as any,
-      "Consultation Declined",
-      `We're sorry, but ${astrologer?.displayName} is currently unavailable for your consultation. Please try another astrologer who can assist you on your spiritual journey.`
-    );
-  }
 
   const updatedConsultation = await Consultation.findByIdAndUpdate(
     consultationId,
@@ -395,14 +424,6 @@ const scheduleMeeting = async (
 
   if (!consultation) {
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or not authorized");
-  }
-
-  // 3. Verify consultation is accepted
-  if (consultation.status !== "accepted") {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Consultation must be accepted first. Current status: ${consultation.status}`
-    );
   }
 
   // 4. Verify method is call

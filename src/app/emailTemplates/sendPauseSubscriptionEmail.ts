@@ -259,7 +259,7 @@ export const sendConsultationStatusEmail = async (
   status: "accepted" | "declined" | "ended"
 ) => {
   const userName = getUserName(user);
-  const statusEmoji = status === "accepted" ? "✅" : status === "declined" ? "❌" : "📌";
+  const statusEmoji = status === "accepted" ? "" : status === "declined" ? "❌" : "📌";
   const statusTitle = status.charAt(0).toUpperCase() + status.slice(1);
 
   const content = `

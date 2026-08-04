@@ -5,7 +5,7 @@ export type TConsultation = {
     user: ObjectId;           // User who requested
     astrologer: ObjectId;      // Astrologer who received the request
     method: "chat" | "call";         // Consultation method
-    status: "pending" | "accepted" | "declined" | "scheduled" | "ended";
+    status: "pending" | "scheduled" | "ended";
     consultationFor: string;
     requestMessage?: string; // if user wants to write a short message about his issue
     acceptedAt?: Date;
@@ -17,6 +17,7 @@ export type TConsultation = {
     review?: string;
 
     // If method is call, then meeting link will be generated and stored here
+    slotId?: ObjectId;
     recommendations?: string;
     meeting: {
         link: string;
@@ -27,7 +28,7 @@ export type TConsultation = {
             reason: string;
             isRescheduled: boolean;
         }
-    }
+    };
     createdAt?: Date;
     updatedAt?: Date;
 };

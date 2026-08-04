@@ -103,7 +103,7 @@ const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0,
             lastMessage: (lastMessage === null || lastMessage === void 0 ? void 0 : lastMessage.content) || "No messages yet",
             lastMessageTime: (lastMessage === null || lastMessage === void 0 ? void 0 : lastMessage.createdAt) || consultation.createdAt,
             unreadCount: unreadCount,
-            isActive: consultation.status === "accepted" || consultation.status === "pending",
+            isActive: consultation.status === "pending",
         };
     })));
     // Filter out nulls and sort by last message time

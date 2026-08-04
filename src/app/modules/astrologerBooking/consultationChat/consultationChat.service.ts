@@ -105,7 +105,7 @@ const getConsultationChatList = async (accountId: string) => {
                 lastMessage: lastMessage?.content || "No messages yet",
                 lastMessageTime: lastMessage?.createdAt || consultation.createdAt,
                 unreadCount: unreadCount,
-                isActive: consultation.status === "accepted" || consultation.status === "pending",
+                isActive: consultation.status === "pending",
             };
         })
     );

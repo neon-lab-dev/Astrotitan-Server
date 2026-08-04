@@ -117,7 +117,7 @@ const updateBookingStatus = (bookingId, payload) => __awaiter(void 0, void 0, vo
                 notificationMessage = `Our team has contacted you regarding your puja booking. ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
                 break;
             case "booked":
-                notificationTitle = "Booking Confirmed ✅";
+                notificationTitle = "Booking Confirmed ";
                 notificationMessage = `Your puja booking has been confirmed! ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
                 break;
             case "notInterested":

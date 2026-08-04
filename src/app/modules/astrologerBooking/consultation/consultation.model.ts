@@ -22,7 +22,7 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
         status: {
             type: String,
-            enum: ["pending", "accepted", "declined", "scheduled", "ended"],
+            enum: ["pending", "scheduled", "ended"],
             default: "pending",
             index: true,
         },
@@ -59,7 +59,10 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
 
         // Meeting fields
-
+        slotId: {
+            type: Types.ObjectId,
+            ref: "Slot",
+        },
         recommendations: {
             type: String,
         },

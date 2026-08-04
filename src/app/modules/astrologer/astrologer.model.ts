@@ -1,4 +1,3 @@
-// astrologer.model.ts
 import { Schema, model } from "mongoose";
 import { TAstrologer, AstrologerModel } from "./astrologer.interface";
 import mongoose from "mongoose";

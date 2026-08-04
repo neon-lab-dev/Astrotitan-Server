@@ -15,6 +15,7 @@ import { ConsultationChatRoutes } from "../modules/astrologerBooking/consultatio
 import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
 import { GoogleCalendarRoutes } from "../modules/astrologerBooking/googleCalendar/googleCalendar.routes";
+import { SlotRoutes } from "../modules/astrologer/slot/slot.routes";
 
 const router = Router();
 
@@ -30,6 +31,10 @@ const moduleRoutes = [
   {
     path: "/astrologer",
     route: AstrologerRoutes,
+  },
+  {
+    path: "/slot",
+    route: SlotRoutes,
   },
   {
     path: "/address",

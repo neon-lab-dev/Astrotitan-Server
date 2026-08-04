@@ -21,7 +21,7 @@ const ConsultationSchema = new mongoose_1.Schema({
     },
     status: {
         type: String,
-        enum: ["pending", "accepted", "declined", "scheduled", "ended"],
+        enum: ["pending", "scheduled", "ended"],
         default: "pending",
         index: true,
     },
@@ -57,6 +57,10 @@ const ConsultationSchema = new mongoose_1.Schema({
         trim: true,
     },
     // Meeting fields
+    slotId: {
+        type: mongoose_1.Types.ObjectId,
+        ref: "Slot",
+    },
     recommendations: {
         type: String,
     },

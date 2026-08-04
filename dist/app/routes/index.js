@@ -17,6 +17,7 @@ const consultationChat_route_1 = require("../modules/astrologerBooking/consultat
 const subscription_route_1 = require("../modules/subscription/subscription.route");
 const notification_route_1 = require("../modules/notification/notification.route");
 const googleCalendar_routes_1 = require("../modules/astrologerBooking/googleCalendar/googleCalendar.routes");
+const slot_routes_1 = require("../modules/astrologer/slot/slot.routes");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -30,6 +31,10 @@ const moduleRoutes = [
     {
         path: "/astrologer",
         route: astrologer_route_1.AstrologerRoutes,
+    },
+    {
+        path: "/slot",
+        route: slot_routes_1.SlotRoutes,
     },
     {
         path: "/address",

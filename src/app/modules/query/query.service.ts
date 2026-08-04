@@ -254,7 +254,7 @@ const updateQueryStatus = async (
                 notificationMessage = `Your query "${query.subject}" is now being reviewed by our team. We'll update you soon.`;
                 break;
             case "resolved":
-                notificationTitle = "Query Resolved ✅";
+                notificationTitle = "Query Resolved ";
                 notificationMessage = `Your query "${query.subject}" has been resolved. ${payload.adminFeedback ? `Feedback: ${payload.adminFeedback}` : ""
                     }`;
                 break;
