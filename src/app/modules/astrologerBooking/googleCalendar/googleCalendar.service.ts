@@ -120,6 +120,75 @@ class GoogleCalendarService {
         }
     }
 
+    async connectWithAccessToken(astrologerId: string, accessToken: string) {
+        try {
+            // 1. Find astrologer
+            const astrologer = await Astrologer.findOne({ accountId: astrologerId });
+            if (!astrologer) {
+                throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+            }
+
+            // 2. Create OAuth client
+            const oauth2Client = this.getOAuth2Client();
+            
+            // 3. Set the access token
+            oauth2Client.setCredentials({
+                access_token: accessToken,
+            });
+
+            // 4. Get user info from Google
+            const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+            const userInfo = await oauth2.userinfo.get();
+
+            // 5. Check if refresh token is available
+            const refreshToken = oauth2Client.credentials.refresh_token;
+
+            // 6. Update astrologer with credentials
+            const updateData: any = {
+                "googleCalendar.accessToken": accessToken,
+                "googleCalendar.email": userInfo.data.email || '',
+                "googleCalendar.calendarId": "primary",
+                "googleCalendar.isConnected": true,
+                "googleCalendar.connectedAt": new Date(),
+            };
+
+            // Store refresh token if available
+            if (refreshToken) {
+                updateData["googleCalendar.refreshToken"] = refreshToken;
+            }
+
+            await Astrologer.findOneAndUpdate(
+                { accountId: astrologerId },
+                { $set: updateData },
+                { new: true }
+            );
+
+            return {
+                success: true,
+                message: "Google Calendar connected successfully",
+                data: {
+                    email: userInfo.data.email,
+                    isConnected: true,
+                    connectedAt: new Date(),
+                },
+            };
+        } catch (error: any) {
+            console.error('❌ Connect with access token error:', error);
+
+            if (error.response?.data?.error === 'invalid_grant') {
+                throw new AppError(
+                    httpStatus.BAD_REQUEST,
+                    'Invalid access token. Please try again.'
+                );
+            }
+
+            throw new AppError(
+                httpStatus.INTERNAL_SERVER_ERROR,
+                error.message || 'Failed to connect Google Calendar'
+            );
+        }
+    }
+
     /**
      * Get astrologer's calendar connection status
      */

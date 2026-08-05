@@ -94,9 +94,38 @@ const disconnectCalendar = catchAsync(async (req, res) => {
   });
 });
 
+const connectWithAccessToken = catchAsync(async (req, res) => {
+  const astrologerId = req.user._id;
+  const { accessToken } = req.body;
+
+  if (!accessToken) {
+    return sendResponse(res, {
+      statusCode: httpStatus.BAD_REQUEST,
+      success: false,
+      message: "Access token is required",
+      data: null
+    });
+  }
+
+  console.log('🔑 Connecting Google Calendar with access token for astrologer:', astrologerId);
+
+  const result = await googleCalendarService.connectWithAccessToken(
+    astrologerId,
+    accessToken
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Google Calendar connected successfully",
+    data: result,
+  });
+});
+
 export const GoogleCalendarController = {
   getAuthUrl,
   handleCallback,
   getConnectionStatus,
   disconnectCalendar,
+  connectWithAccessToken
 };

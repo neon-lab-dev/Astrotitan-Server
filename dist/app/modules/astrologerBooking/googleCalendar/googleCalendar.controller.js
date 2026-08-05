@@ -90,9 +90,30 @@ const disconnectCalendar = (0, catchAsync_1.default)((req, res) => __awaiter(voi
         data: result,
     });
 }));
+const connectWithAccessToken = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologerId = req.user._id;
+    const { accessToken } = req.body;
+    if (!accessToken) {
+        return (0, sendResponse_1.default)(res, {
+            statusCode: http_status_1.default.BAD_REQUEST,
+            success: false,
+            message: "Access token is required",
+            data: null
+        });
+    }
+    console.log('🔑 Connecting Google Calendar with access token for astrologer:', astrologerId);
+    const result = yield googleCalendar_service_1.default.connectWithAccessToken(astrologerId, accessToken);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Google Calendar connected successfully",
+        data: result,
+    });
+}));
 exports.GoogleCalendarController = {
     getAuthUrl,
     handleCallback,
     getConnectionStatus,
     disconnectCalendar,
+    connectWithAccessToken
 };

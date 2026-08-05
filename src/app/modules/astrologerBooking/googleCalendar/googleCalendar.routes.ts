@@ -11,6 +11,8 @@ router.get('/auth-url', auth(UserRole.astrologer), GoogleCalendarController.getA
 // OAuth callback - exchange code for tokens
 router.get('/oauth-callback', GoogleCalendarController.handleCallback);
 
+router.post('/connect', auth(UserRole.astrologer), GoogleCalendarController.connectWithAccessToken);
+
 // Get connection status
 router.get('/status', auth(UserRole.astrologer), GoogleCalendarController.getConnectionStatus);
 

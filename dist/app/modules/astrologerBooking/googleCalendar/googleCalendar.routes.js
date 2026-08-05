@@ -13,6 +13,7 @@ const router = express_1.default.Router();
 router.get('/auth-url', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), googleCalendar_controller_1.GoogleCalendarController.getAuthUrl);
 // OAuth callback - exchange code for tokens
 router.get('/oauth-callback', googleCalendar_controller_1.GoogleCalendarController.handleCallback);
+router.post('/connect', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), googleCalendar_controller_1.GoogleCalendarController.connectWithAccessToken);
 // Get connection status
 router.get('/status', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), googleCalendar_controller_1.GoogleCalendarController.getConnectionStatus);
 // Disconnect calendar

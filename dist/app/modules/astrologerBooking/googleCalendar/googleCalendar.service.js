@@ -107,6 +107,58 @@ class GoogleCalendarService {
             }
         });
     }
+    connectWithAccessToken(astrologerId, accessToken) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            try {
+                // 1. Find astrologer
+                const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: astrologerId });
+                if (!astrologer) {
+                    throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+                }
+                // 2. Create OAuth client
+                const oauth2Client = this.getOAuth2Client();
+                // 3. Set the access token
+                oauth2Client.setCredentials({
+                    access_token: accessToken,
+                });
+                // 4. Get user info from Google
+                const oauth2 = googleapis_1.google.oauth2({ version: 'v2', auth: oauth2Client });
+                const userInfo = yield oauth2.userinfo.get();
+                // 5. Check if refresh token is available
+                const refreshToken = oauth2Client.credentials.refresh_token;
+                // 6. Update astrologer with credentials
+                const updateData = {
+                    "googleCalendar.accessToken": accessToken,
+                    "googleCalendar.email": userInfo.data.email || '',
+                    "googleCalendar.calendarId": "primary",
+                    "googleCalendar.isConnected": true,
+                    "googleCalendar.connectedAt": new Date(),
+                };
+                // Store refresh token if available
+                if (refreshToken) {
+                    updateData["googleCalendar.refreshToken"] = refreshToken;
+                }
+                yield astrologer_model_1.Astrologer.findOneAndUpdate({ accountId: astrologerId }, { $set: updateData }, { new: true });
+                return {
+                    success: true,
+                    message: "Google Calendar connected successfully",
+                    data: {
+                        email: userInfo.data.email,
+                        isConnected: true,
+                        connectedAt: new Date(),
+                    },
+                };
+            }
+            catch (error) {
+                console.error('❌ Connect with access token error:', error);
+                if (((_b = (_a = error.response) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.error) === 'invalid_grant') {
+                    throw new AppError_1.default(http_status_1.default.BAD_REQUEST, 'Invalid access token. Please try again.');
+                }
+                throw new AppError_1.default(http_status_1.default.INTERNAL_SERVER_ERROR, error.message || 'Failed to connect Google Calendar');
+            }
+        });
+    }
     /**
      * Get astrologer's calendar connection status
      */
