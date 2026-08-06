@@ -44,11 +44,12 @@ const getMyConsultationRequests = catchAsync(async (req, res) => {
 /* Get My Consultation Bookings - Astrologer */
 const getMyConsultationBookings = catchAsync(async (req, res) => {
   const astrologerId = req.user._id;
-  const { status, method, skip = "0", limit = "10" } = req.query;
+  const { status, date, method, skip = "0", limit = "10" } = req.query;
 
   const filters = {
     status: status as string,
     method: method as string,
+    date: date as string,
   };
 
   const result = await ConsultationServices.getMyConsultationBookings(

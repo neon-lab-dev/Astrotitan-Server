@@ -44,11 +44,11 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
-    // 4. ✅ If method is "call" and bookedSlotId is provided, verify and book the slot
+    // 4. If method is "call" and bookedSlotId is provided, verify and book the slot
     let slotDoc = null;
     let slotIndex = -1;
     if (payload.method === "call" && payload.bookedSlotId) {
-        // ✅ Find the slot document that contains this bookedSlotId
+        // Find the slot document that contains this bookedSlotId
         slotDoc = yield slot_model_1.default.findOne({
             astrologerId: payload.astrologer,
             "slots._id": payload.bookedSlotId,
@@ -56,12 +56,12 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
         if (!slotDoc) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
         }
-        // ✅ Find the specific slot using bookedSlotId (NOT slotId)
+        // Find the specific slot using bookedSlotId (NOT slotId)
         slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() === payload.bookedSlotId);
         if (slotIndex === -1) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found in the slots array");
         }
-        // ✅ Check if slot is already booked
+        // Check if slot is already booked
         if (slotDoc.slots[slotIndex].isBooked) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This slot is already booked");
         }
@@ -71,7 +71,7 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
         slotId: payload.slotId, // The Slot document ID
         bookedSlotId: payload.bookedSlotId, // The specific slot's _id
     })));
-    // 6. ✅ Mark the specific slot as booked
+    // 6. Mark the specific slot as booked
     if (payload.method === "call" && slotDoc && slotIndex !== -1) {
         slotDoc.slots[slotIndex].isBooked = true;
         yield slotDoc.save();
@@ -121,6 +121,24 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
     if (filters.method && filters.method !== "all") {
         query.method = filters.method;
     }
+    // Date filter - Convert "Aug 15, 2026" to Date range
+    if (filters.date) {
+        const dateStr = filters.date; // "Aug 15, 2026"
+        const parsedDate = new Date(dateStr);
+        if (!isNaN(parsedDate.getTime())) {
+            // Set start of day (00:00:00)
+            const startDate = new Date(parsedDate);
+            startDate.setHours(0, 0, 0, 0);
+            // Set end of day (23:59:59)
+            const endDate = new Date(parsedDate);
+            endDate.setHours(23, 59, 59, 999);
+            // Use aggregation to filter by slotId.date
+            // Since we need to filter by populated field, we'll use aggregation
+            const result = yield getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
+            return result;
+        }
+    }
+    // If no date filter, use the regular pagination
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
@@ -135,17 +153,14 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
             select: "date slots"
         }
     ]);
-    // ✅ Process each consultation to get the booked slot details
+    // Process each consultation to get the booked slot details
     if (result.data && result.data.length > 0) {
         result.data = result.data.map((consultation) => {
             var _a;
             const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
-            // ✅ If slotId exists and bookedSlotId exists, find the specific slot
             if (consultationObj.slotId && consultationObj.bookedSlotId) {
                 const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
-                // ✅ Add the booked slot details to the response
                 consultationObj.bookedSlot = bookedSlot || null;
-                // ✅ Optionally, add startTime and endTime directly
                 if (bookedSlot) {
                     consultationObj.startTime = bookedSlot.startTime;
                     consultationObj.endTime = bookedSlot.endTime;
@@ -158,6 +173,153 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
         });
     }
     return result;
+});
+// Helper function for date filtering using aggregation
+const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, limit) => __awaiter(void 0, void 0, void 0, function* () {
+    const pipeline = [
+        { $match: baseQuery },
+        { $sort: { createdAt: -1 } },
+        {
+            $lookup: {
+                from: "slots",
+                localField: "slotId",
+                foreignField: "_id",
+                as: "slotData"
+            }
+        },
+        { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
+        {
+            // Filter by slot date
+            $match: {
+                $or: [
+                    { "slotData.date": { $gte: startDate, $lte: endDate } },
+                    { "slotData": null } // Keep consultations without slots (chat)
+                ]
+            }
+        },
+        { $skip: skip },
+        { $limit: limit },
+        {
+            $lookup: {
+                from: "users",
+                localField: "user",
+                foreignField: "_id",
+                as: "user"
+            }
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "astrologers",
+                localField: "astrologer",
+                foreignField: "_id",
+                as: "astrologer"
+            }
+        },
+        { $unwind: { path: "$astrologer", preserveNullAndEmptyArrays: true } },
+        {
+            $addFields: {
+                "bookedSlot": {
+                    $cond: {
+                        if: { $and: [{ $ne: ["$slotData", null] }, { $ne: ["$bookedSlotId", null] }] },
+                        then: {
+                            $arrayElemAt: [
+                                {
+                                    $filter: {
+                                        input: "$slotData.slots",
+                                        as: "slot",
+                                        cond: { $eq: ["$$slot._id", "$bookedSlotId"] }
+                                    }
+                                },
+                                0
+                            ]
+                        },
+                        else: null
+                    }
+                }
+            }
+        },
+        {
+            $addFields: {
+                "startTime": "$bookedSlot.startTime",
+                "endTime": "$bookedSlot.endTime"
+            }
+        },
+        {
+            $project: {
+                user: {
+                    _id: 1,
+                    accountId: 1,
+                    firstName: 1,
+                    lastName: 1,
+                    fullName: 1,
+                    profilePicture: 1,
+                    email: 1
+                },
+                astrologer: {
+                    _id: 1,
+                    accountId: 1,
+                    displayName: 1,
+                    firstName: 1,
+                    lastName: 1,
+                    profilePicture: 1
+                },
+                method: 1,
+                status: 1,
+                consultationFor: 1,
+                requestMessage: 1,
+                meeting: 1,
+                slotId: 1,
+                bookedSlotId: 1,
+                bookedSlot: 1,
+                startTime: 1,
+                endTime: 1,
+                slotData: {
+                    date: 1,
+                    slots: 1
+                },
+                createdAt: 1,
+                updatedAt: 1,
+                __v: 1
+            }
+        }
+    ];
+    const data = yield consultation_model_1.default.aggregate(pipeline);
+    // Get total count for pagination
+    const countPipeline = [
+        { $match: baseQuery },
+        {
+            $lookup: {
+                from: "slots",
+                localField: "slotId",
+                foreignField: "_id",
+                as: "slotData"
+            }
+        },
+        { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
+        {
+            $match: {
+                $or: [
+                    { "slotData.date": { $gte: startDate, $lte: endDate } },
+                    { "slotData": null }
+                ]
+            }
+        },
+        { $count: "total" }
+    ];
+    const countResult = yield consultation_model_1.default.aggregate(countPipeline);
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+    return {
+        data,
+        meta: {
+            total,
+            filteredTotal: total,
+            skip,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            hasMore: skip + data.length < total
+        }
+    };
 });
 /* Change Consultation Status - Astrologer */
 const changeConsultationStatus = (consultationId, accountId, // This is Account ID
@@ -295,7 +457,7 @@ const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0,
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // 2. ✅ Find consultation and populate slotId
+    // 2. Find consultation and populate slotId
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
@@ -309,21 +471,21 @@ const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0,
     if (consultation.method !== "call") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
     }
-    // 4. ✅ Check if slot exists
+    // 4. Check if slot exists
     if (!consultation.slotId) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No slot found for this consultation");
     }
-    // 5. ✅ Check if bookedSlotId exists
+    // 5. Check if bookedSlotId exists
     if (!consultation.bookedSlotId) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No booked slot found for this consultation");
     }
     const slotDoc = consultation.slotId;
-    // 6. ✅ Find the specific booked slot using bookedSlotId
+    // 6. Find the specific booked slot using bookedSlotId
     const bookedSlot = slotDoc.slots.find((slot) => { var _a; return slot._id.toString() === ((_a = consultation === null || consultation === void 0 ? void 0 : consultation.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString()); });
     if (!bookedSlot) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Booked slot not found in the slot document");
     }
-    // 7. ✅ Get startTime and endTime from the booked slot
+    // 7. Get startTime and endTime from the booked slot
     const slotDate = new Date(slotDoc.date);
     const startTimeStr = bookedSlot.startTime; // "09:00"
     const endTimeStr = bookedSlot.endTime; // "09:30"
@@ -339,7 +501,7 @@ const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0,
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // 9. ✅ Create meeting in Google Calendar
+    // 9. Create meeting in Google Calendar
     const meeting = yield googleCalendar_service_1.default.createMeeting(astrologer, {
         summary: `Astrology Consultation: ${consultation.consultationFor}`,
         description: `
@@ -352,7 +514,7 @@ const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0,
         attendeeEmail: (_a = user.accountId) === null || _a === void 0 ? void 0 : _a.email,
         timezone: 'Asia/Kolkata',
     });
-    // 10. ✅ Update consultation with meeting details
+    // 10. Update consultation with meeting details
     consultation.meeting.link = meeting.meetLink;
     consultation.meeting.scheduledAt = scheduledAt;
     consultation.status = "scheduled";

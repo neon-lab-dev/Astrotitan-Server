@@ -46,12 +46,12 @@ const requestConsultation = async (
     );
   }
 
-  // 4. ✅ If method is "call" and bookedSlotId is provided, verify and book the slot
+  // 4. If method is "call" and bookedSlotId is provided, verify and book the slot
   let slotDoc: any = null;
   let slotIndex = -1;
 
   if (payload.method === "call" && payload.bookedSlotId) {
-    // ✅ Find the slot document that contains this bookedSlotId
+    // Find the slot document that contains this bookedSlotId
     slotDoc = await Slot.findOne({
       astrologerId: payload.astrologer,
       "slots._id": payload.bookedSlotId,
@@ -61,7 +61,7 @@ const requestConsultation = async (
       throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
     }
 
-    // ✅ Find the specific slot using bookedSlotId (NOT slotId)
+    // Find the specific slot using bookedSlotId (NOT slotId)
     slotIndex = slotDoc.slots.findIndex(
       (slot: any) => slot._id.toString() === payload.bookedSlotId
     );
@@ -70,7 +70,7 @@ const requestConsultation = async (
       throw new AppError(httpStatus.NOT_FOUND, "Slot not found in the slots array");
     }
 
-    // ✅ Check if slot is already booked
+    // Check if slot is already booked
     if (slotDoc.slots[slotIndex].isBooked) {
       throw new AppError(httpStatus.BAD_REQUEST, "This slot is already booked");
     }
@@ -84,14 +84,14 @@ const requestConsultation = async (
     consultationFor: payload.consultationFor,
     requestMessage: payload.requestMessage,
     status: "pending",
-    // ✅ Store both the document ID and the specific slot ID
+    // Store both the document ID and the specific slot ID
     ...(payload.method === "call" && payload.slotId && {
       slotId: payload.slotId, // The Slot document ID
       bookedSlotId: payload.bookedSlotId, // The specific slot's _id
     }),
   });
 
-  // 6. ✅ Mark the specific slot as booked
+  // 6. Mark the specific slot as booked
   if (payload.method === "call" && slotDoc && slotIndex !== -1) {
     slotDoc.slots[slotIndex].isBooked = true;
     await slotDoc.save();
@@ -159,6 +159,7 @@ const getMyConsultationBookings = async (
   filters: {
     status?: string;
     method?: string;
+    date?: string; // Add date filter
   } = {},
   skip = 0,
   limit = 10
@@ -179,6 +180,35 @@ const getMyConsultationBookings = async (
     query.method = filters.method;
   }
 
+  // Date filter - Convert "Aug 15, 2026" to Date range
+  if (filters.date) {
+    const dateStr = filters.date; // "Aug 15, 2026"
+    const parsedDate = new Date(dateStr);
+    
+    if (!isNaN(parsedDate.getTime())) {
+      // Set start of day (00:00:00)
+      const startDate = new Date(parsedDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      // Set end of day (23:59:59)
+      const endDate = new Date(parsedDate);
+      endDate.setHours(23, 59, 59, 999);
+      
+      // Use aggregation to filter by slotId.date
+      // Since we need to filter by populated field, we'll use aggregation
+      const result = await getConsultationsWithDateFilter(
+        query,
+        startDate,
+        endDate,
+        skip,
+        limit
+      );
+      
+      return result;
+    }
+  }
+
+  // If no date filter, use the regular pagination
   const result = await infinitePaginate(
     Consultation,
     query,
@@ -200,21 +230,18 @@ const getMyConsultationBookings = async (
     ]
   );
 
-  // ✅ Process each consultation to get the booked slot details
+  // Process each consultation to get the booked slot details
   if (result.data && result.data.length > 0) {
     result.data = result.data.map((consultation: any) => {
       const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
 
-      // ✅ If slotId exists and bookedSlotId exists, find the specific slot
       if (consultationObj.slotId && consultationObj.bookedSlotId) {
         const bookedSlot = consultationObj.slotId.slots?.find(
           (slot: any) => slot._id.toString() === consultationObj.bookedSlotId.toString()
         );
 
-        // ✅ Add the booked slot details to the response
         consultationObj.bookedSlot = bookedSlot || null;
 
-        // ✅ Optionally, add startTime and endTime directly
         if (bookedSlot) {
           consultationObj.startTime = bookedSlot.startTime;
           consultationObj.endTime = bookedSlot.endTime;
@@ -228,6 +255,164 @@ const getMyConsultationBookings = async (
   }
 
   return result;
+};
+
+// Helper function for date filtering using aggregation
+const getConsultationsWithDateFilter = async (
+  baseQuery: any,
+  startDate: Date,
+  endDate: Date,
+  skip: number,
+  limit: number,
+) => {
+  const pipeline: any[] = [
+    { $match: baseQuery },
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "slots",
+        localField: "slotId",
+        foreignField: "_id",
+        as: "slotData"
+      }
+    },
+    { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
+    {
+      // Filter by slot date
+      $match: {
+        $or: [
+          { "slotData.date": { $gte: startDate, $lte: endDate } },
+          { "slotData": null } // Keep consultations without slots (chat)
+        ]
+      }
+    },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "users",
+        localField: "user",
+        foreignField: "_id",
+        as: "user"
+      }
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "astrologers",
+        localField: "astrologer",
+        foreignField: "_id",
+        as: "astrologer"
+      }
+    },
+    { $unwind: { path: "$astrologer", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        "bookedSlot": {
+          $cond: {
+            if: { $and: [{ $ne: ["$slotData", null] }, { $ne: ["$bookedSlotId", null] }] },
+            then: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: "$slotData.slots",
+                    as: "slot",
+                    cond: { $eq: ["$$slot._id", "$bookedSlotId"] }
+                  }
+                },
+                0
+              ]
+            },
+            else: null
+          }
+        }
+      }
+    },
+    {
+      $addFields: {
+        "startTime": "$bookedSlot.startTime",
+        "endTime": "$bookedSlot.endTime"
+      }
+    },
+    {
+      $project: {
+        user: {
+          _id: 1,
+          accountId: 1,
+          firstName: 1,
+          lastName: 1,
+          fullName: 1,
+          profilePicture: 1,
+          email: 1
+        },
+        astrologer: {
+          _id: 1,
+          accountId: 1,
+          displayName: 1,
+          firstName: 1,
+          lastName: 1,
+          profilePicture: 1
+        },
+        method: 1,
+        status: 1,
+        consultationFor: 1,
+        requestMessage: 1,
+        meeting: 1,
+        slotId: 1,
+        bookedSlotId: 1,
+        bookedSlot: 1,
+        startTime: 1,
+        endTime: 1,
+        slotData: {
+          date: 1,
+          slots: 1
+        },
+        createdAt: 1,
+        updatedAt: 1,
+        __v: 1
+      }
+    }
+  ];
+
+  const data = await Consultation.aggregate(pipeline);
+
+  // Get total count for pagination
+  const countPipeline = [
+    { $match: baseQuery },
+    {
+      $lookup: {
+        from: "slots",
+        localField: "slotId",
+        foreignField: "_id",
+        as: "slotData"
+      }
+    },
+    { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
+    {
+      $match: {
+        $or: [
+          { "slotData.date": { $gte: startDate, $lte: endDate } },
+          { "slotData": null }
+        ]
+      }
+    },
+    { $count: "total" }
+  ];
+
+  const countResult = await Consultation.aggregate(countPipeline);
+  const total = countResult.length > 0 ? countResult[0].total : 0;
+
+  return {
+    data,
+    meta: {
+      total,
+      filteredTotal: total,
+      skip,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: skip + data.length < total
+    }
+  };
 };
 
 /* Change Consultation Status - Astrologer */
@@ -440,7 +625,7 @@ const scheduleMeeting = async (
     throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
   }
 
-  // 2. ✅ Find consultation and populate slotId
+  // 2. Find consultation and populate slotId
   const consultation = await Consultation.findOne({
     _id: consultationId,
     astrologer: astrologer._id,
@@ -460,7 +645,7 @@ const scheduleMeeting = async (
     );
   }
 
-  // 4. ✅ Check if slot exists
+  // 4. Check if slot exists
   if (!consultation.slotId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -468,7 +653,7 @@ const scheduleMeeting = async (
     );
   }
 
-  // 5. ✅ Check if bookedSlotId exists
+  // 5. Check if bookedSlotId exists
   if (!consultation.bookedSlotId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -478,7 +663,7 @@ const scheduleMeeting = async (
 
   const slotDoc = consultation.slotId as any;
 
-  // 6. ✅ Find the specific booked slot using bookedSlotId
+  // 6. Find the specific booked slot using bookedSlotId
   const bookedSlot = slotDoc.slots.find(
     (slot: any) => slot._id.toString() === consultation?.bookedSlotId?.toString()
   );
@@ -490,7 +675,7 @@ const scheduleMeeting = async (
     );
   }
 
-  // 7. ✅ Get startTime and endTime from the booked slot
+  // 7. Get startTime and endTime from the booked slot
   const slotDate = new Date(slotDoc.date);
   const startTimeStr = bookedSlot.startTime; // "09:00"
   const endTimeStr = bookedSlot.endTime; // "09:30"
@@ -511,7 +696,7 @@ const scheduleMeeting = async (
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // 9. ✅ Create meeting in Google Calendar
+  // 9. Create meeting in Google Calendar
   const meeting = await googleCalendarService.createMeeting(
     astrologer,
     {
@@ -528,7 +713,7 @@ const scheduleMeeting = async (
     }
   );
 
-  // 10. ✅ Update consultation with meeting details
+  // 10. Update consultation with meeting details
   consultation.meeting.link = meeting.meetLink;
   consultation.meeting.scheduledAt = scheduledAt;
   consultation.status = "scheduled";
