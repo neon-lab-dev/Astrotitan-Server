@@ -64,6 +64,7 @@ const getAllSlots = (astrologerId, date) => __awaiter(void 0, void 0, void 0, fu
     }
     const slots = Array.isArray(slotDoc.slots) ? slotDoc.slots : [];
     return {
+        _id: slotDoc._id,
         astrologerId,
         date,
         slots,

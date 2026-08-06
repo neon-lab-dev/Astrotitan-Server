@@ -44,38 +44,35 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
-    // 4. If method is "call" and slotId is provided, verify and book the slot
+    // 4. ✅ If method is "call" and bookedSlotId is provided, verify and book the slot
     let slotDoc = null;
     let slotIndex = -1;
-    let slotList = [];
-    if (payload.method === "call" && payload.slotId) {
-        // Find the slot document
+    if (payload.method === "call" && payload.bookedSlotId) {
+        // ✅ Find the slot document that contains this bookedSlotId
         slotDoc = yield slot_model_1.default.findOne({
             astrologerId: payload.astrologer,
-            "slots._id": payload.slotId,
+            "slots._id": payload.bookedSlotId,
         });
         if (!slotDoc) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
         }
-        slotList = Array.isArray(slotDoc.slots)
-            ? slotDoc.slots
-            : [];
-        // Find the specific slot
-        slotIndex = slotList.findIndex((slot) => slot._id.toString() === payload.slotId);
+        // ✅ Find the specific slot using bookedSlotId (NOT slotId)
+        slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() === payload.bookedSlotId);
         if (slotIndex === -1) {
-            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found in the slots array");
         }
-        // Check if slot is already booked
-        if (slotList[slotIndex].isBooked) {
+        // ✅ Check if slot is already booked
+        if (slotDoc.slots[slotIndex].isBooked) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This slot is already booked");
         }
     }
     // 5. Create consultation
     const consultation = yield consultation_model_1.default.create(Object.assign({ user: user === null || user === void 0 ? void 0 : user._id, astrologer: payload.astrologer, method: payload.method, consultationFor: payload.consultationFor, requestMessage: payload.requestMessage, status: "pending" }, (payload.method === "call" && payload.slotId && {
-        slotId: payload.slotId,
+        slotId: payload.slotId, // The Slot document ID
+        bookedSlotId: payload.bookedSlotId, // The specific slot's _id
     })));
-    // 6. Mark slot as booked
-    if (payload.method === "call" && payload.slotId && slotDoc && slotIndex !== -1) {
+    // 6. ✅ Mark the specific slot as booked
+    if (payload.method === "call" && slotDoc && slotIndex !== -1) {
         slotDoc.slots[slotIndex].isBooked = true;
         yield slotDoc.save();
     }
@@ -117,7 +114,6 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // Use Account ID directly - no need to find Astrologer
     const query = { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
@@ -133,8 +129,34 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
         {
             path: "astrologer",
             select: "firstName lastName displayName profilePicture accountId"
+        },
+        {
+            path: "slotId",
+            select: "date slots"
         }
     ]);
+    // ✅ Process each consultation to get the booked slot details
+    if (result.data && result.data.length > 0) {
+        result.data = result.data.map((consultation) => {
+            var _a;
+            const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+            // ✅ If slotId exists and bookedSlotId exists, find the specific slot
+            if (consultationObj.slotId && consultationObj.bookedSlotId) {
+                const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
+                // ✅ Add the booked slot details to the response
+                consultationObj.bookedSlot = bookedSlot || null;
+                // ✅ Optionally, add startTime and endTime directly
+                if (bookedSlot) {
+                    consultationObj.startTime = bookedSlot.startTime;
+                    consultationObj.endTime = bookedSlot.endTime;
+                }
+            }
+            else {
+                consultationObj.bookedSlot = null;
+            }
+            return consultationObj;
+        });
+    }
     return result;
 });
 /* Change Consultation Status - Astrologer */
@@ -267,17 +289,19 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
 });
 //Schedule a meeting for a consultation (Astrologer)
 const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a;
     // 1. Find astrologer
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId }).select("+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected");
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // 2. Find consultation
+    // 2. ✅ Find consultation and populate slotId
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
-    }).populate("user", "firstName lastName email");
+    })
+        .populate("user", "firstName lastName email")
+        .populate("slotId"); // Populates the entire Slot document
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
@@ -285,46 +309,65 @@ const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0,
     if (consultation.method !== "call") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
     }
-    // 4. ✅ Check if meeting is already scheduled
-    if (!((_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.scheduledAt)) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Meeting time has not been set for this consultation");
+    // 4. ✅ Check if slot exists
+    if (!consultation.slotId) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No slot found for this consultation");
     }
-    // 5. ✅ Get scheduledAt from consultation
-    const scheduledAt = consultation.meeting.scheduledAt;
-    const DEFAULT_DURATION = 60;
-    // 6. Calculate end time
-    const endTime = new Date(scheduledAt);
-    endTime.setMinutes(endTime.getMinutes() + DEFAULT_DURATION);
-    // 7. Get user email
+    // 5. ✅ Check if bookedSlotId exists
+    if (!consultation.bookedSlotId) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No booked slot found for this consultation");
+    }
+    const slotDoc = consultation.slotId;
+    // 6. ✅ Find the specific booked slot using bookedSlotId
+    const bookedSlot = slotDoc.slots.find((slot) => { var _a; return slot._id.toString() === ((_a = consultation === null || consultation === void 0 ? void 0 : consultation.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString()); });
+    if (!bookedSlot) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Booked slot not found in the slot document");
+    }
+    // 7. ✅ Get startTime and endTime from the booked slot
+    const slotDate = new Date(slotDoc.date);
+    const startTimeStr = bookedSlot.startTime; // "09:00"
+    const endTimeStr = bookedSlot.endTime; // "09:30"
+    // Parse the time strings to create Date objects
+    const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+    const [endHour, endMinute] = endTimeStr.split(':').map(Number);
+    const scheduledAt = new Date(slotDate);
+    scheduledAt.setHours(startHour, startMinute, 0, 0);
+    const endTime = new Date(slotDate);
+    endTime.setHours(endHour, endMinute, 0, 0);
+    // 8. Get user email
     const user = yield user_model_1.User.findById(consultation.user).populate("accountId", "email");
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // 8. Create meeting in Google Calendar
+    // 9. ✅ Create meeting in Google Calendar
     const meeting = yield googleCalendar_service_1.default.createMeeting(astrologer, {
         summary: `Astrology Consultation: ${consultation.consultationFor}`,
         description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
+        Slot: ${bookedSlot.startTime} - ${bookedSlot.endTime}
+        Consultation ID: ${consultation._id}
       `,
         startTime: scheduledAt,
         endTime: endTime,
-        attendeeEmail: (_b = user.accountId) === null || _b === void 0 ? void 0 : _b.email,
+        attendeeEmail: (_a = user.accountId) === null || _a === void 0 ? void 0 : _a.email,
         timezone: 'Asia/Kolkata',
     });
-    // 9. Update consultation with meeting details
+    // 10. ✅ Update consultation with meeting details
     consultation.meeting.link = meeting.meetLink;
+    consultation.meeting.scheduledAt = scheduledAt;
     consultation.status = "scheduled";
     yield consultation.save();
-    // 10. Send notifications
-    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${new Date(scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`);
+    // 11. Send notifications
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}. Join via: ${meeting.meetLink}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${scheduledAt.toLocaleString()}. Meet link: ${meeting.meetLink}`);
     return {
         success: true,
         consultation,
         meeting: {
             link: meeting.meetLink,
             scheduledAt: scheduledAt,
-            duration: DEFAULT_DURATION,
+            duration: (parseInt(endTimeStr.split(':')[0]) * 60 + parseInt(endTimeStr.split(':')[1])) -
+                (parseInt(startTimeStr.split(':')[0]) * 60 + parseInt(startTimeStr.split(':')[1])),
         },
     };
 });

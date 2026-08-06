@@ -16,7 +16,8 @@ const requestConsultation = async (
     method: "chat" | "call";
     consultationFor: string;
     requestMessage?: string;
-    slotId?: string; // Only for call
+    slotId?: string; // The Slot document ID (only for call)
+    bookedSlotId?: string; // The specific slot's _id inside the slots array (only for call)
   }
 ) => {
   // 1. Check if user exists
@@ -45,37 +46,32 @@ const requestConsultation = async (
     );
   }
 
-  // 4. If method is "call" and slotId is provided, verify and book the slot
+  // 4. ✅ If method is "call" and bookedSlotId is provided, verify and book the slot
   let slotDoc: any = null;
   let slotIndex = -1;
-  let slotList: Array<{ _id: { toString: () => string }; isBooked: boolean }> = [];
 
-  if (payload.method === "call" && payload.slotId) {
-    // Find the slot document
+  if (payload.method === "call" && payload.bookedSlotId) {
+    // ✅ Find the slot document that contains this bookedSlotId
     slotDoc = await Slot.findOne({
       astrologerId: payload.astrologer,
-      "slots._id": payload.slotId,
+      "slots._id": payload.bookedSlotId,
     });
 
     if (!slotDoc) {
       throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
     }
 
-    slotList = Array.isArray(slotDoc.slots)
-      ? (slotDoc.slots as Array<{ _id: { toString: () => string }; isBooked: boolean }>)
-      : [];
-
-    // Find the specific slot
-    slotIndex = slotList.findIndex(
-      (slot) => slot._id.toString() === payload.slotId
+    // ✅ Find the specific slot using bookedSlotId (NOT slotId)
+    slotIndex = slotDoc.slots.findIndex(
+      (slot: any) => slot._id.toString() === payload.bookedSlotId
     );
 
     if (slotIndex === -1) {
-      throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
+      throw new AppError(httpStatus.NOT_FOUND, "Slot not found in the slots array");
     }
 
-    // Check if slot is already booked
-    if (slotList[slotIndex].isBooked) {
+    // ✅ Check if slot is already booked
+    if (slotDoc.slots[slotIndex].isBooked) {
       throw new AppError(httpStatus.BAD_REQUEST, "This slot is already booked");
     }
   }
@@ -88,14 +84,15 @@ const requestConsultation = async (
     consultationFor: payload.consultationFor,
     requestMessage: payload.requestMessage,
     status: "pending",
-    // Store slot reference if call method
+    // ✅ Store both the document ID and the specific slot ID
     ...(payload.method === "call" && payload.slotId && {
-      slotId: payload.slotId,
+      slotId: payload.slotId, // The Slot document ID
+      bookedSlotId: payload.bookedSlotId, // The specific slot's _id
     }),
   });
 
-  // 6. Mark slot as booked
-  if (payload.method === "call" && payload.slotId && slotDoc && slotIndex !== -1) {
+  // 6. ✅ Mark the specific slot as booked
+  if (payload.method === "call" && slotDoc && slotIndex !== -1) {
     slotDoc.slots[slotIndex].isBooked = true;
     await slotDoc.save();
   }
@@ -114,7 +111,6 @@ const requestConsultation = async (
 
   return populatedConsultation;
 };
-
 /* Get My Consultation Requests - User */
 const getMyConsultationRequests = async (
   accountId: string,
@@ -172,9 +168,8 @@ const getMyConsultationBookings = async (
   if (!astrologer) {
     throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
   }
-  // Use Account ID directly - no need to find Astrologer
-  const query: any = { astrologer: astrologer?._id };
 
+  const query: any = { astrologer: astrologer?._id };
 
   if (filters.status && filters.status !== "all") {
     query.status = filters.status;
@@ -197,10 +192,40 @@ const getMyConsultationBookings = async (
       {
         path: "astrologer",
         select: "firstName lastName displayName profilePicture accountId"
+      },
+      {
+        path: "slotId",
+        select: "date slots"
       }
-
     ]
   );
+
+  // ✅ Process each consultation to get the booked slot details
+  if (result.data && result.data.length > 0) {
+    result.data = result.data.map((consultation: any) => {
+      const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+
+      // ✅ If slotId exists and bookedSlotId exists, find the specific slot
+      if (consultationObj.slotId && consultationObj.bookedSlotId) {
+        const bookedSlot = consultationObj.slotId.slots?.find(
+          (slot: any) => slot._id.toString() === consultationObj.bookedSlotId.toString()
+        );
+
+        // ✅ Add the booked slot details to the response
+        consultationObj.bookedSlot = bookedSlot || null;
+
+        // ✅ Optionally, add startTime and endTime directly
+        if (bookedSlot) {
+          consultationObj.startTime = bookedSlot.startTime;
+          consultationObj.endTime = bookedSlot.endTime;
+        }
+      } else {
+        consultationObj.bookedSlot = null;
+      }
+
+      return consultationObj;
+    });
+  }
 
   return result;
 };
@@ -415,11 +440,13 @@ const scheduleMeeting = async (
     throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
   }
 
-  // 2. Find consultation
+  // 2. ✅ Find consultation and populate slotId
   const consultation = await Consultation.findOne({
     _id: consultationId,
     astrologer: astrologer._id,
-  }).populate("user", "firstName lastName email");
+  })
+    .populate("user", "firstName lastName email")
+    .populate("slotId"); // Populates the entire Slot document
 
   if (!consultation) {
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or not authorized");
@@ -433,35 +460,66 @@ const scheduleMeeting = async (
     );
   }
 
-  // 4. ✅ Check if meeting is already scheduled
-  if (!consultation.meeting?.scheduledAt) {
+  // 4. ✅ Check if slot exists
+  if (!consultation.slotId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
-      "Meeting time has not been set for this consultation"
+      "No slot found for this consultation"
     );
   }
 
-  // 5. ✅ Get scheduledAt from consultation
-  const scheduledAt = consultation.meeting.scheduledAt;
+  // 5. ✅ Check if bookedSlotId exists
+  if (!consultation.bookedSlotId) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "No booked slot found for this consultation"
+    );
+  }
 
-  const DEFAULT_DURATION = 60;
-  // 6. Calculate end time
-  const endTime = new Date(scheduledAt);
-  endTime.setMinutes(endTime.getMinutes() + DEFAULT_DURATION);
+  const slotDoc = consultation.slotId as any;
 
-  // 7. Get user email
+  // 6. ✅ Find the specific booked slot using bookedSlotId
+  const bookedSlot = slotDoc.slots.find(
+    (slot: any) => slot._id.toString() === consultation?.bookedSlotId?.toString()
+  );
+
+  if (!bookedSlot) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Booked slot not found in the slot document"
+    );
+  }
+
+  // 7. ✅ Get startTime and endTime from the booked slot
+  const slotDate = new Date(slotDoc.date);
+  const startTimeStr = bookedSlot.startTime; // "09:00"
+  const endTimeStr = bookedSlot.endTime; // "09:30"
+
+  // Parse the time strings to create Date objects
+  const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+  const [endHour, endMinute] = endTimeStr.split(':').map(Number);
+
+  const scheduledAt = new Date(slotDate);
+  scheduledAt.setHours(startHour, startMinute, 0, 0);
+
+  const endTime = new Date(slotDate);
+  endTime.setHours(endHour, endMinute, 0, 0);
+
+  // 8. Get user email
   const user = await User.findById(consultation.user).populate("accountId", "email");
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // 8. Create meeting in Google Calendar
+  // 9. ✅ Create meeting in Google Calendar
   const meeting = await googleCalendarService.createMeeting(
     astrologer,
     {
       summary: `Astrology Consultation: ${consultation.consultationFor}`,
       description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
+        Slot: ${bookedSlot.startTime} - ${bookedSlot.endTime}
+        Consultation ID: ${consultation._id}
       `,
       startTime: scheduledAt,
       endTime: endTime,
@@ -470,22 +528,23 @@ const scheduleMeeting = async (
     }
   );
 
-  // 9. Update consultation with meeting details
+  // 10. ✅ Update consultation with meeting details
   consultation.meeting.link = meeting.meetLink;
+  consultation.meeting.scheduledAt = scheduledAt;
   consultation.status = "scheduled";
   await consultation.save();
 
-  // 10. Send notifications
+  // 11. Send notifications
   await sendSingleNotification(
     user.accountId as any,
     "Meeting Scheduled!",
-    `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`
+    `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}. Join via: ${meeting.meetLink}`
   );
 
   await sendSingleNotification(
     accountId as any,
     "Meeting Scheduled Successfully",
-    `You have scheduled a meeting with ${user.firstName} for ${new Date(scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`
+    `You have scheduled a meeting with ${user.firstName} for ${scheduledAt.toLocaleString()}. Meet link: ${meeting.meetLink}`
   );
 
   return {
@@ -494,7 +553,8 @@ const scheduleMeeting = async (
     meeting: {
       link: meeting.meetLink,
       scheduledAt: scheduledAt,
-      duration: DEFAULT_DURATION,
+      duration: (parseInt(endTimeStr.split(':')[0]) * 60 + parseInt(endTimeStr.split(':')[1])) -
+        (parseInt(startTimeStr.split(':')[0]) * 60 + parseInt(startTimeStr.split(':')[1])),
     },
   };
 };

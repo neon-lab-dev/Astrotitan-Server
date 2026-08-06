@@ -18,6 +18,7 @@ export type TConsultation = {
 
     // If method is call, then meeting link will be generated and stored here
     slotId?: ObjectId;
+    bookedSlotId?: ObjectId;
     recommendations?: string;
     meeting: {
         link: string;

@@ -241,53 +241,136 @@ class GoogleCalendarService {
     /**
      * Refresh token for astrologer if expired
      */
-    async refreshTokenIfNeeded(astrologer: any) {
-        console.log(astrologer, "test");
-        // Now accepts the astrologer object directly
-        if (!astrologer.googleCalendar?.refreshToken) {
-            throw new AppError(
-                httpStatus.BAD_REQUEST,
-                "Astrologer hasn't connected Google Calendar"
-            );
-        }
+    /**
+ * Refresh token for astrologer if expired - Simplified version
+ */
+/**
+ * Check if astrologer has valid access token
+ */
+async checkTokenValidity(astrologer: any) {
+    // Check if astrologer has connected Google Calendar
+    if (!astrologer.googleCalendar?.accessToken) {
+        throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            'Google Calendar is not connected. Please connect your calendar from the app.'
+        );
+    }
 
-        // Check if token is expired or will expire in 5 minutes
-        const tokenExpiry = astrologer.googleCalendar.tokenExpiry;
-        if (tokenExpiry && new Date(tokenExpiry) > new Date(Date.now() + 5 * 60 * 1000)) {
-            return; // Token is still valid
-        }
+    // Check if token is expired
+    const tokenExpiry = astrologer.googleCalendar.tokenExpiry;
+    if (tokenExpiry && new Date(tokenExpiry) <= new Date()) {
+        // Token expired, mark as disconnected
+        await Astrologer.findByIdAndUpdate(
+            astrologer._id,
+            {
+                $set: {
+                    "googleCalendar.isConnected": false,
+                }
+            }
+        );
+        
+        throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            'Google Calendar token expired. Please reconnect your calendar from the app.'
+        );
+    }
 
-        const oauth2Client = this.getOAuth2Client();
-        oauth2Client.setCredentials({
-            refresh_token: astrologer.googleCalendar.refreshToken,
+    // Check if token will expire soon (within 5 minutes)
+    if (tokenExpiry && new Date(tokenExpiry) <= new Date(Date.now() + 5 * 60 * 1000)) {
+        // Token will expire soon, mark as disconnected and ask to reconnect
+        await Astrologer.findByIdAndUpdate(
+            astrologer._id,
+            {
+                $set: {
+                    "googleCalendar.isConnected": false,
+                }
+            }
+        );
+        
+        throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            'Google Calendar session is about to expire. Please reconnect your calendar from the app.'
+        );
+    }
+
+    return true;
+}
+
+/**
+ * Create a meeting in astrologer's Google Calendar
+ * Now accepts the astrologer object instead of ID
+ */
+async createMeeting(
+    astrologer: any, // Pass the already fetched astrologer object
+    params: {
+        summary: string;
+        description: string;
+        startTime: Date;
+        endTime: Date;
+        attendeeEmail: string;
+        timezone?: string;
+    }
+) {
+    // 1. Check if astrologer has connected Google Calendar
+    if (!astrologer.googleCalendar?.isConnected) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Please connect your Google Calendar before scheduling a meeting."
+        );
+    }
+
+    // 2. ✅ Check token validity (without refresh)
+    await this.checkTokenValidity(astrologer);
+
+    // 3. Create OAuth client with astrologer's credentials
+    const oauth2Client = this.getOAuth2Client();
+    oauth2Client.setCredentials({
+        access_token: astrologer.googleCalendar.accessToken,
+    });
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+    // 4. Create event
+    const event = {
+        summary: params.summary,
+        description: params.description,
+        start: {
+            dateTime: params.startTime.toISOString(),
+            timeZone: params.timezone || 'UTC',
+        },
+        end: {
+            dateTime: params.endTime.toISOString(),
+            timeZone: params.timezone || 'UTC',
+        },
+        attendees: [
+            { email: astrologer.googleCalendar.email },
+            { email: params.attendeeEmail },
+        ],
+        conferenceData: {
+            createRequest: {
+                conferenceSolutionKey: { type: 'hangoutsMeet' },
+                requestId: `meet-${Date.now()}`,
+            },
+        },
+    };
+
+    try {
+        const response = await calendar.events.insert({
+            calendarId: astrologer.googleCalendar.calendarId || 'primary',
+            requestBody: event,
+            conferenceDataVersion: 1,
         });
 
-        try {
-            const { credentials } = await oauth2Client.refreshAccessToken();
+        return {
+            eventId: response.data.id!,
+            meetLink: response.data.hangoutLink!,
+            htmlLink: response.data.htmlLink!,
+        };
+    } catch (error: any) {
+        console.error('❌ Failed to create Google Calendar event:', error);
 
-            const updateData: any = {
-                "googleCalendar.accessToken": credentials.access_token || '',
-                "googleCalendar.tokenExpiry": credentials.expiry_date
-                    ? new Date(credentials.expiry_date)
-                    : undefined,
-            };
-
-            await Astrologer.findByIdAndUpdate(
-                astrologer._id,
-                { $set: updateData }
-            );
-
-            // Update the object reference
-            astrologer.googleCalendar.accessToken = credentials.access_token;
-            astrologer.googleCalendar.tokenExpiry = credentials.expiry_date
-                ? new Date(credentials.expiry_date)
-                : undefined;
-
-            console.log('Token refreshed for astrologer:', astrologer._id);
-        } catch (error: any) {
-            console.error('❌ Token refresh failed:', error);
-
-            // If refresh fails, mark as disconnected
+        if (error.code === 401) {
+            // Token expired, mark as disconnected
             await Astrologer.findByIdAndUpdate(
                 astrologer._id,
                 {
@@ -296,102 +379,19 @@ class GoogleCalendarService {
                     }
                 }
             );
-
+            
             throw new AppError(
                 httpStatus.UNAUTHORIZED,
-                'Google Calendar token expired. Please reconnect your calendar.'
+                'Google Calendar token expired. Please reconnect your calendar from the app.'
             );
         }
+
+        throw new AppError(
+            httpStatus.INTERNAL_SERVER_ERROR,
+            error.message || 'Failed to create meeting'
+        );
     }
-
-    /**
-     * Create a meeting in astrologer's Google Calendar
-     * Now accepts the astrologer object instead of ID
-     */
-    async createMeeting(
-        astrologer: any, // Pass the already fetched astrologer object
-        params: {
-            summary: string;
-            description: string;
-            startTime: Date;
-            endTime: Date;
-            attendeeEmail: string;
-            timezone?: string;
-        }
-    ) {
-        // 1. Check if astrologer has connected Google Calendar
-        if (!astrologer.googleCalendar?.isConnected) {
-            throw new AppError(
-                httpStatus.BAD_REQUEST,
-                "Please connect your Google Calendar before scheduling a meeting."
-            );
-        }
-
-        // 2. Refresh token if needed (pass the astrologer object)
-        await this.refreshTokenIfNeeded(astrologer);
-
-        // 3. Create OAuth client with astrologer's credentials
-        const oauth2Client = this.getOAuth2Client();
-        oauth2Client.setCredentials({
-            access_token: astrologer.googleCalendar.accessToken,
-            refresh_token: astrologer.googleCalendar.refreshToken,
-            expiry_date: astrologer.googleCalendar.tokenExpiry?.getTime(),
-        });
-
-        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
-        // 4. Create event
-        const event = {
-            summary: params.summary,
-            description: params.description,
-            start: {
-                dateTime: params.startTime.toISOString(),
-                timeZone: params.timezone || 'UTC',
-            },
-            end: {
-                dateTime: params.endTime.toISOString(),
-                timeZone: params.timezone || 'UTC',
-            },
-            attendees: [
-                { email: astrologer.googleCalendar.email },
-                { email: params.attendeeEmail },
-            ],
-            conferenceData: {
-                createRequest: {
-                    conferenceSolutionKey: { type: 'hangoutsMeet' },
-                    requestId: `meet-${Date.now()}`,
-                },
-            },
-        };
-
-        try {
-            const response = await calendar.events.insert({
-                calendarId: astrologer.googleCalendar.calendarId || 'primary',
-                requestBody: event,
-                conferenceDataVersion: 1,
-            });
-
-            return {
-                eventId: response.data.id!,
-                meetLink: response.data.hangoutLink!,
-                htmlLink: response.data.htmlLink!,
-            };
-        } catch (error: any) {
-            console.error('❌ Failed to create Google Calendar event:', error);
-
-            if (error.code === 401) {
-                throw new AppError(
-                    httpStatus.UNAUTHORIZED,
-                    'Google Calendar token expired. Please reconnect your calendar.'
-                );
-            }
-
-            throw new AppError(
-                httpStatus.INTERNAL_SERVER_ERROR,
-                error.message || 'Failed to create meeting'
-            );
-        }
-    }
+}
 }
 
 export default new GoogleCalendarService();

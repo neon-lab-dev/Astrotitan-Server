@@ -61,6 +61,9 @@ const ConsultationSchema = new mongoose_1.Schema({
         type: mongoose_1.Types.ObjectId,
         ref: "Slot",
     },
+    bookedSlotId: {
+        type: mongoose_1.Types.ObjectId,
+    },
     recommendations: {
         type: String,
     },

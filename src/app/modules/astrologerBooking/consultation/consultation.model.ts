@@ -63,6 +63,9 @@ const ConsultationSchema = new Schema<TConsultation>(
             type: Types.ObjectId,
             ref: "Slot",
         },
+        bookedSlotId: {
+            type: Types.ObjectId,
+        },
         recommendations: {
             type: String,
         },
