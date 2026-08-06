@@ -266,8 +266,8 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
     };
 });
 //Schedule a meeting for a consultation (Astrologer)
-const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     // 1. Find astrologer
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId }).select("+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected");
     if (!astrologer) {
@@ -281,46 +281,50 @@ const scheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
-    // 4. Verify method is call
+    // 3. Verify method is call
     if (consultation.method !== "call") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
     }
+    // 4. ✅ Check if meeting is already scheduled
+    if (!((_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.scheduledAt)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Meeting time has not been set for this consultation");
+    }
+    // 5. ✅ Get scheduledAt from consultation
+    const scheduledAt = consultation.meeting.scheduledAt;
     const DEFAULT_DURATION = 60;
-    // 5. Calculate end time
-    const endTime = new Date(payload.scheduledAt);
+    // 6. Calculate end time
+    const endTime = new Date(scheduledAt);
     endTime.setMinutes(endTime.getMinutes() + DEFAULT_DURATION);
-    // 6. Get user email
+    // 7. Get user email
     const user = yield user_model_1.User.findById(consultation.user).populate("accountId", "email");
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // 7. FIX: Use createMeeting instead of createMeetingEvent
+    // 8. Create meeting in Google Calendar
     const meeting = yield googleCalendar_service_1.default.createMeeting(astrologer, {
         summary: `Astrology Consultation: ${consultation.consultationFor}`,
         description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
       `,
-        startTime: payload.scheduledAt,
+        startTime: scheduledAt,
         endTime: endTime,
-        attendeeEmail: (_a = user === null || user === void 0 ? void 0 : user.accountId) === null || _a === void 0 ? void 0 : _a.email,
+        attendeeEmail: (_b = user.accountId) === null || _b === void 0 ? void 0 : _b.email,
         timezone: 'Asia/Kolkata',
     });
-    // 8. Update consultation with meeting details
-    consultation.meeting = {
-        link: meeting.meetLink,
-        scheduledAt: payload.scheduledAt,
-    };
+    // 9. Update consultation with meeting details
+    consultation.meeting.link = meeting.meetLink;
     consultation.status = "scheduled";
     yield consultation.save();
-    // 9. Send notifications
-    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(payload.scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${new Date(payload.scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`);
+    // 10. Send notifications
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${new Date(scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`);
     return {
         success: true,
         consultation,
         meeting: {
             link: meeting.meetLink,
-            scheduledAt: payload.scheduledAt,
+            scheduledAt: scheduledAt,
+            duration: DEFAULT_DURATION,
         },
     };
 });

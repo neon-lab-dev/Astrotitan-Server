@@ -405,13 +405,12 @@ const addReview = async (
 //Schedule a meeting for a consultation (Astrologer)
 const scheduleMeeting = async (
   consultationId: string,
-  accountId: string,
-  payload: {
-    scheduledAt: Date;
-  }
+  accountId: string
 ) => {
   // 1. Find astrologer
-  const astrologer = await Astrologer.findOne({ accountId }).select("+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected");
+  const astrologer = await Astrologer.findOne({ accountId }).select(
+    "+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected"
+  );
   if (!astrologer) {
     throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
   }
@@ -426,7 +425,7 @@ const scheduleMeeting = async (
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or not authorized");
   }
 
-  // 4. Verify method is call
+  // 3. Verify method is call
   if (consultation.method !== "call") {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -434,18 +433,29 @@ const scheduleMeeting = async (
     );
   }
 
+  // 4. ✅ Check if meeting is already scheduled
+  if (!consultation.meeting?.scheduledAt) {
+    throw new AppError(
+      httpStatus.BAD_REQUEST,
+      "Meeting time has not been set for this consultation"
+    );
+  }
+
+  // 5. ✅ Get scheduledAt from consultation
+  const scheduledAt = consultation.meeting.scheduledAt;
+
   const DEFAULT_DURATION = 60;
-  // 5. Calculate end time
-  const endTime = new Date(payload.scheduledAt);
+  // 6. Calculate end time
+  const endTime = new Date(scheduledAt);
   endTime.setMinutes(endTime.getMinutes() + DEFAULT_DURATION);
 
-  // 6. Get user email
+  // 7. Get user email
   const user = await User.findById(consultation.user).populate("accountId", "email");
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // 7. FIX: Use createMeeting instead of createMeetingEvent
+  // 8. Create meeting in Google Calendar
   const meeting = await googleCalendarService.createMeeting(
     astrologer,
     {
@@ -453,32 +463,29 @@ const scheduleMeeting = async (
       description: `
         Consultation with ${astrologer.displayName || astrologer.firstName}
       `,
-      startTime: payload.scheduledAt,
+      startTime: scheduledAt,
       endTime: endTime,
-      attendeeEmail: (user?.accountId as any)?.email,
+      attendeeEmail: (user.accountId as any)?.email,
       timezone: 'Asia/Kolkata',
     }
   );
 
-  // 8. Update consultation with meeting details
-  consultation.meeting = {
-    link: meeting.meetLink,
-    scheduledAt: payload.scheduledAt,
-  };
+  // 9. Update consultation with meeting details
+  consultation.meeting.link = meeting.meetLink;
   consultation.status = "scheduled";
   await consultation.save();
 
-  // 9. Send notifications
+  // 10. Send notifications
   await sendSingleNotification(
     user.accountId as any,
     "Meeting Scheduled!",
-    `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(payload.scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`
+    `Your consultation with ${astrologer.displayName} has been scheduled for ${new Date(scheduledAt).toLocaleString()}. Join via: ${meeting.meetLink}`
   );
 
   await sendSingleNotification(
     accountId as any,
     "Meeting Scheduled Successfully",
-    `You have scheduled a meeting with ${user.firstName} for ${new Date(payload.scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`
+    `You have scheduled a meeting with ${user.firstName} for ${new Date(scheduledAt).toLocaleString()}. Meet link: ${meeting.meetLink}`
   );
 
   return {
@@ -486,7 +493,8 @@ const scheduleMeeting = async (
     consultation,
     meeting: {
       link: meeting.meetLink,
-      scheduledAt: payload.scheduledAt,
+      scheduledAt: scheduledAt,
+      duration: DEFAULT_DURATION,
     },
   };
 };

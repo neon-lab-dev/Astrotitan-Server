@@ -145,12 +145,10 @@ const addReview = catchAsync(async (req, res) => {
 const scheduleMeeting = catchAsync(async (req, res) => {
   const accountId = req.user._id;
   const { consultationId } = req.params;
-  const { scheduledAt } = req.body;
 
   const result = await ConsultationServices.scheduleMeeting(
     consultationId,
-    accountId,
-    { scheduledAt: new Date(scheduledAt) }
+    accountId
   );
 
   sendResponse(res, {
