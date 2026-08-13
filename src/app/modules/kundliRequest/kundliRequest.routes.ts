@@ -1,0 +1,39 @@
+import express from "express";
+import { KundliRequestControllers } from "./kundliRequest.controller";
+import auth from "../../middlewares/auth";
+import { UserRole } from "../accounts/accounts.constants";
+import { multerUpload } from "../../config/multer.config";
+
+const router = express.Router();
+
+// Send Kundli Request (User)
+router.post(
+    "/",
+    auth(UserRole.user),
+    multerUpload.array("files", 5),
+    KundliRequestControllers.sendKundliRequest
+);
+
+// Get My Kundli Requests (User)
+router.get(
+    "/my-requests",
+    auth(UserRole.user),
+    KundliRequestControllers.getMyKundliRequests
+);
+
+// Get Kundli Requests for Astrologer
+router.get(
+    "/astrologer-requests",
+    auth(UserRole.astrologer),
+    KundliRequestControllers.getAstrologerKundliRequests
+);
+
+// Submit Kundli Report (Astrologer)
+router.post(
+    "/:requestId/submit-report",
+    auth(UserRole.astrologer),
+    multerUpload.single("report"),
+    KundliRequestControllers.submitKundliReport
+);
+
+export const KundliRequestRoutes = router;
