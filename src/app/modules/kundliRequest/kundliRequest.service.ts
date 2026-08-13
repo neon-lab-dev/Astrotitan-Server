@@ -91,7 +91,7 @@ const sendKundliRequest = async (
     files?: Express.Multer.File[]
 ) => {
     // 1. Check if user exists
-    const user = await User.findById(userId);
+    const user = await User.findOne({accountId:userId});
     if (!user) {
         throw new AppError(httpStatus.NOT_FOUND, "User not found");
     }
@@ -115,7 +115,7 @@ const sendKundliRequest = async (
 
     // 4. Create kundli request
     const kundliRequest = await KundliRequest.create({
-        userId,
+        userId : user._id,
         requestType: payload.requestType,
         existingKundliFiles,
         userName: payload.userName,

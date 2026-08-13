@@ -71,7 +71,7 @@ const getLocationDetails = (place) => __awaiter(void 0, void 0, void 0, function
 // Send Kundli Request(User)
 const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Check if user exists
-    const user = yield user_model_1.User.findById(userId);
+    const user = yield user_model_1.User.findOne({ accountId: userId });
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
@@ -88,7 +88,7 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
     }
     // 4. Create kundli request
     const kundliRequest = yield kundliRequest_model_1.default.create({
-        userId,
+        userId: user._id,
         requestType: payload.requestType,
         existingKundliFiles,
         userName: payload.userName,
