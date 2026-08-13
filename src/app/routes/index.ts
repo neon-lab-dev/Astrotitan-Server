@@ -16,6 +16,7 @@ import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
 import { NotificationRoutes } from "../modules/notification/notification.route";
 import { GoogleCalendarRoutes } from "../modules/astrologerBooking/googleCalendar/googleCalendar.routes";
 import { SlotRoutes } from "../modules/astrologer/slot/slot.routes";
+import { KundliRequestRoutes } from "../modules/kundliRequest/kundliRequest.routes";
 
 const router = Router();
 
@@ -87,6 +88,10 @@ const moduleRoutes = [
   {
     path: "/google-calendar",
     route: GoogleCalendarRoutes,
+  },
+  {
+    path: "/kundli-request",
+    route: KundliRequestRoutes,
   },
 ];
 

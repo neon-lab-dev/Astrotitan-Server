@@ -18,6 +18,7 @@ const subscription_route_1 = require("../modules/subscription/subscription.route
 const notification_route_1 = require("../modules/notification/notification.route");
 const googleCalendar_routes_1 = require("../modules/astrologerBooking/googleCalendar/googleCalendar.routes");
 const slot_routes_1 = require("../modules/astrologer/slot/slot.routes");
+const kundliRequest_routes_1 = require("../modules/kundliRequest/kundliRequest.routes");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -87,6 +88,10 @@ const moduleRoutes = [
     {
         path: "/google-calendar",
         route: googleCalendar_routes_1.GoogleCalendarRoutes,
+    },
+    {
+        path: "/kundli-request",
+        route: kundliRequest_routes_1.KundliRequestRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
