@@ -33,9 +33,6 @@ export type TKundliRequest = {
     dateOfBirth: Date;
     timeOfBirth: string;
     placeOfBirth: string;
-    latitude: number;
-    longitude: number;
-    timezone: number;
     userGender: "male" | "female" | "other";
 
     // Kundli

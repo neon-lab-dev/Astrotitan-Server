@@ -54,18 +54,6 @@ const KundliRequestSchema = new mongoose_1.Schema({
         required: true,
         trim: true,
     },
-    latitude: {
-        type: Number,
-        required: true,
-    },
-    longitude: {
-        type: Number,
-        required: true,
-    },
-    timezone: {
-        type: Number,
-        required: true,
-    },
     userGender: {
         type: String,
         enum: ["male", "female", "other"],

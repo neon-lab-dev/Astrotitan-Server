@@ -59,18 +59,6 @@ const KundliRequestSchema = new Schema<TKundliRequest>(
             required: true,
             trim: true,
         },
-        latitude: {
-            type: Number,
-            required: true,
-        },
-        longitude: {
-            type: Number,
-            required: true,
-        },
-        timezone: {
-            type: Number,
-            required: true,
-        },
         userGender: {
             type: String,
             enum: ["male", "female", "other"],

@@ -6,55 +6,7 @@ import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import KundliRequest from "./kundliRequest.model";
 import { infinitePaginate } from "../../utils/infinitePaginate";
 import { Astrologer } from "../astrologer/astrologer.model";
-import axios from "axios";
 
-
-//Get latitude, longitude and timezone from place name using Google Geocoding API
-const getLocationDetailsFromOSM = async (place: string) => {
-    try {
-        const response = await axios.get(
-            `https://nominatim.openstreetmap.org/search`,
-            {
-                params: {
-                    q: place,
-                    format: 'json',
-                    limit: 1,
-                },
-                headers: {
-                    'User-Agent': 'YourAppName',
-                },
-            }
-        );
-
-        if (!response.data || response.data.length === 0) {
-            throw new Error('Location not found');
-        }
-
-        const location = response.data[0];
-        const lat = parseFloat(location.lat);
-        const lng = parseFloat(location.lon);
-
-        const tzResponse = await axios.get(
-            `https://timeapi.io/api/timezone/coordinate`,
-            {
-                params: {
-                    latitude: lat,
-                    longitude: lng,
-                },
-            }
-        );
-
-        return {
-            latitude: lat,
-            longitude: lng,
-            timezone: tzResponse.data?.currentUtcOffset?.offsetHours || 5.5,
-            formattedAddress: location.display_name,
-        };
-    } catch (error: any) {
-        console.error('Geocoding error:', error);
-        throw new Error('Failed to fetch location details');
-    }
-};
 
 // Send Kundli Request(User)
 const sendKundliRequest = async (
@@ -79,10 +31,6 @@ const sendKundliRequest = async (
         throw new AppError(httpStatus.NOT_FOUND, "User not found");
     }
 
-    // 2. Get latitude, longitude and timezone from placeOfBirth
-    const { latitude, longitude, timezone, formattedAddress } =
-        await getLocationDetailsFromOSM(payload.placeOfBirth);
-
     // 3. Upload existing kundli files if any (for analyzeKundli)
     let existingKundliFiles: string[] = [];
     if (files && files.length > 0) {
@@ -106,10 +54,7 @@ const sendKundliRequest = async (
         userPhoneNumber: payload.userPhoneNumber,
         dateOfBirth: payload.dateOfBirth,
         timeOfBirth: payload.timeOfBirth,
-        placeOfBirth: formattedAddress || payload.placeOfBirth, // Store formatted address
-        latitude,
-        longitude,
-        timezone,
+        placeOfBirth: payload.placeOfBirth, // Store formatted address
         userGender: payload.userGender,
         kundliType: payload.kundliType,
         userNotes: payload.userNotes,

@@ -21,45 +21,6 @@ const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const kundliRequest_model_1 = __importDefault(require("./kundliRequest.model"));
 const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
-const axios_1 = __importDefault(require("axios"));
-//Get latitude, longitude and timezone from place name using Google Geocoding API
-const getLocationDetailsFromOSM = (place) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
-    try {
-        const response = yield axios_1.default.get(`https://nominatim.openstreetmap.org/search`, {
-            params: {
-                q: place,
-                format: 'json',
-                limit: 1,
-            },
-            headers: {
-                'User-Agent': 'YourAppName',
-            },
-        });
-        if (!response.data || response.data.length === 0) {
-            throw new Error('Location not found');
-        }
-        const location = response.data[0];
-        const lat = parseFloat(location.lat);
-        const lng = parseFloat(location.lon);
-        const tzResponse = yield axios_1.default.get(`https://timeapi.io/api/timezone/coordinate`, {
-            params: {
-                latitude: lat,
-                longitude: lng,
-            },
-        });
-        return {
-            latitude: lat,
-            longitude: lng,
-            timezone: ((_b = (_a = tzResponse.data) === null || _a === void 0 ? void 0 : _a.currentUtcOffset) === null || _b === void 0 ? void 0 : _b.offsetHours) || 5.5,
-            formattedAddress: location.display_name,
-        };
-    }
-    catch (error) {
-        console.error('Geocoding error:', error);
-        throw new Error('Failed to fetch location details');
-    }
-});
 // Send Kundli Request(User)
 const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Check if user exists
@@ -67,8 +28,6 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // 2. Get latitude, longitude and timezone from placeOfBirth
-    const { latitude, longitude, timezone, formattedAddress } = yield getLocationDetailsFromOSM(payload.placeOfBirth);
     // 3. Upload existing kundli files if any (for analyzeKundli)
     let existingKundliFiles = [];
     if (files && files.length > 0) {
@@ -88,10 +47,7 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
         userPhoneNumber: payload.userPhoneNumber,
         dateOfBirth: payload.dateOfBirth,
         timeOfBirth: payload.timeOfBirth,
-        placeOfBirth: formattedAddress || payload.placeOfBirth, // Store formatted address
-        latitude,
-        longitude,
-        timezone,
+        placeOfBirth: payload.placeOfBirth, // Store formatted address
         userGender: payload.userGender,
         kundliType: payload.kundliType,
         userNotes: payload.userNotes,
