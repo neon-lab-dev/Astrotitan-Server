@@ -57,7 +57,11 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
 });
 // Get My Kundli Requests (User)
 const getMyKundliRequests = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args_1], void 0, function* (userId, filters = {}, skip = 0, limit = 10) {
-    const query = { userId };
+    const user = yield user_model_1.User.findOne({ accountId: userId });
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    const query = { userId: user._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }

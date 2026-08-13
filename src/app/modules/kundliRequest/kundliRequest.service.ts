@@ -71,7 +71,11 @@ const getMyKundliRequests = async (
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { userId };
+    const user = await User.findOne({ accountId: userId });
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    }
+    const query: any = { userId: user._id };
 
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
