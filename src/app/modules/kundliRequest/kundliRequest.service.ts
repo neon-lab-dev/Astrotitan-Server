@@ -10,66 +10,49 @@ import axios from "axios";
 
 
 //Get latitude, longitude and timezone from place name using Google Geocoding API
-const getLocationDetails = async (place: string) => {
+const getLocationDetailsFromOSM = async (place: string) => {
     try {
-        // 1. Get lat/lng from Google Geocoding API
-        const geocodeResponse = await axios.get(
-            `https://maps.googleapis.com/maps/api/geocode/json`,
+        const response = await axios.get(
+            `https://nominatim.openstreetmap.org/search`,
             {
                 params: {
-                    address: place,
-                    key: process.env.GOOGLE_MAPS_API_KEY,
+                    q: place,
+                    format: 'json',
+                    limit: 1,
+                },
+                headers: {
+                    'User-Agent': 'YourAppName',
                 },
             }
         );
 
-        if (geocodeResponse.data.status !== "OK") {
-            throw new AppError(
-                httpStatus.BAD_REQUEST,
-                "Unable to find location. Please enter a valid place name."
-            );
+        if (!response.data || response.data.length === 0) {
+            throw new Error('Location not found');
         }
 
-        const location = geocodeResponse.data.results[0].geometry.location;
-        const formattedAddress = geocodeResponse.data.results[0].formatted_address;
+        const location = response.data[0];
+        const lat = parseFloat(location.lat);
+        const lng = parseFloat(location.lon);
 
-        // 2. Get timezone from Google Timezone API
-        const timezoneResponse = await axios.get(
-            `https://maps.googleapis.com/maps/api/timezone/json`,
+        const tzResponse = await axios.get(
+            `https://timeapi.io/api/timezone/coordinate`,
             {
                 params: {
-                    location: `${location.lat},${location.lng}`,
-                    timestamp: Math.floor(Date.now() / 1000),
-                    key: process.env.GOOGLE_MAPS_API_KEY,
+                    latitude: lat,
+                    longitude: lng,
                 },
             }
         );
-
-        if (timezoneResponse.data.status !== "OK") {
-            // Fallback to IST if timezone API fails
-            return {
-                latitude: location.lat,
-                longitude: location.lng,
-                timezone: 5.5,
-                formattedAddress,
-            };
-        }
-
-        // Convert timezone offset from seconds to hours
-        const timezoneOffset = timezoneResponse.data.rawOffset / 3600;
 
         return {
-            latitude: location.lat,
-            longitude: location.lng,
-            timezone: timezoneOffset,
-            formattedAddress,
+            latitude: lat,
+            longitude: lng,
+            timezone: tzResponse.data?.currentUtcOffset?.offsetHours || 5.5,
+            formattedAddress: location.display_name,
         };
     } catch (error: any) {
-        console.error("Geocoding error:", error);
-        throw new AppError(
-            httpStatus.BAD_REQUEST,
-            "Failed to fetch location details. Please check the place name and try again."
-        );
+        console.error('Geocoding error:', error);
+        throw new Error('Failed to fetch location details');
     }
 };
 
@@ -91,14 +74,14 @@ const sendKundliRequest = async (
     files?: Express.Multer.File[]
 ) => {
     // 1. Check if user exists
-    const user = await User.findOne({accountId:userId});
+    const user = await User.findOne({ accountId: userId });
     if (!user) {
         throw new AppError(httpStatus.NOT_FOUND, "User not found");
     }
 
     // 2. Get latitude, longitude and timezone from placeOfBirth
     const { latitude, longitude, timezone, formattedAddress } =
-        await getLocationDetails(payload.placeOfBirth);
+        await getLocationDetailsFromOSM(payload.placeOfBirth);
 
     // 3. Upload existing kundli files if any (for analyzeKundli)
     let existingKundliFiles: string[] = [];
@@ -115,7 +98,7 @@ const sendKundliRequest = async (
 
     // 4. Create kundli request
     const kundliRequest = await KundliRequest.create({
-        userId : user._id,
+        userId: user._id,
         requestType: payload.requestType,
         existingKundliFiles,
         userName: payload.userName,

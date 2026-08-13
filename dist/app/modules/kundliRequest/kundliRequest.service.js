@@ -23,49 +23,41 @@ const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
 const axios_1 = __importDefault(require("axios"));
 //Get latitude, longitude and timezone from place name using Google Geocoding API
-const getLocationDetails = (place) => __awaiter(void 0, void 0, void 0, function* () {
+const getLocationDetailsFromOSM = (place) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     try {
-        // 1. Get lat/lng from Google Geocoding API
-        const geocodeResponse = yield axios_1.default.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
+        const response = yield axios_1.default.get(`https://nominatim.openstreetmap.org/search`, {
             params: {
-                address: place,
-                key: process.env.GOOGLE_MAPS_API_KEY,
+                q: place,
+                format: 'json',
+                limit: 1,
+            },
+            headers: {
+                'User-Agent': 'YourAppName',
             },
         });
-        if (geocodeResponse.data.status !== "OK") {
-            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Unable to find location. Please enter a valid place name.");
+        if (!response.data || response.data.length === 0) {
+            throw new Error('Location not found');
         }
-        const location = geocodeResponse.data.results[0].geometry.location;
-        const formattedAddress = geocodeResponse.data.results[0].formatted_address;
-        // 2. Get timezone from Google Timezone API
-        const timezoneResponse = yield axios_1.default.get(`https://maps.googleapis.com/maps/api/timezone/json`, {
+        const location = response.data[0];
+        const lat = parseFloat(location.lat);
+        const lng = parseFloat(location.lon);
+        const tzResponse = yield axios_1.default.get(`https://timeapi.io/api/timezone/coordinate`, {
             params: {
-                location: `${location.lat},${location.lng}`,
-                timestamp: Math.floor(Date.now() / 1000),
-                key: process.env.GOOGLE_MAPS_API_KEY,
+                latitude: lat,
+                longitude: lng,
             },
         });
-        if (timezoneResponse.data.status !== "OK") {
-            // Fallback to IST if timezone API fails
-            return {
-                latitude: location.lat,
-                longitude: location.lng,
-                timezone: 5.5,
-                formattedAddress,
-            };
-        }
-        // Convert timezone offset from seconds to hours
-        const timezoneOffset = timezoneResponse.data.rawOffset / 3600;
         return {
-            latitude: location.lat,
-            longitude: location.lng,
-            timezone: timezoneOffset,
-            formattedAddress,
+            latitude: lat,
+            longitude: lng,
+            timezone: ((_b = (_a = tzResponse.data) === null || _a === void 0 ? void 0 : _a.currentUtcOffset) === null || _b === void 0 ? void 0 : _b.offsetHours) || 5.5,
+            formattedAddress: location.display_name,
         };
     }
     catch (error) {
-        console.error("Geocoding error:", error);
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Failed to fetch location details. Please check the place name and try again.");
+        console.error('Geocoding error:', error);
+        throw new Error('Failed to fetch location details');
     }
 });
 // Send Kundli Request(User)
@@ -76,7 +68,7 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
     // 2. Get latitude, longitude and timezone from placeOfBirth
-    const { latitude, longitude, timezone, formattedAddress } = yield getLocationDetails(payload.placeOfBirth);
+    const { latitude, longitude, timezone, formattedAddress } = yield getLocationDetailsFromOSM(payload.placeOfBirth);
     // 3. Upload existing kundli files if any (for analyzeKundli)
     let existingKundliFiles = [];
     if (files && files.length > 0) {
