@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const mongoose_1 = require("mongoose");
 const KundliRequestSchema = new mongoose_1.Schema({
     userId: {
@@ -40,29 +41,30 @@ const KundliRequestSchema = new mongoose_1.Schema({
         required: true,
         trim: true,
     },
-    // Birth Details
+    // Birth Details - Made optional for analyzeKundli
     dateOfBirth: {
         type: Date,
-        required: true,
+        required: false, //Changed from true to false
     },
     timeOfBirth: {
         type: String,
-        required: true,
+        required: false, //Changed from true to false
     },
     placeOfBirth: {
         type: String,
-        required: true,
+        required: false, //Changed from true to false
         trim: true,
     },
     userGender: {
         type: String,
         enum: ["male", "female", "other"],
-        required: true,
+        required: false, //Changed from true to false
     },
     // Kundli
     kundliType: {
         type: String,
-        enum: ["birthChart",
+        enum: [
+            "birthChart",
             "compatibility",
             "career",
             "marriage",
@@ -76,8 +78,8 @@ const KundliRequestSchema = new mongoose_1.Schema({
             "foreignTravel",
             "property",
             "doshaAnalysis",
-            "gemstone",],
-        required: true,
+            "gemstone",
+        ],
     },
     userNotes: {
         type: String,
@@ -104,5 +106,27 @@ const KundliRequestSchema = new mongoose_1.Schema({
 KundliRequestSchema.index({ userId: 1, status: 1 });
 KundliRequestSchema.index({ astrologerId: 1, status: 1 });
 KundliRequestSchema.index({ status: 1, createdAt: -1 });
+// Add pre-save validation for conditional required fields
+KundliRequestSchema.pre("save", function (next) {
+    // If requestType is "generateKundli", birth details are required
+    if (this.requestType === "generateKundli") {
+        if (!this.dateOfBirth || !this.timeOfBirth || !this.placeOfBirth || !this.userGender) {
+            const error = new Error("All birth details (dateOfBirth, timeOfBirth, placeOfBirth, userGender) are required for generating a new kundli");
+            return next(error);
+        }
+    }
+    next();
+});
+// Add static method for validation (optional)
+KundliRequestSchema.statics.validateRequest = function (requestType, data) {
+    if (requestType === "generateKundli") {
+        const requiredFields = ["dateOfBirth", "timeOfBirth", "placeOfBirth", "userGender"];
+        const missingFields = requiredFields.filter(field => !data[field]);
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required fields for generateKundli: ${missingFields.join(", ")}`);
+        }
+    }
+    return true;
+};
 const KundliRequest = (0, mongoose_1.model)("KundliRequest", KundliRequestSchema);
 exports.default = KundliRequest;
