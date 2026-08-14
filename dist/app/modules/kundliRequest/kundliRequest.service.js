@@ -77,6 +77,13 @@ const getMyKundliRequests = (userId_1, ...args_1) => __awaiter(void 0, [userId_1
     ]);
     return result;
 });
+const getSingleKundliRequestById = (requestId) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield kundliRequest_model_1.default.findById(requestId);
+    if (!result) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Request not found");
+    }
+    return result;
+});
 // Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = (astrologerId_1, ...args_1) => __awaiter(void 0, [astrologerId_1, ...args_1], void 0, function* (astrologerId, filters = {}, skip = 0, limit = 10) {
     const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
@@ -133,6 +140,7 @@ const submitKundliReport = (astrologerId, requestId, file) => __awaiter(void 0, 
 exports.KundliRequestServices = {
     sendKundliRequest,
     getMyKundliRequests,
+    getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
 };

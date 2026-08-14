@@ -101,6 +101,17 @@ const getMyKundliRequests = async (
     return result;
 };
 
+
+const getSingleKundliRequestById = async (requestId: string) => {
+    const result = await KundliRequest.findById(requestId);
+
+    if (!result) {
+        throw new AppError(httpStatus.NOT_FOUND, "Request not found");
+    }
+
+    return result;
+};
+
 // Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = async (
     astrologerId: string,
@@ -188,6 +199,7 @@ const submitKundliReport = async (
 export const KundliRequestServices = {
     sendKundliRequest,
     getMyKundliRequests,
+    getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
 };

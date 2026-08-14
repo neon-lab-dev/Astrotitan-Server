@@ -42,6 +42,19 @@ const getMyKundliRequests = catchAsync(async (req, res) => {
     });
 });
 
+const getSingleKundliRequestById = catchAsync(async (req, res) => {
+    const { requestId } = req.params;
+    
+    const result = await KundliRequestServices.getSingleKundliRequestById(requestId);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Product fetched successfully",
+        data: result,
+    });
+})
+
 //Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = catchAsync(async (req, res) => {
     const astrologerId = req.user._id;
@@ -85,6 +98,7 @@ const submitKundliReport = catchAsync(async (req, res) => {
 export const KundliRequestControllers = {
     sendKundliRequest,
     getMyKundliRequests,
+    getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
 };

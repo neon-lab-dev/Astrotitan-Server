@@ -41,6 +41,16 @@ const getMyKundliRequests = (0, catchAsync_1.default)((req, res) => __awaiter(vo
         data: result,
     });
 }));
+const getSingleKundliRequestById = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestId } = req.params;
+    const result = yield kundliRequest_service_1.KundliRequestServices.getSingleKundliRequestById(requestId);
+    (0, sendResponse_1.default)(res, {
+        success: true,
+        statusCode: http_status_1.default.OK,
+        message: "Product fetched successfully",
+        data: result,
+    });
+}));
 //Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const astrologerId = req.user._id;
@@ -69,6 +79,7 @@ const submitKundliReport = (0, catchAsync_1.default)((req, res) => __awaiter(voi
 exports.KundliRequestControllers = {
     sendKundliRequest,
     getMyKundliRequests,
+    getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
 };
