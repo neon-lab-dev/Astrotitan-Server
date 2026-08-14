@@ -111,28 +111,62 @@ const requestConsultation = async (
 
   return populatedConsultation;
 };
-/* Get My Consultation Requests - User */
+
+/* Get My Consultation Bookings - User */
 const getMyConsultationRequests = async (
   accountId: string,
   filters: {
     status?: string;
+    method?: string;
+    date?: string; // Add date filter
   } = {},
   skip = 0,
   limit = 10
 ) => {
-  // Find the actual User document using accountId
   const user = await User.findOne({ accountId: accountId });
   if (!user) {
     throw new AppError(httpStatus.NOT_FOUND, "User not found");
   }
 
-  // Use the User's _id for the query
   const query: any = { user: user._id };
 
   if (filters.status && filters.status !== "all") {
     query.status = filters.status;
   }
 
+  if (filters.method && filters.method !== "all") {
+    query.method = filters.method;
+  }
+
+  // Date filter - Convert "Aug 15, 2026" to Date range
+  if (filters.date) {
+    const dateStr = filters.date; // "Aug 15, 2026"
+    const parsedDate = new Date(dateStr);
+    
+    if (!isNaN(parsedDate.getTime())) {
+      // Set start of day (00:00:00)
+      const startDate = new Date(parsedDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      // Set end of day (23:59:59)
+      const endDate = new Date(parsedDate);
+      endDate.setHours(23, 59, 59, 999);
+      
+      // Use aggregation to filter by slotId.date
+      // Since we need to filter by populated field, we'll use aggregation
+      const result = await getConsultationsWithDateFilter(
+        query,
+        startDate,
+        endDate,
+        skip,
+        limit
+      );
+      
+      return result;
+    }
+  }
+
+  // If no date filter, use the regular pagination
   const result = await infinitePaginate(
     Consultation,
     query,
@@ -141,14 +175,42 @@ const getMyConsultationRequests = async (
     [
       {
         path: "user",
-        select: "firstName lastName fullName profilePicture accountId"
+        select: "firstName lastName fullName email profilePicture accountId"
       },
       {
         path: "astrologer",
         select: "firstName lastName displayName profilePicture accountId"
+      },
+      {
+        path: "slotId",
+        select: "date slots"
       }
     ]
   );
+
+  // Process each consultation to get the booked slot details
+  if (result.data && result.data.length > 0) {
+    result.data = result.data.map((consultation: any) => {
+      const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+
+      if (consultationObj.slotId && consultationObj.bookedSlotId) {
+        const bookedSlot = consultationObj.slotId.slots?.find(
+          (slot: any) => slot._id.toString() === consultationObj.bookedSlotId.toString()
+        );
+
+        consultationObj.bookedSlot = bookedSlot || null;
+
+        if (bookedSlot) {
+          consultationObj.startTime = bookedSlot.startTime;
+          consultationObj.endTime = bookedSlot.endTime;
+        }
+      } else {
+        consultationObj.bookedSlot = null;
+      }
+
+      return consultationObj;
+    });
+  }
 
   return result;
 };
@@ -468,24 +530,56 @@ const getSingleConsultation = async (
   consultationId: string,
   accountId: string
 ) => {
+  // 1. Find user or astrologer by accountId
   const astrologer = await Astrologer.findOne({ accountId });
   const user = await User.findOne({ accountId });
 
   if (!user && !astrologer) {
     throw new AppError(httpStatus.NOT_FOUND, "User or astrologer not found");
   }
+
+  // 2. Find consultation with populated fields
   const consultation = await Consultation.findOne({
     _id: consultationId,
     $or: [{ user: user?._id }, { astrologer: astrologer?._id }],
   })
-    .populate("user")
-    .populate("astrologer");
+    .populate({
+      path: "user",
+      select: "firstName lastName fullName email profilePicture accountId",
+    })
+    .populate({
+      path: "astrologer",
+      select: "firstName lastName displayName profilePicture accountId experience",
+    })
+    .populate({
+      path: "slotId",
+      select: "date slots",
+    });
 
   if (!consultation) {
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
   }
 
-  return consultation;
+  const consultationObj: any = consultation.toObject ? consultation.toObject() : consultation;
+
+  if (consultationObj.slotId && consultationObj.bookedSlotId) {
+    const bookedSlot = consultationObj.slotId.slots?.find(
+      (slot: any) => slot._id.toString() === consultationObj?.bookedSlotId?.toString()
+    );
+
+    consultationObj.bookedSlot = bookedSlot || null;
+
+    if (bookedSlot) {
+      consultationObj.startTime = bookedSlot.startTime;
+      consultationObj.endTime = bookedSlot.endTime;
+    }
+  } else {
+    consultationObj.bookedSlot = null;
+  }
+
+  consultationObj.isMeetingScheduled = !!(consultationObj.meeting?.link && consultationObj.meeting?.scheduledAt);
+
+  return consultationObj;
 };
 
 const endConsultationSession = async (consultationId: string,

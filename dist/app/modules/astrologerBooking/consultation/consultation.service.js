@@ -84,28 +84,70 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
     return populatedConsultation;
 });
-/* Get My Consultation Requests - User */
+/* Get My Consultation Bookings - User */
 const getMyConsultationRequests = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
-    // Find the actual User document using accountId
     const user = yield user_model_1.User.findOne({ accountId: accountId });
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // Use the User's _id for the query
     const query = { user: user._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }
+    if (filters.method && filters.method !== "all") {
+        query.method = filters.method;
+    }
+    // Date filter - Convert "Aug 15, 2026" to Date range
+    if (filters.date) {
+        const dateStr = filters.date; // "Aug 15, 2026"
+        const parsedDate = new Date(dateStr);
+        if (!isNaN(parsedDate.getTime())) {
+            // Set start of day (00:00:00)
+            const startDate = new Date(parsedDate);
+            startDate.setHours(0, 0, 0, 0);
+            // Set end of day (23:59:59)
+            const endDate = new Date(parsedDate);
+            endDate.setHours(23, 59, 59, 999);
+            // Use aggregation to filter by slotId.date
+            // Since we need to filter by populated field, we'll use aggregation
+            const result = yield getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
+            return result;
+        }
+    }
+    // If no date filter, use the regular pagination
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
-            select: "firstName lastName fullName profilePicture accountId"
+            select: "firstName lastName fullName email profilePicture accountId"
         },
         {
             path: "astrologer",
             select: "firstName lastName displayName profilePicture accountId"
+        },
+        {
+            path: "slotId",
+            select: "date slots"
         }
     ]);
+    // Process each consultation to get the booked slot details
+    if (result.data && result.data.length > 0) {
+        result.data = result.data.map((consultation) => {
+            var _a;
+            const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+            if (consultationObj.slotId && consultationObj.bookedSlotId) {
+                const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
+                consultationObj.bookedSlot = bookedSlot || null;
+                if (bookedSlot) {
+                    consultationObj.startTime = bookedSlot.startTime;
+                    consultationObj.endTime = bookedSlot.endTime;
+                }
+            }
+            else {
+                consultationObj.bookedSlot = null;
+            }
+            return consultationObj;
+        });
+    }
     return result;
 });
 /* Get My Consultation Bookings - Astrologer */
@@ -351,21 +393,47 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
 });
 /* Get Single Consultation */
 const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    // 1. Find user or astrologer by accountId
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
     const user = yield user_model_1.User.findOne({ accountId });
     if (!user && !astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
     }
+    // 2. Find consultation with populated fields
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         $or: [{ user: user === null || user === void 0 ? void 0 : user._id }, { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id }],
     })
-        .populate("user")
-        .populate("astrologer");
+        .populate({
+        path: "user",
+        select: "firstName lastName fullName email profilePicture accountId",
+    })
+        .populate({
+        path: "astrologer",
+        select: "firstName lastName displayName profilePicture accountId experience",
+    })
+        .populate({
+        path: "slotId",
+        select: "date slots",
+    });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
-    return consultation;
+    const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+    if (consultationObj.slotId && consultationObj.bookedSlotId) {
+        const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => { var _a; return slot._id.toString() === ((_a = consultationObj === null || consultationObj === void 0 ? void 0 : consultationObj.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString()); });
+        consultationObj.bookedSlot = bookedSlot || null;
+        if (bookedSlot) {
+            consultationObj.startTime = bookedSlot.startTime;
+            consultationObj.endTime = bookedSlot.endTime;
+        }
+    }
+    else {
+        consultationObj.bookedSlot = null;
+    }
+    consultationObj.isMeetingScheduled = !!(((_b = consultationObj.meeting) === null || _b === void 0 ? void 0 : _b.link) && ((_c = consultationObj.meeting) === null || _c === void 0 ? void 0 : _c.scheduledAt));
+    return consultationObj;
 });
 const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
     const consultation = yield consultation_model_1.default.findById(consultationId);
