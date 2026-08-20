@@ -116,7 +116,7 @@ const createProductOrder = async (user: any, payload: TProductOrder) => {
         productId: product._id,
         name: product.name,
         quantity: item.quantity,
-        price: product.basePrice,
+        price: product.discountedPrice,
       };
     })
   );

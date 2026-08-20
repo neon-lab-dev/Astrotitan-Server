@@ -102,7 +102,7 @@ const createProductOrder = (user, payload) => __awaiter(void 0, void 0, void 0, 
             productId: product._id,
             name: product.name,
             quantity: item.quantity,
-            price: product.basePrice,
+            price: product.discountedPrice,
         };
     })));
     // Create order ID
