@@ -34,12 +34,6 @@ const KundliRequestSchema = new Schema<TKundliRequest>(
             required: true,
             trim: true,
         },
-        userEmail: {
-            type: String,
-            required: true,
-            trim: true,
-            lowercase: true,
-        },
         userPhoneNumber: {
             type: String,
             required: true,

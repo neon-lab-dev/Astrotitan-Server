@@ -15,7 +15,6 @@ const sendKundliRequest = async (
         requestType: "generateKundli" | "analyzeKundli";
         kundliType: string;
         userName: string;
-        userEmail: string;
         userPhoneNumber: string;
         dateOfBirth: Date;
         timeOfBirth: string;
@@ -50,7 +49,6 @@ const sendKundliRequest = async (
         requestType: payload.requestType,
         existingKundliFiles,
         userName: payload.userName,
-        userEmail: payload.userEmail,
         userPhoneNumber: payload.userPhoneNumber,
         dateOfBirth: payload.dateOfBirth,
         timeOfBirth: payload.timeOfBirth,

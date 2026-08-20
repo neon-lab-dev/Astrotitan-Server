@@ -30,12 +30,6 @@ const KundliRequestSchema = new mongoose_1.Schema({
         required: true,
         trim: true,
     },
-    userEmail: {
-        type: String,
-        required: true,
-        trim: true,
-        lowercase: true,
-    },
     userPhoneNumber: {
         type: String,
         required: true,

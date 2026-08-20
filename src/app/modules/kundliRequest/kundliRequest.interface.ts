@@ -26,7 +26,6 @@ export type TKundliRequest = {
 
     // User Snapshot
     userName: string;
-    userEmail: string;
     userPhoneNumber: string;
 
     // Birth Details
