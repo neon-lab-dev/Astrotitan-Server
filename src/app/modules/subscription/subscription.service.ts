@@ -217,6 +217,9 @@ const cancelSubscription = async (
   if (payload.cancelReason) {
     subscription.cancelReason = payload.cancelReason;
   }
+
+  await User.updateOne({ accountId: accountId }, { $set: { isPremiumUser: false } });
+
   await subscription.save();
 
   // Send cancellation email

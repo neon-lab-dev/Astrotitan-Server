@@ -161,6 +161,7 @@ const cancelSubscription = (accountId, payload) => __awaiter(void 0, void 0, voi
     if (payload.cancelReason) {
         subscription.cancelReason = payload.cancelReason;
     }
+    yield user_model_1.User.updateOne({ accountId: accountId }, { $set: { isPremiumUser: false } });
     yield subscription.save();
     // Send cancellation email
     // await sendSubscriptionStatusEmails(user, subscription, "cancelled");
