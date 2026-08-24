@@ -43,7 +43,7 @@ const getAllSlotsForAstrologer = catchAsync(async (req, res) => {
     const accountId = req.user._id;
     const { date } = req.params;
 
-    const result = await SlotServices.getAllSlots(
+    const result = await SlotServices.getAllSlotsForAstrologer(
         accountId,
         new Date(date)
     );
