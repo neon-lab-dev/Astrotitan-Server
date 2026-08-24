@@ -16,6 +16,13 @@ router.post(
 
 // Get My Kundli Requests (User)
 router.get(
+    "/all",
+    auth(UserRole.admin),
+    KundliRequestControllers.getAllKundliRequests
+);
+
+// Get My Kundli Requests (User)
+router.get(
     "/my-requests",
     auth(UserRole.user),
     KundliRequestControllers.getMyKundliRequests
@@ -40,6 +47,13 @@ router.post(
     auth(UserRole.astrologer),
     multerUpload.single("report"),
     KundliRequestControllers.submitKundliReport
+);
+
+// Assign Kundli Request to Astrologer
+router.put(
+    "/assign-astrologer/:requestId",
+    auth(UserRole.admin),
+    KundliRequestControllers.assignAstrologer
 );
 
 export const KundliRequestRoutes = router;

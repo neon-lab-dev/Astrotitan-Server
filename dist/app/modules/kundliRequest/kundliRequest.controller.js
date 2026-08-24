@@ -29,6 +29,20 @@ const sendKundliRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void
         data: result,
     });
 }));
+const getAllKundliRequests = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { skip = "0", limit = "10", requestType, keyword } = req.query;
+    const filters = {
+        requestType: requestType,
+        keyword: keyword,
+    };
+    const result = yield kundliRequest_service_1.KundliRequestServices.getAllKundliRequests(filters, Number(skip), Number(limit));
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Kundli requests fetched successfully",
+        data: result,
+    });
+}));
 //Get My Kundli Requests (User)
 const getMyKundliRequests = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
@@ -76,10 +90,23 @@ const submitKundliReport = (0, catchAsync_1.default)((req, res) => __awaiter(voi
         data: result,
     });
 }));
+const assignAstrologer = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestId } = req.params;
+    const { astrologerId } = req.body;
+    const result = yield kundliRequest_service_1.KundliRequestServices.assignAstrologer(requestId, astrologerId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Astrologer assigned successfully",
+        data: result,
+    });
+}));
 exports.KundliRequestControllers = {
     sendKundliRequest,
+    getAllKundliRequests,
     getMyKundliRequests,
     getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
+    assignAstrologer
 };

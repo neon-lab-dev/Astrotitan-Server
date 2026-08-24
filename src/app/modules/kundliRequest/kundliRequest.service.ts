@@ -6,6 +6,8 @@ import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import KundliRequest from "./kundliRequest.model";
 import { infinitePaginate } from "../../utils/infinitePaginate";
 import { Astrologer } from "../astrologer/astrologer.model";
+import { sendSingleNotification } from "../../utils/sendSingleNotification";
+import { Accounts } from "../accounts/accounts.model";
 
 
 // Send Kundli Request(User)
@@ -52,12 +54,24 @@ const sendKundliRequest = async (
         userPhoneNumber: payload.userPhoneNumber,
         dateOfBirth: payload.dateOfBirth,
         timeOfBirth: payload.timeOfBirth,
-        placeOfBirth: payload.placeOfBirth, // Store formatted address
+        placeOfBirth: payload.placeOfBirth,
         userGender: payload.userGender,
         kundliType: payload.kundliType,
         userNotes: payload.userNotes,
         status: "pending",
     });
+
+    const admin = await Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+    }
+
+
+    await sendSingleNotification(
+        admin._id as any,
+        "New Kundli Request Received",
+        `You have received a new Kundli request from ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`
+    );
 
     return kundliRequest;
 };
@@ -99,7 +113,6 @@ const getMyKundliRequests = async (
     return result;
 };
 
-
 const getSingleKundliRequestById = async (requestId: string) => {
     const result = await KundliRequest.findById(requestId);
 
@@ -108,6 +121,37 @@ const getSingleKundliRequestById = async (requestId: string) => {
     }
 
     return result;
+};
+
+/* Get All Products */
+const getAllKundliRequests = async (
+    filters: any = {},
+    skip = 0,
+    limit = 10
+) => {
+
+    const query: any = {};
+
+    if (filters.requestType) {
+        query.requestType = filters.requestType;
+    }
+
+    if (filters.keyword) {
+        query.$text = {
+            $search: filters.keyword,
+        };
+    }
+
+    return infinitePaginate(KundliRequest, query, skip, limit, [
+        {
+            path: "userId",
+            select: "firstName lastName profilePicture accountId"
+        },
+        {
+            path: "astrologerId",
+            select: "firstName lastName displayName profilePicture accountId"
+        },
+    ]);
 };
 
 // Get Kundli Requests for Astrologer
@@ -191,13 +235,49 @@ const submitKundliReport = async (
     kundliRequest.completedAt = new Date();
     await kundliRequest.save();
 
+
+    await sendSingleNotification(
+        kundliRequest?.userId as any,
+        "Your Kundli Report is ready",
+        `Your Kundli report is ready. Please check Kundli page to download and for more details.`
+    );
+
     return kundliRequest;
 };
+
+const assignAstrologer = async (requestId: string, astrologerId: any) => {
+    const astrologer = await Astrologer.findById(astrologerId);
+    const kundliRequest = await KundliRequest.findById(requestId).populate("userId", "firstName lastName");
+    if (!kundliRequest) {
+        throw new AppError(httpStatus.NOT_FOUND, "Kundli request not found");
+    }
+
+    kundliRequest.astrologerId = astrologerId;
+    kundliRequest.isAssigned = true;
+    await kundliRequest.save();
+
+    const requestType = kundliRequest.requestType;
+    const user = kundliRequest.userId as any;
+
+    const title = requestType === "generateKundli" ? "New Kundli Generate Request Assigned" : "New Kundli Analysis Request Assigned";
+    const message = requestType === "generateKundli" ?
+        `You have been assigned to create a new Kundli for ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.` :
+        `You have been assigned to analyze Kundli for ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`;
+
+    await sendSingleNotification(
+        astrologer?.accountId as any,
+        title,
+        message
+    );
+    return kundliRequest;
+}
 
 export const KundliRequestServices = {
     sendKundliRequest,
     getMyKundliRequests,
     getSingleKundliRequestById,
+    getAllKundliRequests,
     getAstrologerKundliRequests,
     submitKundliReport,
+    assignAstrologer,
 };

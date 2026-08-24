@@ -51,4 +51,6 @@ export type TKundliRequest = {
 
     completedAt?: Date;
     cancelledAt?: Date;
+
+    isAssigned ?: boolean
 };

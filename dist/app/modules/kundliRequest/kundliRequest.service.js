@@ -21,6 +21,8 @@ const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const kundliRequest_model_1 = __importDefault(require("./kundliRequest.model"));
 const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
+const sendSingleNotification_1 = require("../../utils/sendSingleNotification");
+const accounts_model_1 = require("../accounts/accounts.model");
 // Send Kundli Request(User)
 const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Check if user exists
@@ -46,12 +48,17 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
         userPhoneNumber: payload.userPhoneNumber,
         dateOfBirth: payload.dateOfBirth,
         timeOfBirth: payload.timeOfBirth,
-        placeOfBirth: payload.placeOfBirth, // Store formatted address
+        placeOfBirth: payload.placeOfBirth,
         userGender: payload.userGender,
         kundliType: payload.kundliType,
         userNotes: payload.userNotes,
         status: "pending",
     });
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Kundli Request Received", `You have received a new Kundli request from ${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName}. Please check Kundli page for more details.`);
     return kundliRequest;
 });
 // Get My Kundli Requests (User)
@@ -82,6 +89,28 @@ const getSingleKundliRequestById = (requestId) => __awaiter(void 0, void 0, void
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Request not found");
     }
     return result;
+});
+/* Get All Products */
+const getAllKundliRequests = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
+    const query = {};
+    if (filters.requestType) {
+        query.requestType = filters.requestType;
+    }
+    if (filters.keyword) {
+        query.$text = {
+            $search: filters.keyword,
+        };
+    }
+    return (0, infinitePaginate_1.infinitePaginate)(kundliRequest_model_1.default, query, skip, limit, [
+        {
+            path: "userId",
+            select: "firstName lastName profilePicture accountId"
+        },
+        {
+            path: "astrologerId",
+            select: "firstName lastName displayName profilePicture accountId"
+        },
+    ]);
 });
 // Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = (astrologerId_1, ...args_1) => __awaiter(void 0, [astrologerId_1, ...args_1], void 0, function* (astrologerId, filters = {}, skip = 0, limit = 10) {
@@ -134,12 +163,33 @@ const submitKundliReport = (astrologerId, requestId, file) => __awaiter(void 0, 
     kundliRequest.status = "completed";
     kundliRequest.completedAt = new Date();
     yield kundliRequest.save();
+    yield (0, sendSingleNotification_1.sendSingleNotification)(kundliRequest === null || kundliRequest === void 0 ? void 0 : kundliRequest.userId, "Your Kundli Report is ready", `Your Kundli report is ready. Please check Kundli page to download and for more details.`);
+    return kundliRequest;
+});
+const assignAstrologer = (requestId, astrologerId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+    const kundliRequest = yield kundliRequest_model_1.default.findById(requestId).populate("userId", "firstName lastName");
+    if (!kundliRequest) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Kundli request not found");
+    }
+    kundliRequest.astrologerId = astrologerId;
+    kundliRequest.isAssigned = true;
+    yield kundliRequest.save();
+    const requestType = kundliRequest.requestType;
+    const user = kundliRequest.userId;
+    const title = requestType === "generateKundli" ? "New Kundli Generate Request Assigned" : "New Kundli Analysis Request Assigned";
+    const message = requestType === "generateKundli" ?
+        `You have been assigned to create a new Kundli for ${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName}. Please check Kundli page for more details.` :
+        `You have been assigned to analyze Kundli for ${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName}. Please check Kundli page for more details.`;
+    yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer === null || astrologer === void 0 ? void 0 : astrologer.accountId, title, message);
     return kundliRequest;
 });
 exports.KundliRequestServices = {
     sendKundliRequest,
     getMyKundliRequests,
     getSingleKundliRequestById,
+    getAllKundliRequests,
     getAstrologerKundliRequests,
     submitKundliReport,
+    assignAstrologer,
 };

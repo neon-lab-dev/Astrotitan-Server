@@ -101,6 +101,11 @@ const KundliRequestSchema = new Schema<TKundliRequest>(
             required: false,
             trim: true,
         },
+
+        isAssigned: {
+            type: Boolean,
+            default: false
+        }
     },
     {
         timestamps: true,
