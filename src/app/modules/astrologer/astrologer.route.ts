@@ -12,6 +12,13 @@ router.get(
   AstrologerControllers.getAllAstrologer
 );
 
+// For astrologer
+router.get(
+  "/stats/my",
+  auth(UserRole.astrologer),
+  AstrologerControllers.getStats
+);
+
 router.get(
   "/pending-identity",
   auth(UserRole.admin),

@@ -5,6 +5,9 @@ import { infinitePaginate } from "../../utils/infinitePaginate";
 import AppError from "../../errors/AppError";
 import httpStatus from "http-status";
 import { User } from "../users/user.model";
+import Consultation from "../astrologerBooking/consultation/consultation.model";
+import KundliRequest from "../kundliRequest/kundliRequest.model";
+import { Blog } from "../blog/blog.model";
 
 const getAllAstrologer = async (
   filters: {
@@ -299,11 +302,66 @@ const updateAvailability = async (
     },
   };
 };
+const getStats = async (accountId: string) => {
+  // 1. Find astrologer
+  const astrologer = await Astrologer.findOne({ accountId });
+  if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // 2. Get today's date range (start of day to end of day)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // 3. Fetch all stats in parallel
+  const [
+    todayBookings,
+    totalBookings,
+    kundliRequests,
+    publishedBlogs,
+  ] = await Promise.all([
+    // Today's Bookings from Consultation model
+    Consultation.countDocuments({
+      astrologer: astrologer._id,
+      scheduledAt: {
+        $gte: today,
+        $lt: tomorrow,
+      }
+    }),
+
+    // Total Bookings from Consultation model
+    Consultation.countDocuments({
+      astrologer: astrologer._id
+    }),
+
+    // Kundli Requests by astrologerId
+    KundliRequest.countDocuments({
+      astrologerId: astrologer._id,
+    }),
+
+    // Published Blogs by astrologer
+    Blog.countDocuments({
+      addedBy: astrologer._id,
+      isPublished: true,
+    }),
+  ]);
+
+  // 4. Prepare response
+  return {
+    todayBookings,
+    totalBookings,
+    kundliRequests,
+    publishedBlogs
+  };
+};
 
 export const AstrologerServices = {
   getAllAstrologer,
   getSingleAstrologerById,
   updateIdentityStatus,
   getPendingIdentityRequests,
-  updateAvailability
+  updateAvailability,
+  getStats
 };

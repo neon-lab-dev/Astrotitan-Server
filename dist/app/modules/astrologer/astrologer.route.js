@@ -11,6 +11,8 @@ const accounts_constants_1 = require("../accounts/accounts.constants");
 const router = express_1.default.Router();
 // Admin routes
 router.get("/", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), astrologer_controller_1.AstrologerControllers.getAllAstrologer);
+// For astrologer
+router.get("/stats/my", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), astrologer_controller_1.AstrologerControllers.getStats);
 router.get("/pending-identity", (0, auth_1.default)(accounts_constants_1.UserRole.admin), astrologer_controller_1.AstrologerControllers.getPendingIdentityRequests);
 router.get("/:astrologerId", (0, auth_1.default)(accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), astrologer_controller_1.AstrologerControllers.getSingleAstrologerById);
 router.patch("/update-identity-status/:astrologerId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), astrologer_controller_1.AstrologerControllers.updateIdentityStatus);

@@ -20,6 +20,9 @@ const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const AppError_1 = __importDefault(require("../../errors/AppError"));
 const http_status_1 = __importDefault(require("http-status"));
 const user_model_1 = require("../users/user.model");
+const consultation_model_1 = __importDefault(require("../astrologerBooking/consultation/consultation.model"));
+const kundliRequest_model_1 = __importDefault(require("../kundliRequest/kundliRequest.model"));
+const blog_model_1 = require("../blog/blog.model");
 const getAllAstrologer = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
     const query = {};
     // Search functionality (text search on name fields)
@@ -203,10 +206,54 @@ const updateAvailability = (userId, payload) => __awaiter(void 0, void 0, void 0
         },
     };
 });
+const getStats = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    // 1. Find astrologer
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // 2. Get today's date range (start of day to end of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    // 3. Fetch all stats in parallel
+    const [todayBookings, totalBookings, kundliRequests, publishedBlogs,] = yield Promise.all([
+        // Today's Bookings from Consultation model
+        consultation_model_1.default.countDocuments({
+            astrologer: astrologer._id,
+            scheduledAt: {
+                $gte: today,
+                $lt: tomorrow,
+            }
+        }),
+        // Total Bookings from Consultation model
+        consultation_model_1.default.countDocuments({
+            astrologer: astrologer._id
+        }),
+        // Kundli Requests by astrologerId
+        kundliRequest_model_1.default.countDocuments({
+            astrologerId: astrologer._id,
+        }),
+        // Published Blogs by astrologer
+        blog_model_1.Blog.countDocuments({
+            addedBy: astrologer._id,
+            isPublished: true,
+        }),
+    ]);
+    // 4. Prepare response
+    return {
+        todayBookings,
+        totalBookings,
+        kundliRequests,
+        publishedBlogs
+    };
+});
 exports.AstrologerServices = {
     getAllAstrologer,
     getSingleAstrologerById,
     updateIdentityStatus,
     getPendingIdentityRequests,
-    updateAvailability
+    updateAvailability,
+    getStats
 };
