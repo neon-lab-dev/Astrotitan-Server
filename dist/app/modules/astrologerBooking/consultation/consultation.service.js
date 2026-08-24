@@ -711,15 +711,13 @@ const addRecommendations = (consultationId, accountId, payload) => __awaiter(voi
         _id: consultationId,
         astrologer: astrologer._id,
     });
+    console.log(consultationId);
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
-    }
-    // 3. Verify consultation is ended
-    if (consultation.status !== "ended") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Recommendations can only be added after the consultation is ended. Current status: ${consultation.status}`);
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found ");
     }
     // 4. Update consultation with recommendations
     consultation.recommendations = payload.recommendations.trim();
+    consultation.status = "ended";
     yield consultation.save();
     return {
         success: true,

@@ -142,16 +142,16 @@ const getMyConsultationRequests = async (
   if (filters.date) {
     const dateStr = filters.date; // "Aug 15, 2026"
     const parsedDate = new Date(dateStr);
-    
+
     if (!isNaN(parsedDate.getTime())) {
       // Set start of day (00:00:00)
       const startDate = new Date(parsedDate);
       startDate.setHours(0, 0, 0, 0);
-      
+
       // Set end of day (23:59:59)
       const endDate = new Date(parsedDate);
       endDate.setHours(23, 59, 59, 999);
-      
+
       // Use aggregation to filter by slotId.date
       // Since we need to filter by populated field, we'll use aggregation
       const result = await getConsultationsWithDateFilter(
@@ -161,7 +161,7 @@ const getMyConsultationRequests = async (
         skip,
         limit
       );
-      
+
       return result;
     }
   }
@@ -246,16 +246,16 @@ const getMyConsultationBookings = async (
   if (filters.date) {
     const dateStr = filters.date; // "Aug 15, 2026"
     const parsedDate = new Date(dateStr);
-    
+
     if (!isNaN(parsedDate.getTime())) {
       // Set start of day (00:00:00)
       const startDate = new Date(parsedDate);
       startDate.setHours(0, 0, 0, 0);
-      
+
       // Set end of day (23:59:59)
       const endDate = new Date(parsedDate);
       endDate.setHours(23, 59, 59, 999);
-      
+
       // Use aggregation to filter by slotId.date
       // Since we need to filter by populated field, we'll use aggregation
       const result = await getConsultationsWithDateFilter(
@@ -265,7 +265,7 @@ const getMyConsultationBookings = async (
         skip,
         limit
       );
-      
+
       return result;
     }
   }
@@ -1017,20 +1017,15 @@ const addRecommendations = async (
     astrologer: astrologer._id,
   });
 
-  if (!consultation) {
-    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found or not authorized");
-  }
+  console.log(consultationId);
 
-  // 3. Verify consultation is ended
-  if (consultation.status !== "ended") {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      `Recommendations can only be added after the consultation is ended. Current status: ${consultation.status}`
-    );
+  if (!consultation) {
+    throw new AppError(httpStatus.NOT_FOUND, "Consultation not found ");
   }
 
   // 4. Update consultation with recommendations
   consultation.recommendations = payload.recommendations.trim();
+  consultation.status = "ended"
   await consultation.save();
 
   return {
