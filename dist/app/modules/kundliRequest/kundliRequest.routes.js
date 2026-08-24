@@ -20,7 +20,7 @@ router.get("/my-requests", (0, auth_1.default)(accounts_constants_1.UserRole.use
 router.get("/astrologer-requests", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), kundliRequest_controller_1.KundliRequestControllers.getAstrologerKundliRequests);
 router.get("/:requestId", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer, accounts_constants_1.UserRole.admin), kundliRequest_controller_1.KundliRequestControllers.getSingleKundliRequestById);
 // Submit Kundli Report (Astrologer)
-router.post("/:requestId/submit-report", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), multer_config_1.multerUpload.single("report"), kundliRequest_controller_1.KundliRequestControllers.submitKundliReport);
+router.post("/:requestId/submit-report", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), multer_config_1.multerUpload.single("file"), kundliRequest_controller_1.KundliRequestControllers.submitKundliReport);
 // Assign Kundli Request to Astrologer
 router.put("/assign-astrologer/:requestId", (0, auth_1.default)(accounts_constants_1.UserRole.admin), kundliRequest_controller_1.KundliRequestControllers.assignAstrologer);
 exports.KundliRequestRoutes = router;

@@ -47,7 +47,7 @@ router.get(
 router.post(
     "/:requestId/submit-report",
     auth(UserRole.astrologer),
-    multerUpload.single("report"),
+    multerUpload.single("file"),
     KundliRequestControllers.submitKundliReport
 );
 
