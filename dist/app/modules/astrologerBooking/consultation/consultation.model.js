@@ -32,6 +32,9 @@ const ConsultationSchema = new mongoose_1.Schema({
     requestMessage: {
         type: String,
     },
+    recommendations: {
+        type: String,
+    },
     acceptedAt: {
         type: Date,
     },
@@ -63,9 +66,6 @@ const ConsultationSchema = new mongoose_1.Schema({
     },
     bookedSlotId: {
         type: mongoose_1.Types.ObjectId,
-    },
-    recommendations: {
-        type: String,
     },
     meeting: {
         link: {

@@ -33,6 +33,9 @@ const ConsultationSchema = new Schema<TConsultation>(
         requestMessage: {
             type: String,
         },
+        recommendations: {
+            type: String,
+        },
         acceptedAt: {
             type: Date,
         },
@@ -66,9 +69,7 @@ const ConsultationSchema = new Schema<TConsultation>(
         bookedSlotId: {
             type: Types.ObjectId,
         },
-        recommendations: {
-            type: String,
-        },
+
         meeting: {
             link: {
                 type: String,

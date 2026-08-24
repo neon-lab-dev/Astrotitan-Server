@@ -20,7 +20,7 @@ router.post("/review/add/:consultationId", (0, auth_1.default)(accounts_constant
 router.post('/schedule-meeting/:consultationId', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.scheduleMeeting);
 router.post('/send-reschedule-request/:consultationId', (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.sendRescheduleRequest);
 router.patch('/reschedule-meeting/:consultationId', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.rescheduleMeeting);
+router.post('/add-recommendations/:consultationId', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.addRecommendations);
 // Common Routes (Both User and Astrologer)
 router.get("/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.getSingleConsultation);
-router.post('/add-recommendations/:consultationId', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.addRecommendations);
 exports.ConsultationRoutes = router;

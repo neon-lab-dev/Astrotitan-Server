@@ -15,11 +15,11 @@ export type TConsultation = {
     startedAt?: Date;                // When chat actually started
     rating?: number;
     review?: string;
+    recommendations?: string;
 
     // If method is call, then meeting link will be generated and stored here
     slotId?: ObjectId;
     bookedSlotId?: ObjectId;
-    recommendations?: string;
     meeting: {
         link: string;
         scheduledAt: Date;
