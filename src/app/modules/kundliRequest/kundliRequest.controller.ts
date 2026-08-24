@@ -79,11 +79,11 @@ const getSingleKundliRequestById = catchAsync(async (req, res) => {
 
 //Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = catchAsync(async (req, res) => {
-    const astrologerId = req.user._id;
+    const accountId = req.user._id;
     const { status, skip = "0", limit = "10" } = req.query;
 
     const result = await KundliRequestServices.getAstrologerKundliRequests(
-        astrologerId,
+        accountId,
         { status: status as string },
         Number(skip),
         Number(limit)

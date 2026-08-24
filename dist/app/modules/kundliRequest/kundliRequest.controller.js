@@ -67,9 +67,9 @@ const getSingleKundliRequestById = (0, catchAsync_1.default)((req, res) => __awa
 }));
 //Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const astrologerId = req.user._id;
+    const accountId = req.user._id;
     const { status, skip = "0", limit = "10" } = req.query;
-    const result = yield kundliRequest_service_1.KundliRequestServices.getAstrologerKundliRequests(astrologerId, { status: status }, Number(skip), Number(limit));
+    const result = yield kundliRequest_service_1.KundliRequestServices.getAstrologerKundliRequests(accountId, { status: status }, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,

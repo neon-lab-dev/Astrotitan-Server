@@ -28,18 +28,20 @@ router.get(
     KundliRequestControllers.getMyKundliRequests
 );
 
-router.get(
-    "/:requestId",
-    auth(UserRole.user, UserRole.astrologer, UserRole.admin),
-    KundliRequestControllers.getSingleKundliRequestById
-);
-
 // Get Kundli Requests for Astrologer
 router.get(
     "/astrologer-requests",
     auth(UserRole.astrologer),
     KundliRequestControllers.getAstrologerKundliRequests
 );
+
+router.get(
+    "/:requestId",
+    auth(UserRole.user, UserRole.astrologer, UserRole.admin),
+    KundliRequestControllers.getSingleKundliRequestById
+);
+
+
 
 // Submit Kundli Report (Astrologer)
 router.post(

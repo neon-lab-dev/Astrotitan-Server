@@ -113,12 +113,12 @@ const getAllKundliRequests = (...args_1) => __awaiter(void 0, [...args_1], void 
     ]);
 });
 // Get Kundli Requests for Astrologer
-const getAstrologerKundliRequests = (astrologerId_1, ...args_1) => __awaiter(void 0, [astrologerId_1, ...args_1], void 0, function* (astrologerId, filters = {}, skip = 0, limit = 10) {
-    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+const getAstrologerKundliRequests = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    const query = { astrologerId };
+    const query = { astrologerId: astrologer._id };
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
     }

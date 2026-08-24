@@ -156,17 +156,17 @@ const getAllKundliRequests = async (
 
 // Get Kundli Requests for Astrologer
 const getAstrologerKundliRequests = async (
-    astrologerId: string,
+    accountId: string,
     filters: { status?: string } = {},
     skip = 0,
     limit = 10
 ) => {
-    const astrologer = await Astrologer.findById(astrologerId);
+    const astrologer = await Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
     }
 
-    const query: any = { astrologerId };
+    const query: any = { astrologerId: astrologer._id };
 
     if (filters.status && filters.status !== "all") {
         query.status = filters.status;
