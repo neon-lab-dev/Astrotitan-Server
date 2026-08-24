@@ -135,16 +135,16 @@ const getAstrologerKundliRequests = (accountId_1, ...args_1) => __awaiter(void 0
     return result;
 });
 // Submit Kundli Report (Astrologer)
-const submitKundliReport = (astrologerId, requestId, file) => __awaiter(void 0, void 0, void 0, function* () {
+const submitKundliReport = (accountId, requestId, file) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Check if astrologer exists
-    const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
     // 2. Find kundli request
     const kundliRequest = yield kundliRequest_model_1.default.findOne({
         _id: requestId,
-        astrologerId,
+        astrologerId: astrologer._id,
     });
     if (!kundliRequest) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Kundli request not found or not assigned to you");

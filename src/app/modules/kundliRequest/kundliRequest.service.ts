@@ -194,12 +194,12 @@ const getAstrologerKundliRequests = async (
 
 // Submit Kundli Report (Astrologer)
 const submitKundliReport = async (
-    astrologerId: string,
+    accountId: string,
     requestId: string,
     file: Express.Multer.File
 ) => {
     // 1. Check if astrologer exists
-    const astrologer = await Astrologer.findById(astrologerId);
+    const astrologer = await Astrologer.findOne({ accountId });
     if (!astrologer) {
         throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
     }
@@ -207,7 +207,7 @@ const submitKundliReport = async (
     // 2. Find kundli request
     const kundliRequest = await KundliRequest.findOne({
         _id: requestId,
-        astrologerId,
+        astrologerId: astrologer._id,
     });
 
     if (!kundliRequest) {

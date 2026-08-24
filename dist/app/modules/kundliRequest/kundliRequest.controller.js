@@ -79,10 +79,10 @@ const getAstrologerKundliRequests = (0, catchAsync_1.default)((req, res) => __aw
 }));
 //Submit Kundli Report (Astrologer)
 const submitKundliReport = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const astrologerId = req.user._id;
+    const accountId = req.user._id;
     const { requestId } = req.params;
     const file = req.file;
-    const result = yield kundliRequest_service_1.KundliRequestServices.submitKundliReport(astrologerId, requestId, file);
+    const result = yield kundliRequest_service_1.KundliRequestServices.submitKundliReport(accountId, requestId, file);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,

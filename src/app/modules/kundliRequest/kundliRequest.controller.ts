@@ -99,12 +99,12 @@ const getAstrologerKundliRequests = catchAsync(async (req, res) => {
 
 //Submit Kundli Report (Astrologer)
 const submitKundliReport = catchAsync(async (req, res) => {
-    const astrologerId = req.user._id;
+    const accountId = req.user._id;
     const { requestId } = req.params;
     const file = req.file as Express.Multer.File;
 
     const result = await KundliRequestServices.submitKundliReport(
-        astrologerId,
+        accountId,
         requestId,
         file
     );
