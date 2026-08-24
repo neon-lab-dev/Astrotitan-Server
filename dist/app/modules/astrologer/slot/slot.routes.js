@@ -13,5 +13,7 @@ const router = express_1.default.Router();
 //  Add slots (Astrologer only)
 router.post('/add', (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), slot_controller_1.SlotController.addSlots);
 //  Get all slots (User & Astrologer)
+router.get('/my/:date', (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.admin, accounts_constants_1.UserRole.astrologer), slot_controller_1.SlotController.getAllSlotsForAstrologer);
+//  Get all slots (User & Astrologer)
 router.get('/:astrologerId/:date', (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), slot_controller_1.SlotController.getAllSlots);
 exports.SlotRoutes = router;

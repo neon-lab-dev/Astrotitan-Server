@@ -15,6 +15,13 @@ router.post(
 
 //  Get all slots (User & Astrologer)
 router.get(
+    '/my/:date',
+    auth(UserRole.user, UserRole.admin, UserRole.astrologer),
+    SlotController.getAllSlotsForAstrologer
+);
+
+//  Get all slots (User & Astrologer)
+router.get(
     '/:astrologerId/:date',
     auth(UserRole.user, UserRole.astrologer),
     SlotController.getAllSlots

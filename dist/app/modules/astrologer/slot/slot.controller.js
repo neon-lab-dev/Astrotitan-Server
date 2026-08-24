@@ -43,7 +43,20 @@ const getAllSlots = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, vo
         data: result,
     });
 }));
+//Get all slots
+const getAllSlotsForAstrologer = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { date } = req.params;
+    const result = yield slot_service_1.SlotServices.getAllSlots(accountId, new Date(date));
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Slots fetched successfully",
+        data: result,
+    });
+}));
 exports.SlotController = {
     addSlots,
     getAllSlots,
+    getAllSlotsForAstrologer,
 };

@@ -42,7 +42,7 @@ const addSlots = (accountId, payload) => __awaiter(void 0, void 0, void 0, funct
     });
     return newSlot;
 });
-//Get all slots
+//Get all slots (User)
 const getAllSlots = (astrologerId, date) => __awaiter(void 0, void 0, void 0, function* () {
     // 1. Check if astrologer exists
     const astrologer = yield astrologer_model_1.Astrologer.findById(astrologerId);
@@ -71,7 +71,37 @@ const getAllSlots = (astrologerId, date) => __awaiter(void 0, void 0, void 0, fu
         totalSlots: slots.length,
     };
 });
+//Get all slots (Astrologer)
+const getAllSlotsForAstrologer = (accountId, date) => __awaiter(void 0, void 0, void 0, function* () {
+    // 1. Check if astrologer exists
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    // 2. Find slots for the date
+    const slotDoc = yield slot_model_1.default.findOne({
+        astrologerId: astrologer._id,
+        date: date,
+    });
+    if (!slotDoc) {
+        return {
+            astrologerId: astrologer._id,
+            date,
+            slots: [],
+            message: "No slots found for this date",
+        };
+    }
+    const slots = Array.isArray(slotDoc.slots) ? slotDoc.slots : [];
+    return {
+        _id: slotDoc._id,
+        astrologerId: astrologer._id,
+        date,
+        slots,
+        totalSlots: slots.length,
+    };
+});
 exports.SlotServices = {
     addSlots,
     getAllSlots,
+    getAllSlotsForAstrologer,
 };

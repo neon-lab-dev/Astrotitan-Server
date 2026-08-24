@@ -711,7 +711,6 @@ const addRecommendations = (consultationId, accountId, payload) => __awaiter(voi
         _id: consultationId,
         astrologer: astrologer._id,
     });
-    console.log(consultationId);
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found ");
     }

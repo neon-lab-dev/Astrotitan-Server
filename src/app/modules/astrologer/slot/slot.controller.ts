@@ -38,7 +38,26 @@ const getAllSlots = catchAsync(async (req, res) => {
     });
 });
 
+//Get all slots
+const getAllSlotsForAstrologer = catchAsync(async (req, res) => {
+    const accountId = req.user._id;
+    const { date } = req.params;
+
+    const result = await SlotServices.getAllSlots(
+        accountId,
+        new Date(date)
+    );
+
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Slots fetched successfully",
+        data: result,
+    });
+});
+
 export const SlotController = {
     addSlots,
     getAllSlots,
+    getAllSlotsForAstrologer,
 };

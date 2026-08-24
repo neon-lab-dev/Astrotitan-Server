@@ -47,7 +47,7 @@ const addSlots = async (
     return newSlot;
 };
 
-//Get all slots
+//Get all slots (User)
 const getAllSlots = async (
     astrologerId: string,
     date: Date
@@ -84,7 +84,45 @@ const getAllSlots = async (
     };
 };
 
+//Get all slots (Astrologer)
+const getAllSlotsForAstrologer = async (
+    accountId: string,
+    date: Date
+) => {
+    // 1. Check if astrologer exists
+    const astrologer = await Astrologer.findOne({ accountId });
+    if (!astrologer) {
+        throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+    }
+
+    // 2. Find slots for the date
+    const slotDoc = await Slot.findOne({
+        astrologerId: astrologer._id,
+        date: date,
+    });
+
+    if (!slotDoc) {
+        return {
+            astrologerId: astrologer._id,
+            date,
+            slots: [],
+            message: "No slots found for this date",
+        };
+    }
+
+    const slots = Array.isArray(slotDoc.slots) ? slotDoc.slots : [];
+
+    return {
+        _id: slotDoc._id,
+        astrologerId: astrologer._id,
+        date,
+        slots,
+        totalSlots: slots.length,
+    };
+};
+
 export const SlotServices = {
     addSlots,
     getAllSlots,
+    getAllSlotsForAstrologer,
 };

@@ -1017,8 +1017,6 @@ const addRecommendations = async (
     astrologer: astrologer._id,
   });
 
-  console.log(consultationId);
-
   if (!consultation) {
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found ");
   }
