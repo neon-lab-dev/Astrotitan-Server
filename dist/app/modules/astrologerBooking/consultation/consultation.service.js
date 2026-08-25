@@ -420,9 +420,11 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
+    // 3. Convert to object and process booked slot (matching getMyConsultationBookings format)
     const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
+    // 4. Process booked slot
     if (consultationObj.slotId && consultationObj.bookedSlotId) {
-        const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => { var _a; return slot._id.toString() === ((_a = consultationObj === null || consultationObj === void 0 ? void 0 : consultationObj.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString()); });
+        const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
         consultationObj.bookedSlot = bookedSlot || null;
         if (bookedSlot) {
             consultationObj.startTime = bookedSlot.startTime;
@@ -432,7 +434,12 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
     else {
         consultationObj.bookedSlot = null;
     }
+    // 5. Check if meeting is scheduled
     consultationObj.isMeetingScheduled = !!(((_b = consultationObj.meeting) === null || _b === void 0 ? void 0 : _b.link) && ((_c = consultationObj.meeting) === null || _c === void 0 ? void 0 : _c.scheduledAt));
+    // 6. Clean up - remove unnecessary fields
+    if (consultationObj.slotId) {
+        // Keep slotId but remove the slots array to avoid duplication
+    }
     return consultationObj;
 });
 const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {

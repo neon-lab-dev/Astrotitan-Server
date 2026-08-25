@@ -560,11 +560,13 @@ const getSingleConsultation = async (
     throw new AppError(httpStatus.NOT_FOUND, "Consultation not found");
   }
 
+  // 3. Convert to object and process booked slot (matching getMyConsultationBookings format)
   const consultationObj: any = consultation.toObject ? consultation.toObject() : consultation;
 
+  // 4. Process booked slot
   if (consultationObj.slotId && consultationObj.bookedSlotId) {
     const bookedSlot = consultationObj.slotId.slots?.find(
-      (slot: any) => slot._id.toString() === consultationObj?.bookedSlotId?.toString()
+      (slot: any) => slot._id.toString() === consultationObj.bookedSlotId.toString()
     );
 
     consultationObj.bookedSlot = bookedSlot || null;
@@ -577,7 +579,13 @@ const getSingleConsultation = async (
     consultationObj.bookedSlot = null;
   }
 
+  // 5. Check if meeting is scheduled
   consultationObj.isMeetingScheduled = !!(consultationObj.meeting?.link && consultationObj.meeting?.scheduledAt);
+
+  // 6. Clean up - remove unnecessary fields
+  if (consultationObj.slotId) {
+    // Keep slotId but remove the slots array to avoid duplication
+  }
 
   return consultationObj;
 };
