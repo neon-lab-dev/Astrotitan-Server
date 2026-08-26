@@ -60,9 +60,8 @@ const getAllBlogs = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, vo
 /* Get My Blogs (Astrologer) */
 const getMyBlogs = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
-    const { status, blogType, skip = "0", limit = "10" } = req.query;
+    const { blogType, skip = "0", limit = "10" } = req.query;
     const filters = {
-        status: status,
         blogType: blogType,
     };
     const result = yield blog_service_1.BlogServices.getMyBlogs(userId, filters, Number(skip), Number(limit));

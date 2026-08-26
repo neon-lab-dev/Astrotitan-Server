@@ -52,10 +52,9 @@ const getAllBlogs = catchAsync(async (req, res) => {
 /* Get My Blogs (Astrologer) */
 const getMyBlogs = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  const { status, blogType, skip = "0", limit = "10" } = req.query;
+  const {  blogType, skip = "0", limit = "10" } = req.query;
 
   const filters = {
-    status: status as string,
     blogType: blogType as string,
   };
 

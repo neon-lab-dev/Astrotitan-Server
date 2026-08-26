@@ -40,12 +40,6 @@ const blogSchema = new mongoose_1.Schema({
         required: true,
         index: true,
     },
-    status: {
-        type: String,
-        enum: blog_interface_1.BlogStatusList,
-        default: "draft",
-        index: true,
-    },
     zodiacSpecific: {
         type: zodiacSpecificSchema,
         required: false,

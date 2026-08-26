@@ -46,7 +46,6 @@ const addBlog = async (
         addedBy: astrologer?._id,
         thumbnail: thumbnailUrl,
         zodiacSpecific,
-        status: payload.status || "draft",
     });
 
     // Populate astrologer details
@@ -69,7 +68,7 @@ const getAllBlogs = async (
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { status: "live" };
+    const query: any = { };
 
     if (filters.category) {
         query.category = filters.category;
@@ -112,7 +111,6 @@ const getAllBlogs = async (
 const getMyBlogs = async (
     userId: string,
     filters: {
-        status?: string;
         blogType?: string;
     } = {},
     skip = 0,
@@ -121,9 +119,6 @@ const getMyBlogs = async (
     const astrologer = await Astrologer.findOne({ accountId: userId });
     const query: any = { addedBy: astrologer?._id };
 
-    if (filters.status) {
-        query.status = filters.status;
-    }
     if (filters.blogType) {
         query.blogType = filters.blogType;
     }
@@ -143,7 +138,7 @@ const getMyBlogs = async (
 const getSingleBlog = async (blogId: string) => {
     // await Blog.findByIdAndUpdate(blogId, { $inc: { views: 1 } });
 
-    const blog = await Blog.findOne({ _id: blogId, status: "live" }).populate(
+    const blog = await Blog.findOne({ _id: blogId }).populate(
         "addedBy",
         "displayName _id profilePicture experience bio"
     );

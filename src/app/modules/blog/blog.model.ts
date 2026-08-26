@@ -1,5 +1,5 @@
 import { Schema, model } from "mongoose";
-import { TBlog, BlogTypeList, BlogStatusList } from "./blog.interface";
+import { TBlog, BlogTypeList } from "./blog.interface";
 
 const zodiacSpecificSchema = new Schema({
   zodiacSign: { type: String, required: true },
@@ -38,12 +38,6 @@ const blogSchema = new Schema<TBlog>(
       type: String,
       enum: BlogTypeList,
       required: true,
-      index: true,
-    },
-    status: {
-      type: String,
-      enum: BlogStatusList,
-      default: "draft",
       index: true,
     },
     zodiacSpecific: {

@@ -42,14 +42,14 @@ const addBlog = (userId, payload, file) => __awaiter(void 0, void 0, void 0, fun
     if (typeof zodiacSpecific === "string") {
         zodiacSpecific = JSON.parse(zodiacSpecific);
     }
-    const blog = yield blog_model_1.Blog.create(Object.assign(Object.assign({}, payload), { addedBy: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id, thumbnail: thumbnailUrl, zodiacSpecific, status: payload.status || "draft" }));
+    const blog = yield blog_model_1.Blog.create(Object.assign(Object.assign({}, payload), { addedBy: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id, thumbnail: thumbnailUrl, zodiacSpecific }));
     // Populate astrologer details
     const blogWithAstrologer = yield blog_model_1.Blog.findById(blog._id).populate("addedBy", "firstName lastName displayName profilePicture");
     return blogWithAstrologer;
 });
 /* Get All Blogs (Public) */
 const getAllBlogs = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
-    const query = { status: "live" };
+    const query = {};
     if (filters.category) {
         query.category = filters.category;
     }
@@ -85,9 +85,6 @@ const getAllBlogs = (...args_1) => __awaiter(void 0, [...args_1], void 0, functi
 const getMyBlogs = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args_1], void 0, function* (userId, filters = {}, skip = 0, limit = 10) {
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
     const query = { addedBy: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id };
-    if (filters.status) {
-        query.status = filters.status;
-    }
     if (filters.blogType) {
         query.blogType = filters.blogType;
     }
@@ -97,7 +94,7 @@ const getMyBlogs = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args
 /* Get Single Blog by ID (Public) */
 const getSingleBlog = (blogId) => __awaiter(void 0, void 0, void 0, function* () {
     // await Blog.findByIdAndUpdate(blogId, { $inc: { views: 1 } });
-    const blog = yield blog_model_1.Blog.findOne({ _id: blogId, status: "live" }).populate("addedBy", "displayName _id profilePicture experience bio");
+    const blog = yield blog_model_1.Blog.findOne({ _id: blogId }).populate("addedBy", "displayName _id profilePicture experience bio");
     if (!blog) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Blog not found");
     }
