@@ -11,6 +11,7 @@ const accounts_constants_1 = require("./accounts.constants");
 const multer_config_1 = require("../../config/multer.config");
 const router = express_1.default.Router();
 router.get("/me", (0, auth_1.default)(accounts_constants_1.UserRole.user, accounts_constants_1.UserRole.astrologer), accounts_controller_1.AuthControllers.getMe);
+router.post("/admin/signup", accounts_controller_1.AuthControllers.adminSignup);
 router.post("/signup", accounts_controller_1.AuthControllers.signup);
 router.post("/verify-signup-otp", accounts_controller_1.AuthControllers.verifySignupOtp);
 router.post("/resend-signup-otp", accounts_controller_1.AuthControllers.resendSignupOtp);

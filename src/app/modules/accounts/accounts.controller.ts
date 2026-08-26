@@ -5,6 +5,17 @@ import sendResponse from "../../utils/sendResponse";
 import catchAsync from "../../utils/catchAsync";
 import config from "../../config";
 
+const adminSignup = catchAsync(async (req, res) => {
+  const result = await AuthServices.adminSignup(req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Signup successfully.",
+    data: result,
+  });
+});
+
 // User Signup (Request OTP for registration)
 const signup = catchAsync(async (req, res) => {
   const result = await AuthServices.signup(req.body);
@@ -237,6 +248,7 @@ const deleteAccount = catchAsync(async (req, res) => {
 });
 
 export const AuthControllers = {
+  adminSignup,
   signup,
   verifySignupOtp,
   resendSignupOtp,

@@ -19,6 +19,15 @@ const accounts_service_1 = require("./accounts.service");
 const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const catchAsync_1 = __importDefault(require("../../utils/catchAsync"));
 const config_1 = __importDefault(require("../../config"));
+const adminSignup = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield accounts_service_1.AuthServices.adminSignup(req.body);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Signup successfully.",
+        data: result,
+    });
+}));
 // User Signup (Request OTP for registration)
 const signup = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield accounts_service_1.AuthServices.signup(req.body);
@@ -208,6 +217,7 @@ const deleteAccount = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
     });
 }));
 exports.AuthControllers = {
+    adminSignup,
     signup,
     verifySignupOtp,
     resendSignupOtp,

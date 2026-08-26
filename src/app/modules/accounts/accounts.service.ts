@@ -16,6 +16,26 @@ import { TLoginAuth } from "./accounts.interface";
 import bcrypt from 'bcrypt';
 import { deleteImageFromCloudinary } from "../../utils/deleteImageFromCloudinary";
 
+const adminSignup = async (
+  payload: Partial<any>,
+) => {
+  // Check if user exists
+  const isUserExists = await User.findOne({ email: payload.email });
+  if (isUserExists) {
+    throw new AppError(httpStatus.CONFLICT, "User already exists.");
+  };
+
+  const payloadData = {
+    ...payload,
+    isOtpVerified: true,
+  }
+
+  const result = await Accounts.create(payloadData);
+
+  return result;
+};
+
+
 const signup = async (payload: {
   email?: string;
   phoneNumber?: string;
@@ -1152,6 +1172,7 @@ const deleteAccount = async (payload: any, accountId: string) => {
 };
 
 export const AuthServices = {
+  adminSignup,
   signup,
   verifySignupOtp,
   resendSignupOtp,

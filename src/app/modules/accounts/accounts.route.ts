@@ -13,6 +13,11 @@ router.get(
 );
 
 router.post(
+  "/admin/signup",
+  AuthControllers.adminSignup
+);
+
+router.post(
   "/signup",
   AuthControllers.signup
 );

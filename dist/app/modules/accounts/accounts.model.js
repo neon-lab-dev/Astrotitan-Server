@@ -23,6 +23,12 @@ const config_1 = __importDefault(require("../../config"));
 //   return `${prefix}-${date}-${random}`;
 // }
 const userSchema = new mongoose_1.Schema({
+    name: {
+        type: String,
+        required: false,
+        trim: true,
+        default: null
+    },
     email: {
         type: String,
         required: false,

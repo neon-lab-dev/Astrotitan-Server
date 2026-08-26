@@ -29,6 +29,17 @@ const astrologer_model_1 = require("../astrologer/astrologer.model");
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const deleteImageFromCloudinary_1 = require("../../utils/deleteImageFromCloudinary");
+const adminSignup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    // Check if user exists
+    const isUserExists = yield user_model_1.User.findOne({ email: payload.email });
+    if (isUserExists) {
+        throw new AppError_1.default(http_status_1.default.CONFLICT, "User already exists.");
+    }
+    ;
+    const payloadData = Object.assign(Object.assign({}, payload), { isOtpVerified: true });
+    const result = yield accounts_model_1.Accounts.create(payloadData);
+    return result;
+});
 const signup = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     // Validating for admin registration (only one admin allowed)
     if (payload.role === "admin") {
@@ -838,6 +849,7 @@ const deleteAccount = (payload, accountId) => __awaiter(void 0, void 0, void 0, 
     return result;
 });
 exports.AuthServices = {
+    adminSignup,
     signup,
     verifySignupOtp,
     resendSignupOtp,

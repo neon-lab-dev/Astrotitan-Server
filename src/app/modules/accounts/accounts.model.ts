@@ -12,6 +12,12 @@ import config from "../../config";
 
 const userSchema = new Schema<TAccounts, UserModel>(
   {
+    name: {
+      type: String,
+      required: false,
+      trim: true,
+      default: null
+    },
     email: {
       type: String,
       required: false,

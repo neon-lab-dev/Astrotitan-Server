@@ -11,6 +11,7 @@ export type TLoginAuth = {
 
 export type TAccounts = {
   _id: string;
+  name?: string;
   email?: string;
   phoneNumber?: string;
   role: "user" | "admin" | "astrologer";
