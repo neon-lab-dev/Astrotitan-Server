@@ -1,35 +1,72 @@
 import { ObjectId } from "mongoose";
 
+export type ConsultationMethod = "chat" | "call";
+
+export type ConsultationStatus =
+    | "pending"
+    | "scheduled"
+    | "ongoing"
+    | "ended";
+
+export type RescheduleStatus =
+    | "pending"
+    | "accepted"
+    | "rejected";
+
+export type TRescheduleRequest = {
+    requestedTime: Date;
+    reason: string;
+    status: RescheduleStatus;
+    respondedAt?: Date;
+};
+
+export type TCallSession = {
+    // Zoom Video SDK provider
+    provider: "zoom_video_sdk";
+
+    // Unique Zoom Video SDK session name
+    sessionName: string;
+
+    // Zoom session password
+    sessionPassword?: string;
+
+    // Scheduled consultation time
+    scheduledAt: string;
+
+    // Reschedule information
+    rescheduleRequest?: TRescheduleRequest;
+};
+
 export type TConsultation = {
-    _id: string;
-    user: ObjectId;           // User who requested
-    astrologer: ObjectId;      // Astrologer who received the request
-    method: "chat" | "call";         // Consultation method
-    status: "pending" | "scheduled" | "ended";
+    _id: ObjectId;
+    user: ObjectId;
+    astrologer: ObjectId;
+    method: ConsultationMethod;
+    status: ConsultationStatus;
     consultationFor: string;
-    requestMessage?: string; // if user wants to write a short message about his issue
+    requestMessage?: string;
+
+    // Consultation lifecycle timestamps
     acceptedAt?: Date;
     declinedAt?: Date;
+    startedAt?: Date;
     endedAt?: Date;
+
+    // Participant who ended the consultation
     endedBy?: ObjectId;
-    startedAt?: Date;                // When chat actually started
+
+    // Post-consultation review
     rating?: number;
     review?: string;
+
     recommendations?: string;
 
-    // If method is call, then meeting link will be generated and stored here
     slotId?: ObjectId;
     bookedSlotId?: ObjectId;
-    meeting: {
-        link: string;
-        scheduledAt: Date;
 
-        rescheduleRequest?: {
-            requestedTime: Date;
-            reason: string;
-            isRescheduled: boolean;
-        }
-    };
+    // In-app Zoom Video SDK session
+    callSession?: TCallSession;
+
     createdAt?: Date;
     updatedAt?: Date;
 };

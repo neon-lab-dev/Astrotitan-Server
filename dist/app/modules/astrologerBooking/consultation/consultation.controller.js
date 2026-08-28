@@ -13,12 +13,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultationControllers = void 0;
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const http_status_1 = __importDefault(require("http-status"));
 const consultation_service_1 = require("./consultation.service");
 const catchAsync_1 = __importDefault(require("../../../utils/catchAsync"));
 const sendResponse_1 = __importDefault(require("../../../utils/sendResponse"));
-/* Request Consultation */
+// Request consultation
 const requestConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
     const result = yield consultation_service_1.ConsultationServices.requestConsultation(userId, req.body);
@@ -29,7 +28,7 @@ const requestConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(vo
         data: result,
     });
 }));
-/* Get My Consultation Requests - User */
+// Get my consultation requests - User
 const getMyConsultationRequests = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
     const { status, skip = "0", limit = "10" } = req.query;
@@ -44,7 +43,7 @@ const getMyConsultationRequests = (0, catchAsync_1.default)((req, res) => __awai
         data: result,
     });
 }));
-/* Get My Consultation Bookings - Astrologer */
+// Get my consultation bookings - Astrologer
 const getMyConsultationBookings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const astrologerId = req.user._id;
     const { status, date, method, skip = "0", limit = "10" } = req.query;
@@ -61,12 +60,12 @@ const getMyConsultationBookings = (0, catchAsync_1.default)((req, res) => __awai
         data: result,
     });
 }));
-/* Change Consultation Status - Astrologer */
+// Change consultation status - Astrologer
 const changeConsultationStatus = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
     const { consultationId } = req.params;
     const { status } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.changeConsultationStatus(consultationId, accountId, { status });
+    const result = yield consultation_service_1.ConsultationServices.changeConsultationStatus(consultationId, accountId);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -74,11 +73,11 @@ const changeConsultationStatus = (0, catchAsync_1.default)((req, res) => __await
         data: result,
     });
 }));
-/* Get Single Consultation */
+// Get single consultation
 const getSingleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user._id;
+    const accountId = req.user._id;
     const { consultationId } = req.params;
-    const result = yield consultation_service_1.ConsultationServices.getSingleConsultation(consultationId, userId);
+    const result = yield consultation_service_1.ConsultationServices.getSingleConsultation(consultationId, accountId);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -86,6 +85,31 @@ const getSingleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(
         data: result,
     });
 }));
+// Join consultation call - User/Astrologer
+const joinConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const result = yield consultation_service_1.ConsultationServices.joinConsultation(consultationId, accountId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Consultation call credentials generated successfully",
+        data: result,
+    });
+}));
+// Start consultation - Astrologer
+const startConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const result = yield consultation_service_1.ConsultationServices.startConsultation(consultationId, accountId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Consultation started successfully",
+        data: result,
+    });
+}));
+// End consultation session
 const endConsultationSession = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
     const { consultationId } = req.params;
@@ -93,16 +117,19 @@ const endConsultationSession = (0, catchAsync_1.default)((req, res) => __awaiter
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
-        message: "Session ended successfully!",
+        message: "Consultation ended successfully",
         data: result,
     });
 }));
-/* Add Review for Consultation */
+// Add review for consultation
 const addReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
     const { consultationId } = req.params;
     const { review, rating } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.addReview(consultationId, userId, { review, rating });
+    const result = yield consultation_service_1.ConsultationServices.addReview(consultationId, userId, {
+        review,
+        rating,
+    });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.CREATED,
         success: true,
@@ -110,24 +137,27 @@ const addReview = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void
         data: result.data,
     });
 }));
-/* Schedule Meeting - Astrologer */
-const scheduleMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Schedule consultation - Astrologer
+const scheduleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
     const { consultationId } = req.params;
-    const result = yield consultation_service_1.ConsultationServices.scheduleMeeting(consultationId, accountId);
+    const result = yield consultation_service_1.ConsultationServices.scheduleConsultation(consultationId, accountId);
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
-        message: "Meeting scheduled successfully",
+        message: "Consultation scheduled successfully",
         data: result,
     });
 }));
-/* Send Reschedule Request - User */
+// Send reschedule request - User
 const sendRescheduleRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
     const { consultationId } = req.params;
     const { requestedTime, reason } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.sendRescheduleRequest(consultationId, userId, { requestedTime: new Date(requestedTime), reason });
+    const result = yield consultation_service_1.ConsultationServices.sendRescheduleRequest(consultationId, userId, {
+        requestedTime: new Date(requestedTime),
+        reason,
+    });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -135,12 +165,12 @@ const sendRescheduleRequest = (0, catchAsync_1.default)((req, res) => __awaiter(
         data: result,
     });
 }));
-/* Handle Reschedule Request - Astrologer */
-const rescheduleMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.user._id;
+// Handle reschedule request - Astrologer
+const rescheduleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologerId = req.user._id;
     const { consultationId } = req.params;
     const { action } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.rescheduleMeeting(consultationId, userId, { action });
+    const result = yield consultation_service_1.ConsultationServices.rescheduleConsultation(consultationId, astrologerId, { action });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -148,6 +178,7 @@ const rescheduleMeeting = (0, catchAsync_1.default)((req, res) => __awaiter(void
         data: result,
     });
 }));
+// Add recommendations - Astrologer
 const addRecommendations = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
     const { consultationId } = req.params;
@@ -160,7 +191,9 @@ const addRecommendations = (0, catchAsync_1.default)((req, res) => __awaiter(voi
             data: null,
         });
     }
-    const result = yield consultation_service_1.ConsultationServices.addRecommendations(consultationId, accountId, { recommendations: recommendations.trim() });
+    const result = yield consultation_service_1.ConsultationServices.addRecommendations(consultationId, accountId, {
+        recommendations: recommendations.trim(),
+    });
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
@@ -170,14 +203,16 @@ const addRecommendations = (0, catchAsync_1.default)((req, res) => __awaiter(voi
 }));
 exports.ConsultationControllers = {
     requestConsultation,
-    getMyConsultationBookings,
     getMyConsultationRequests,
+    getMyConsultationBookings,
     changeConsultationStatus,
     getSingleConsultation,
+    scheduleConsultation,
+    joinConsultation,
+    startConsultation,
     endConsultationSession,
     addReview,
-    scheduleMeeting,
     sendRescheduleRequest,
-    rescheduleMeeting,
+    rescheduleConsultation,
     addRecommendations,
 };

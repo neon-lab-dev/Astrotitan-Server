@@ -1,79 +1,93 @@
 import express from "express";
+
 import { ConsultationControllers } from "./consultation.controller";
 import auth from "../../../middlewares/auth";
 import { UserRole } from "../../accounts/accounts.constants";
 
 const router = express.Router();
 
-// User Routes
+// User routes
+
 router.post(
-    "/request",
-    auth(UserRole.user),
-    ConsultationControllers.requestConsultation
+  "/request",
+  auth(UserRole.user),
+  ConsultationControllers.requestConsultation
 );
 
 router.get(
-    "/my-requests",
-    auth(UserRole.user),
-    ConsultationControllers.getMyConsultationRequests
+  "/my-requests",
+  auth(UserRole.user),
+  ConsultationControllers.getMyConsultationRequests
 );
 
-// Astrologer Routes
+router.post(
+  "/send-reschedule-request/:consultationId",
+  auth(UserRole.user),
+  ConsultationControllers.sendRescheduleRequest
+);
+
+router.post(
+  "/review/add/:consultationId",
+  auth(UserRole.user),
+  ConsultationControllers.addReview
+);
+
+// Astrologer routes
+
 router.get(
-    "/my-bookings",
-    auth(UserRole.astrologer),
-    ConsultationControllers.getMyConsultationBookings
+  "/my-bookings",
+  auth(UserRole.astrologer),
+  ConsultationControllers.getMyConsultationBookings
 );
 
 router.patch(
-    "/change-status/:consultationId",
-    auth(UserRole.astrologer),
-    ConsultationControllers.changeConsultationStatus
+  "/change-status/:consultationId",
+  auth(UserRole.astrologer),
+  ConsultationControllers.changeConsultationStatus
+);
+
+router.post(
+  "/schedule/:consultationId",
+  auth(UserRole.astrologer),
+  ConsultationControllers.scheduleConsultation
 );
 
 router.patch(
-    "/end-session/:consultationId",
-    auth(UserRole.astrologer, UserRole.user),
-    ConsultationControllers.endConsultationSession
-);
-
-router.post(
-    "/review/add/:consultationId",
-    auth(UserRole.user),
-    ConsultationControllers.addReview
-);
-
-router.post(
-    '/schedule-meeting/:consultationId',
-    auth(UserRole.astrologer),
-    ConsultationControllers.scheduleMeeting
-);
-
-router.post(
-    '/send-reschedule-request/:consultationId',
-    auth(UserRole.user),
-    ConsultationControllers.sendRescheduleRequest
+  "/start/:consultationId",
+  auth(UserRole.astrologer),
+  ConsultationControllers.startConsultation
 );
 
 router.patch(
-    '/reschedule-meeting/:consultationId',
-    auth(UserRole.astrologer),
-    ConsultationControllers.rescheduleMeeting
+  "/reschedule/:consultationId",
+  auth(UserRole.astrologer),
+  ConsultationControllers.rescheduleConsultation
 );
 
 router.post(
-    '/add-recommendations/:consultationId',
-    auth(UserRole.astrologer),
-    ConsultationControllers.addRecommendations
+  "/add-recommendations/:consultationId",
+  auth(UserRole.astrologer),
+  ConsultationControllers.addRecommendations
 );
 
-// Common Routes (Both User and Astrologer)
+// Common routes
+
 router.get(
-    "/:consultationId",
-    auth(UserRole.user, UserRole.astrologer),
-    ConsultationControllers.getSingleConsultation
+  "/join/:consultationId",
+  auth(UserRole.user, UserRole.astrologer),
+  ConsultationControllers.joinConsultation
 );
 
+router.patch(
+  "/end-session/:consultationId",
+  auth(UserRole.astrologer, UserRole.user),
+  ConsultationControllers.endConsultationSession
+);
 
+router.get(
+  "/:consultationId",
+  auth(UserRole.user, UserRole.astrologer),
+  ConsultationControllers.getSingleConsultation
+);
 
 export const ConsultationRoutes = router;

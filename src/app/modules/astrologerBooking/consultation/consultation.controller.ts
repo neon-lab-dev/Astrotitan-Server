@@ -1,23 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import httpStatus from "http-status";
 import { ConsultationServices } from "./consultation.service";
 import catchAsync from "../../../utils/catchAsync";
 import sendResponse from "../../../utils/sendResponse";
 
-/* Request Consultation */
+// Request consultation
 const requestConsultation = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  const result = await ConsultationServices.requestConsultation(userId, req.body);
+
+  const result = await ConsultationServices.requestConsultation(
+    userId,
+    req.body
+  );
 
   sendResponse(res, {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: "Your consultation request has been sent successfully. Please wait for astrologer to accept your request.",
+    message:
+      "Your consultation request has been sent successfully. Please wait for astrologer to accept your request.",
     data: result,
   });
 });
 
-/* Get My Consultation Requests - User */
+// Get my consultation requests - User
 const getMyConsultationRequests = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const { status, skip = "0", limit = "10" } = req.query;
@@ -41,7 +45,7 @@ const getMyConsultationRequests = catchAsync(async (req, res) => {
   });
 });
 
-/* Get My Consultation Bookings - Astrologer */
+// Get my consultation bookings - Astrologer
 const getMyConsultationBookings = catchAsync(async (req, res) => {
   const astrologerId = req.user._id;
   const { status, date, method, skip = "0", limit = "10" } = req.query;
@@ -67,7 +71,7 @@ const getMyConsultationBookings = catchAsync(async (req, res) => {
   });
 });
 
-/* Change Consultation Status - Astrologer */
+// Change consultation status - Astrologer
 const changeConsultationStatus = catchAsync(async (req, res) => {
   const accountId = req.user._id;
   const { consultationId } = req.params;
@@ -76,7 +80,7 @@ const changeConsultationStatus = catchAsync(async (req, res) => {
   const result = await ConsultationServices.changeConsultationStatus(
     consultationId,
     accountId,
-    { status }
+    // { status }
   );
 
   sendResponse(res, {
@@ -87,14 +91,14 @@ const changeConsultationStatus = catchAsync(async (req, res) => {
   });
 });
 
-/* Get Single Consultation */
+// Get single consultation
 const getSingleConsultation = catchAsync(async (req, res) => {
-  const userId = req.user._id;
+  const accountId = req.user._id;
   const { consultationId } = req.params;
 
   const result = await ConsultationServices.getSingleConsultation(
     consultationId,
-    userId
+    accountId
   );
 
   sendResponse(res, {
@@ -105,6 +109,43 @@ const getSingleConsultation = catchAsync(async (req, res) => {
   });
 });
 
+// Join consultation call - User/Astrologer
+const joinConsultation = catchAsync(async (req, res) => {
+  const accountId = req.user._id;
+  const { consultationId } = req.params;
+
+  const result = await ConsultationServices.joinConsultation(
+    consultationId,
+    accountId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Consultation call credentials generated successfully",
+    data: result,
+  });
+});
+
+// Start consultation - Astrologer
+const startConsultation = catchAsync(async (req, res) => {
+  const accountId = req.user._id;
+  const { consultationId } = req.params;
+
+  const result = await ConsultationServices.startConsultation(
+    consultationId,
+    accountId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Consultation started successfully",
+    data: result,
+  });
+});
+
+// End consultation session
 const endConsultationSession = catchAsync(async (req, res) => {
   const accountId = req.user._id;
   const { consultationId } = req.params;
@@ -117,12 +158,12 @@ const endConsultationSession = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Session ended successfully!",
+    message: "Consultation ended successfully",
     data: result,
   });
 });
 
-/* Add Review for Consultation */
+// Add review for consultation
 const addReview = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const { consultationId } = req.params;
@@ -131,7 +172,10 @@ const addReview = catchAsync(async (req, res) => {
   const result = await ConsultationServices.addReview(
     consultationId,
     userId,
-    { review, rating }
+    {
+      review,
+      rating,
+    }
   );
 
   sendResponse(res, {
@@ -142,12 +186,12 @@ const addReview = catchAsync(async (req, res) => {
   });
 });
 
-/* Schedule Meeting - Astrologer */
-const scheduleMeeting = catchAsync(async (req, res) => {
+// Schedule consultation - Astrologer
+const scheduleConsultation = catchAsync(async (req, res) => {
   const accountId = req.user._id;
   const { consultationId } = req.params;
 
-  const result = await ConsultationServices.scheduleMeeting(
+  const result = await ConsultationServices.scheduleConsultation(
     consultationId,
     accountId
   );
@@ -155,12 +199,12 @@ const scheduleMeeting = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: "Meeting scheduled successfully",
+    message: "Consultation scheduled successfully",
     data: result,
   });
 });
 
-/* Send Reschedule Request - User */
+// Send reschedule request - User
 const sendRescheduleRequest = catchAsync(async (req, res) => {
   const userId = req.user._id;
   const { consultationId } = req.params;
@@ -169,7 +213,10 @@ const sendRescheduleRequest = catchAsync(async (req, res) => {
   const result = await ConsultationServices.sendRescheduleRequest(
     consultationId,
     userId,
-    { requestedTime: new Date(requestedTime), reason }
+    {
+      requestedTime: new Date(requestedTime),
+      reason,
+    }
   );
 
   sendResponse(res, {
@@ -180,15 +227,15 @@ const sendRescheduleRequest = catchAsync(async (req, res) => {
   });
 });
 
-/* Handle Reschedule Request - Astrologer */
-const rescheduleMeeting = catchAsync(async (req, res) => {
-  const userId = req.user._id;
+// Handle reschedule request - Astrologer
+const rescheduleConsultation = catchAsync(async (req, res) => {
+  const astrologerId = req.user._id;
   const { consultationId } = req.params;
   const { action } = req.body;
 
-  const result = await ConsultationServices.rescheduleMeeting(
+  const result = await ConsultationServices.rescheduleConsultation(
     consultationId,
-    userId,
+    astrologerId,
     { action }
   );
 
@@ -200,44 +247,49 @@ const rescheduleMeeting = catchAsync(async (req, res) => {
   });
 });
 
+// Add recommendations - Astrologer
 const addRecommendations = catchAsync(async (req, res) => {
-    const accountId = req.user._id;
-    const { consultationId } = req.params;
-    const { recommendations } = req.body;
+  const accountId = req.user._id;
+  const { consultationId } = req.params;
+  const { recommendations } = req.body;
 
-    if (!recommendations || !recommendations.trim()) {
-        return sendResponse(res, {
-            statusCode: httpStatus.BAD_REQUEST,
-            success: false,
-            message: "Recommendations content is required",
-            data: null,
-        });
-    }
-
-    const result = await ConsultationServices.addRecommendations(
-        consultationId,
-        accountId,
-        { recommendations: recommendations.trim() }
-    );
-
-    sendResponse(res, {
-        statusCode: httpStatus.OK,
-        success: true,
-        message: result.message,
-        data: result.data,
+  if (!recommendations || !recommendations.trim()) {
+    return sendResponse(res, {
+      statusCode: httpStatus.BAD_REQUEST,
+      success: false,
+      message: "Recommendations content is required",
+      data: null,
     });
+  }
+
+  const result = await ConsultationServices.addRecommendations(
+    consultationId,
+    accountId,
+    {
+      recommendations: recommendations.trim(),
+    }
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: result.message,
+    data: result.data,
+  });
 });
 
 export const ConsultationControllers = {
   requestConsultation,
-  getMyConsultationBookings,
   getMyConsultationRequests,
+  getMyConsultationBookings,
   changeConsultationStatus,
   getSingleConsultation,
+  scheduleConsultation,
+  joinConsultation,
+  startConsultation,
   endConsultationSession,
   addReview,
-  scheduleMeeting,
   sendRescheduleRequest,
-  rescheduleMeeting,
+  rescheduleConsultation,
   addRecommendations,
 };

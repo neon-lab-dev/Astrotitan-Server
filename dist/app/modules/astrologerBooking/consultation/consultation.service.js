@@ -15,277 +15,341 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConsultationServices = void 0;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const http_status_1 = __importDefault(require("http-status"));
+const mongoose_1 = require("mongoose");
 const consultation_model_1 = __importDefault(require("./consultation.model"));
 const astrologer_model_1 = require("../../astrologer/astrologer.model");
 const AppError_1 = __importDefault(require("../../../errors/AppError"));
 const sendSingleNotification_1 = require("../../../utils/sendSingleNotification");
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
-const googleCalendar_service_1 = __importDefault(require("../googleCalendar/googleCalendar.service"));
 const slot_model_1 = __importDefault(require("../../astrologer/slot/slot.model"));
-const requestConsultation = (accountId, // This is Account ID
-payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // 1. Check if user exists
+const zoomVideo_service_1 = __importDefault(require("./zoomVideo/zoomVideo.service"));
+const getUserByAccountId = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield user_model_1.User.findOne({ accountId });
     if (!user) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // 2. Check if astrologer exists
+    return user;
+});
+const getAstrologerByAccountId = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({
+        accountId,
+    });
+    if (!astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
+    }
+    return astrologer;
+});
+const getBookedSlotDetails = (consultation) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!consultation.slotId) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No slot found for this consultation");
+    }
+    if (!consultation.bookedSlotId) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No booked slot found for this consultation");
+    }
+    const slotDoc = yield slot_model_1.default.findById(consultation.slotId);
+    if (!slotDoc) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
+    }
+    const bookedSlot = slotDoc.slots.find((slot) => {
+        var _a;
+        return slot._id.toString() ===
+            ((_a = consultation.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString());
+    });
+    if (!bookedSlot) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Booked slot not found");
+    }
+    return {
+        slotDoc,
+        bookedSlot,
+    };
+});
+const addBookedSlotDetails = (consultation) => {
+    var _a;
+    const consultationObj = consultation.toObject
+        ? consultation.toObject()
+        : consultation;
+    if (consultationObj.slotId &&
+        consultationObj.bookedSlotId) {
+        const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() ===
+            consultationObj.bookedSlotId.toString());
+        consultationObj.bookedSlot =
+            bookedSlot || null;
+        if (bookedSlot) {
+            consultationObj.startTime =
+                bookedSlot.startTime;
+            consultationObj.endTime =
+                bookedSlot.endTime;
+        }
+    }
+    else {
+        consultationObj.bookedSlot = null;
+    }
+    return consultationObj;
+};
+// Request consultation
+const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield getUserByAccountId(accountId);
     const astrologer = yield astrologer_model_1.Astrologer.findById(payload.astrologer);
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // 3. Check if there's already a pending consultation
     const existingConsultation = yield consultation_model_1.default.findOne({
-        user: user === null || user === void 0 ? void 0 : user._id,
-        astrologer: payload.astrologer,
+        user: user._id,
+        astrologer: astrologer._id,
         status: "pending",
     });
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
-    // 4. If method is "call" and bookedSlotId is provided, verify and book the slot
     let slotDoc = null;
     let slotIndex = -1;
-    if (payload.method === "call" && payload.bookedSlotId) {
-        // Find the slot document that contains this bookedSlotId
+    if (payload.method === "call") {
+        if (!payload.slotId || !payload.bookedSlotId) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Slot information is required for call consultations");
+        }
         slotDoc = yield slot_model_1.default.findOne({
-            astrologerId: payload.astrologer,
+            _id: payload.slotId,
+            astrologerId: astrologer._id,
             "slots._id": payload.bookedSlotId,
         });
         if (!slotDoc) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
         }
-        // Find the specific slot using bookedSlotId (NOT slotId)
-        slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() === payload.bookedSlotId);
+        slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() ===
+            payload.bookedSlotId);
         if (slotIndex === -1) {
-            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found in the slots array");
+            throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Booked slot not found");
         }
-        // Check if slot is already booked
         if (slotDoc.slots[slotIndex].isBooked) {
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This slot is already booked");
         }
     }
-    // 5. Create consultation
-    const consultation = yield consultation_model_1.default.create(Object.assign({ user: user === null || user === void 0 ? void 0 : user._id, astrologer: payload.astrologer, method: payload.method, consultationFor: payload.consultationFor, requestMessage: payload.requestMessage, status: "pending" }, (payload.method === "call" && payload.slotId && {
-        slotId: payload.slotId, // The Slot document ID
-        bookedSlotId: payload.bookedSlotId, // The specific slot's _id
+    const consultation = yield consultation_model_1.default.create(Object.assign({ user: user._id, astrologer: astrologer._id, method: payload.method, consultationFor: payload.consultationFor, requestMessage: payload.requestMessage, status: "pending" }, (payload.method === "call" && {
+        slotId: new mongoose_1.Types.ObjectId(payload.slotId),
+        bookedSlotId: new mongoose_1.Types.ObjectId(payload.bookedSlotId),
     })));
-    // 6. Mark the specific slot as booked
-    if (payload.method === "call" && slotDoc && slotIndex !== -1) {
-        slotDoc.slots[slotIndex].isBooked = true;
+    if (payload.method === "call" &&
+        slotDoc &&
+        slotIndex !== -1) {
+        slotDoc.slots[slotIndex].isBooked =
+            true;
         yield slotDoc.save();
     }
-    // 7. Populate consultation
     const populatedConsultation = yield consultation_model_1.default.findById(consultation._id)
-        .populate("user", "firstName lastName email profilePicture")
-        .populate("astrologer", "firstName lastName displayName profilePicture");
-    // 8. Send notification
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
+        .populate("user", "firstName lastName fullName email profilePicture accountId")
+        .populate("astrologer", "firstName lastName displayName profilePicture accountId");
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
     return populatedConsultation;
 });
-/* Get My Consultation Bookings - User */
+// Get my consultation requests - User
 const getMyConsultationRequests = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
-    const user = yield user_model_1.User.findOne({ accountId: accountId });
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
-    }
-    const query = { user: user._id };
-    if (filters.status && filters.status !== "all") {
+    const user = yield getUserByAccountId(accountId);
+    const query = {
+        user: user._id,
+    };
+    if (filters.status &&
+        filters.status !== "all") {
         query.status = filters.status;
     }
-    if (filters.method && filters.method !== "all") {
+    if (filters.method &&
+        filters.method !== "all") {
         query.method = filters.method;
     }
-    // Date filter - Convert "Aug 15, 2026" to Date range
     if (filters.date) {
-        const dateStr = filters.date; // "Aug 15, 2026"
-        const parsedDate = new Date(dateStr);
+        const parsedDate = new Date(filters.date);
         if (!isNaN(parsedDate.getTime())) {
-            // Set start of day (00:00:00)
             const startDate = new Date(parsedDate);
             startDate.setHours(0, 0, 0, 0);
-            // Set end of day (23:59:59)
             const endDate = new Date(parsedDate);
             endDate.setHours(23, 59, 59, 999);
-            // Use aggregation to filter by slotId.date
-            // Since we need to filter by populated field, we'll use aggregation
-            const result = yield getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
-            return result;
+            return getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
         }
     }
-    // If no date filter, use the regular pagination
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
-            select: "firstName lastName fullName email profilePicture accountId"
+            select: "firstName lastName fullName email profilePicture accountId",
         },
         {
             path: "astrologer",
-            select: "firstName lastName displayName profilePicture accountId"
+            select: "firstName lastName displayName profilePicture accountId",
         },
         {
             path: "slotId",
-            select: "date slots"
-        }
+            select: "date slots",
+        },
     ]);
-    // Process each consultation to get the booked slot details
-    if (result.data && result.data.length > 0) {
-        result.data = result.data.map((consultation) => {
-            var _a;
-            const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
-            if (consultationObj.slotId && consultationObj.bookedSlotId) {
-                const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
-                consultationObj.bookedSlot = bookedSlot || null;
-                if (bookedSlot) {
-                    consultationObj.startTime = bookedSlot.startTime;
-                    consultationObj.endTime = bookedSlot.endTime;
-                }
-            }
-            else {
-                consultationObj.bookedSlot = null;
-            }
-            return consultationObj;
-        });
+    if (result.data &&
+        result.data.length > 0) {
+        result.data = result.data.map(addBookedSlotDetails);
     }
     return result;
 });
-/* Get My Consultation Bookings - Astrologer */
+// Get my consultation bookings - Astrologer
 const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, [accountId_1, ...args_1], void 0, function* (accountId, filters = {}, skip = 0, limit = 10) {
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
-    const query = { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id };
-    if (filters.status && filters.status !== "all") {
+    const astrologer = yield getAstrologerByAccountId(accountId);
+    const query = {
+        astrologer: astrologer._id,
+    };
+    if (filters.status &&
+        filters.status !== "all") {
         query.status = filters.status;
     }
-    if (filters.method && filters.method !== "all") {
+    if (filters.method &&
+        filters.method !== "all") {
         query.method = filters.method;
     }
-    // Date filter - Convert "Aug 15, 2026" to Date range
     if (filters.date) {
-        const dateStr = filters.date; // "Aug 15, 2026"
-        const parsedDate = new Date(dateStr);
+        const parsedDate = new Date(filters.date);
         if (!isNaN(parsedDate.getTime())) {
-            // Set start of day (00:00:00)
             const startDate = new Date(parsedDate);
             startDate.setHours(0, 0, 0, 0);
-            // Set end of day (23:59:59)
             const endDate = new Date(parsedDate);
             endDate.setHours(23, 59, 59, 999);
-            // Use aggregation to filter by slotId.date
-            // Since we need to filter by populated field, we'll use aggregation
-            const result = yield getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
-            return result;
+            return getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
         }
     }
-    // If no date filter, use the regular pagination
     const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
         {
             path: "user",
-            select: "firstName lastName fullName email profilePicture accountId"
+            select: "firstName lastName fullName email profilePicture accountId",
         },
         {
             path: "astrologer",
-            select: "firstName lastName displayName profilePicture accountId"
+            select: "firstName lastName displayName profilePicture accountId",
         },
         {
             path: "slotId",
-            select: "date slots"
-        }
+            select: "date slots",
+        },
     ]);
-    // Process each consultation to get the booked slot details
-    if (result.data && result.data.length > 0) {
-        result.data = result.data.map((consultation) => {
-            var _a;
-            const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
-            if (consultationObj.slotId && consultationObj.bookedSlotId) {
-                const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
-                consultationObj.bookedSlot = bookedSlot || null;
-                if (bookedSlot) {
-                    consultationObj.startTime = bookedSlot.startTime;
-                    consultationObj.endTime = bookedSlot.endTime;
-                }
-            }
-            else {
-                consultationObj.bookedSlot = null;
-            }
-            return consultationObj;
-        });
+    if (result.data &&
+        result.data.length > 0) {
+        result.data = result.data.map(addBookedSlotDetails);
     }
     return result;
 });
-// Helper function for date filtering using aggregation
 const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, limit) => __awaiter(void 0, void 0, void 0, function* () {
     const pipeline = [
-        { $match: baseQuery },
-        { $sort: { createdAt: -1 } },
+        {
+            $match: baseQuery,
+        },
+        {
+            $sort: {
+                createdAt: -1,
+            },
+        },
         {
             $lookup: {
                 from: "slots",
                 localField: "slotId",
                 foreignField: "_id",
-                as: "slotData"
-            }
+                as: "slotData",
+            },
         },
-        { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
         {
-            // Filter by slot date
+            $unwind: {
+                path: "$slotData",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+        {
             $match: {
                 $or: [
-                    { "slotData.date": { $gte: startDate, $lte: endDate } },
-                    { "slotData": null } // Keep consultations without slots (chat)
-                ]
-            }
+                    {
+                        "slotData.date": {
+                            $gte: startDate,
+                            $lte: endDate,
+                        },
+                    },
+                    {
+                        slotData: null,
+                    },
+                ],
+            },
         },
-        { $skip: skip },
-        { $limit: limit },
+        {
+            $skip: skip,
+        },
+        {
+            $limit: limit,
+        },
         {
             $lookup: {
                 from: "users",
                 localField: "user",
                 foreignField: "_id",
-                as: "user"
-            }
+                as: "user",
+            },
         },
-        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        {
+            $unwind: {
+                path: "$user",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
         {
             $lookup: {
                 from: "astrologers",
                 localField: "astrologer",
                 foreignField: "_id",
-                as: "astrologer"
-            }
+                as: "astrologer",
+            },
         },
-        { $unwind: { path: "$astrologer", preserveNullAndEmptyArrays: true } },
+        {
+            $unwind: {
+                path: "$astrologer",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
         {
             $addFields: {
-                "bookedSlot": {
+                bookedSlot: {
                     $cond: {
-                        if: { $and: [{ $ne: ["$slotData", null] }, { $ne: ["$bookedSlotId", null] }] },
+                        if: {
+                            $and: [
+                                {
+                                    $ne: [
+                                        "$slotData",
+                                        null,
+                                    ],
+                                },
+                                {
+                                    $ne: [
+                                        "$bookedSlotId",
+                                        null,
+                                    ],
+                                },
+                            ],
+                        },
                         then: {
                             $arrayElemAt: [
                                 {
                                     $filter: {
                                         input: "$slotData.slots",
                                         as: "slot",
-                                        cond: { $eq: ["$$slot._id", "$bookedSlotId"] }
-                                    }
+                                        cond: {
+                                            $eq: [
+                                                "$$slot._id",
+                                                "$bookedSlotId",
+                                            ],
+                                        },
+                                    },
                                 },
-                                0
-                            ]
+                                0,
+                            ],
                         },
-                        else: null
-                    }
-                }
-            }
+                        else: null,
+                    },
+                },
+            },
         },
         {
             $addFields: {
-                "startTime": "$bookedSlot.startTime",
-                "endTime": "$bookedSlot.endTime"
-            }
+                startTime: "$bookedSlot.startTime",
+                endTime: "$bookedSlot.endTime",
+            },
         },
         {
             $project: {
@@ -296,7 +360,7 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
                     lastName: 1,
                     fullName: 1,
                     profilePicture: 1,
-                    email: 1
+                    email: 1,
                 },
                 astrologer: {
                     _id: 1,
@@ -304,13 +368,14 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
                     displayName: 1,
                     firstName: 1,
                     lastName: 1,
-                    profilePicture: 1
+                    profilePicture: 1,
                 },
                 method: 1,
                 status: 1,
                 consultationFor: 1,
                 requestMessage: 1,
-                meeting: 1,
+                recommendations: 1,
+                callSession: 1,
                 slotId: 1,
                 bookedSlotId: 1,
                 bookedSlot: 1,
@@ -318,39 +383,59 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
                 endTime: 1,
                 slotData: {
                     date: 1,
-                    slots: 1
+                    slots: 1,
                 },
+                acceptedAt: 1,
+                startedAt: 1,
+                endedAt: 1,
                 createdAt: 1,
                 updatedAt: 1,
-                __v: 1
-            }
-        }
+                __v: 1,
+            },
+        },
     ];
     const data = yield consultation_model_1.default.aggregate(pipeline);
-    // Get total count for pagination
     const countPipeline = [
-        { $match: baseQuery },
+        {
+            $match: baseQuery,
+        },
         {
             $lookup: {
                 from: "slots",
                 localField: "slotId",
                 foreignField: "_id",
-                as: "slotData"
-            }
+                as: "slotData",
+            },
         },
-        { $unwind: { path: "$slotData", preserveNullAndEmptyArrays: true } },
+        {
+            $unwind: {
+                path: "$slotData",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
         {
             $match: {
                 $or: [
-                    { "slotData.date": { $gte: startDate, $lte: endDate } },
-                    { "slotData": null }
-                ]
-            }
+                    {
+                        "slotData.date": {
+                            $gte: startDate,
+                            $lte: endDate,
+                        },
+                    },
+                    {
+                        slotData: null,
+                    },
+                ],
+            },
         },
-        { $count: "total" }
+        {
+            $count: "total",
+        },
     ];
     const countResult = yield consultation_model_1.default.aggregate(countPipeline);
-    const total = countResult.length > 0 ? countResult[0].total : 0;
+    const total = countResult.length > 0
+        ? countResult[0].total
+        : 0;
     return {
         data,
         meta: {
@@ -359,52 +444,60 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
             skip,
             limit,
             totalPages: Math.ceil(total / limit),
-            hasMore: skip + data.length < total
-        }
+            hasMore: skip + data.length < total,
+        },
     };
 });
-/* Change Consultation Status - Astrologer */
-const changeConsultationStatus = (consultationId, accountId, // This is Account ID
-payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
-    // Find consultation using Account ID directly
+// Change consultation status - Astrologer
+const changeConsultationStatus = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield getAstrologerByAccountId(accountId);
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
-    }).populate("user", "accountId");
+    });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
     }
-    // Check if consultation is already handled
     if (consultation.status !== "pending") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `This consultation is already ${consultation.status}`);
     }
-    // Update status
-    const updateData = {
-        status: payload.status,
-    };
-    const updatedConsultation = yield consultation_model_1.default.findByIdAndUpdate(consultationId, updateData, { new: true })
-        .populate("user", "firstName lastName email profilePicture")
-        .populate("astrologer", "firstName lastName displayName profilePicture");
-    return updatedConsultation;
+    consultation.status = "scheduled";
+    consultation.acceptedAt =
+        new Date();
+    yield consultation.save();
+    return consultation_model_1.default.findById(consultation._id)
+        .populate("user", "firstName lastName fullName email profilePicture accountId")
+        .populate("astrologer", "firstName lastName displayName profilePicture accountId");
 });
-/* Get Single Consultation */
+// Get single consultation
 const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
-    // 1. Find user or astrologer by accountId
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    const user = yield user_model_1.User.findOne({ accountId });
+    const [astrologer, user] = yield Promise.all([
+        astrologer_model_1.Astrologer.findOne({
+            accountId,
+        }),
+        user_model_1.User.findOne({
+            accountId,
+        }),
+    ]);
     if (!user && !astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
     }
-    // 2. Find consultation with populated fields
-    const consultation = yield consultation_model_1.default.findOne({
+    const participantQuery = {
         _id: consultationId,
-        $or: [{ user: user === null || user === void 0 ? void 0 : user._id }, { astrologer: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id }],
-    })
+        $or: [],
+    };
+    if (user) {
+        participantQuery.$or.push({
+            user: user._id,
+        });
+    }
+    if (astrologer) {
+        participantQuery.$or.push({
+            astrologer: astrologer._id,
+        });
+    }
+    const consultation = yield consultation_model_1.default.findOne(participantQuery)
         .populate({
         path: "user",
         select: "firstName lastName fullName email profilePicture accountId",
@@ -420,100 +513,271 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
-    // 3. Convert to object and process booked slot (matching getMyConsultationBookings format)
-    const consultationObj = consultation.toObject ? consultation.toObject() : consultation;
-    // 4. Process booked slot
-    if (consultationObj.slotId && consultationObj.bookedSlotId) {
-        const bookedSlot = (_a = consultationObj.slotId.slots) === null || _a === void 0 ? void 0 : _a.find((slot) => slot._id.toString() === consultationObj.bookedSlotId.toString());
-        consultationObj.bookedSlot = bookedSlot || null;
-        if (bookedSlot) {
-            consultationObj.startTime = bookedSlot.startTime;
-            consultationObj.endTime = bookedSlot.endTime;
-        }
-    }
-    else {
-        consultationObj.bookedSlot = null;
-    }
-    // 5. Check if meeting is scheduled
-    consultationObj.isMeetingScheduled = !!(((_b = consultationObj.meeting) === null || _b === void 0 ? void 0 : _b.link) && ((_c = consultationObj.meeting) === null || _c === void 0 ? void 0 : _c.scheduledAt));
-    // 6. Clean up - remove unnecessary fields
-    if (consultationObj.slotId) {
-        // Keep slotId but remove the slots array to avoid duplication
-    }
+    const consultationObj = addBookedSlotDetails(consultation);
+    consultationObj.isCallScheduled =
+        !!(consultationObj.method === "call" &&
+            ((_a = consultationObj.callSession) === null || _a === void 0 ? void 0 : _a.sessionName) &&
+            ((_b = consultationObj.callSession) === null || _b === void 0 ? void 0 : _b.scheduledAt));
+    consultationObj.isCallAvailable =
+        !!(consultationObj.method === "call" &&
+            ((_c = consultationObj.callSession) === null || _c === void 0 ? void 0 : _c.sessionName) &&
+            ["scheduled", "ongoing"].includes(consultationObj.status));
     return consultationObj;
 });
-const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+// Schedule Zoom consultation
+const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const astrologer = yield getAstrologerByAccountId(accountId);
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        astrologer: astrologer._id,
+    });
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
+    }
+    if (consultation.method !== "call") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
+    }
+    // if (consultation.status !== "scheduled") {
+    //   throw new AppError(
+    //     httpStatus.BAD_REQUEST,
+    //     `Consultation must be scheduled before creating the call session`
+    //   );
+    // }
+    if ((_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.sessionName) {
+        throw new AppError_1.default(http_status_1.default.CONFLICT, "Call session has already been created");
+    }
+    console.log(consultation);
+    const { slotDoc, bookedSlot, } = yield getBookedSlotDetails(consultation);
+    console.log(bookedSlot);
+    const scheduledAt = `${slotDoc.date} ${bookedSlot.startTime}-${bookedSlot.endTime}`;
+    const duration = "30 mins";
+    const sessionName = zoomVideo_service_1.default.generateSessionName(consultation._id.toString());
+    const sessionPassword = zoomVideo_service_1.default.generateSessionPassword();
+    consultation.callSession = {
+        provider: "zoom_video_sdk",
+        sessionName,
+        sessionPassword,
+        scheduledAt,
+    };
+    yield consultation.save();
+    const user = yield user_model_1.User.findById(consultation.user);
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled Successfully", `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
+    return {
+        success: true,
+        consultation,
+        callSession: {
+            provider: "zoom_video_sdk",
+            sessionName,
+            scheduledAt,
+            duration,
+        },
+    };
+});
+// Generate Zoom Video SDK credentials for joining
+const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    const [user, astrologer] = yield Promise.all([
+        user_model_1.User.findOne({
+            accountId,
+        }),
+        astrologer_model_1.Astrologer.findOne({
+            accountId,
+        }),
+    ]);
+    if (!user && !astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
+    }
     const consultation = yield consultation_model_1.default.findById(consultationId);
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
-    ;
-    const result = yield consultation_model_1.default.findOneAndUpdate({ _id: consultationId }, { status: "ended", endedBy: accountId }, { new: true });
-    return result;
+    let participantId;
+    let participantName;
+    let roleType;
+    if (user &&
+        consultation.user.toString() ===
+            user._id.toString()) {
+        participantId =
+            user._id.toString();
+        participantName =
+            `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User";
+        roleType = 0;
+    }
+    else if (astrologer &&
+        consultation.astrologer.toString() ===
+            astrologer._id.toString()) {
+        participantId =
+            astrologer._id.toString();
+        participantName =
+            astrologer.displayName ||
+                `${astrologer.firstName || ""} ${astrologer.lastName || ""}`.trim() ||
+                "Astrologer";
+        roleType = 1;
+    }
+    else {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "You are not a participant in this consultation");
+    }
+    if (consultation.method !== "call") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
+    }
+    if (!((_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.sessionName)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Call session has not been scheduled yet");
+    }
+    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation cannot be joined while status is ${consultation.status}`);
+    }
+    const token = zoomVideo_service_1.default.generateToken({
+        sessionName: consultation.callSession
+            .sessionName,
+        userKey: participantId,
+        roleType,
+    });
+    return {
+        success: true,
+        data: {
+            provider: "zoom_video_sdk",
+            sessionName: consultation.callSession
+                .sessionName,
+            sessionPassword: consultation.callSession
+                .sessionPassword,
+            token,
+            userName: participantName,
+            consultationId: consultation._id,
+            scheduledAt: consultation.callSession
+                .scheduledAt,
+            role: roleType === 1
+                ? "astrologer"
+                : "user",
+        },
+    };
 });
-/* Add Review for Consultation */
-const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
-    // Validate rating (1-5)
-    if (payload.rating < 1 || payload.rating > 5) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
-    }
-    const user = yield user_model_1.User.findOne({ accountId: userId });
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
-    }
-    // Find consultation and check if it belongs to the user
+// Start consultation
+const startConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield getAstrologerByAccountId(accountId);
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
-        user: user === null || user === void 0 ? void 0 : user._id,
+        astrologer: astrologer._id,
+    });
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
+    }
+    if (consultation.method !== "call") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
+    }
+    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation cannot be started while status is ${consultation.status}`);
+    }
+    if (!consultation.startedAt) {
+        consultation.startedAt =
+            new Date();
+    }
+    consultation.status = "ongoing";
+    yield consultation.save();
+    return consultation;
+});
+// End consultation session
+const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield astrologer_model_1.Astrologer.findOne({
+        accountId,
+    });
+    const user = yield user_model_1.User.findOne({
+        accountId,
+    });
+    if (!user && !astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
+    }
+    const participantQuery = {
+        _id: consultationId,
+        $or: [],
+    };
+    if (user) {
+        participantQuery.$or.push({
+            user: user._id,
+        });
+    }
+    if (astrologer) {
+        participantQuery.$or.push({
+            astrologer: astrologer._id,
+        });
+    }
+    const consultation = yield consultation_model_1.default.findOne(participantQuery);
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
+    }
+    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot end consultation with status ${consultation.status}`);
+    }
+    consultation.status = "ended";
+    consultation.endedAt =
+        new Date();
+    yield consultation.save();
+    return consultation;
+});
+// Add review
+const addReview = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    if (payload.rating < 1 ||
+        payload.rating > 5) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Rating must be between 1 and 5");
+    }
+    const user = yield getUserByAccountId(accountId);
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        user: user._id,
         status: "ended",
-    }).populate("astrologer", "accountId")
+    })
+        .populate("astrologer", "accountId")
         .populate("user", "fullName");
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not ended yet. You can only review ended consultations.");
     }
-    // Check if review already exists for this consultation
-    if (consultation.review && consultation.rating) {
+    if (consultation.review &&
+        consultation.rating) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "You have already reviewed this consultation");
     }
-    // Update consultation with review
-    consultation.review = payload.review;
-    consultation.rating = payload.rating;
+    consultation.review =
+        payload.review;
+    consultation.rating =
+        payload.rating;
     yield consultation.save();
-    // Find the astrologer
     const astrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
-    // Check if user already reviewed this astrologer
-    const existingReviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() === userId);
-    if (existingReviewIndex !== undefined && existingReviewIndex !== -1) {
-        // Update existing review
+    const existingReviewIndex = (_a = astrologer.reviews) === null || _a === void 0 ? void 0 : _a.findIndex((review) => review.user.toString() ===
+        user._id.toString());
+    if (existingReviewIndex !== undefined &&
+        existingReviewIndex !== -1) {
         astrologer.reviews[existingReviewIndex].review = payload.review;
         astrologer.reviews[existingReviewIndex].rating = payload.rating;
+        astrologer.reviews[existingReviewIndex].updatedAt = new Date();
     }
     else {
-        // Add new review to astrologer
         if (!astrologer.reviews) {
             astrologer.reviews = [];
         }
         astrologer.reviews.push({
-            user: user === null || user === void 0 ? void 0 : user._id,
+            user: user._id,
             review: payload.review,
             rating: payload.rating,
             createdAt: new Date(),
             updatedAt: new Date(),
         });
     }
-    // Recalculate average rating
-    const totalRating = astrologer.reviews.reduce((sum, rev) => sum + rev.rating, 0);
-    astrologer.rating = totalRating / astrologer.reviews.length;
+    const totalRating = astrologer.reviews.reduce((sum, review) => sum + review.rating, 0);
+    astrologer.rating =
+        totalRating /
+            astrologer.reviews.length;
     yield astrologer.save();
-    // Populate consultation with user and astrologer details
     const updatedConsultation = yield consultation_model_1.default.findById(consultationId)
-        .populate("user", "firstName lastName email profilePicture")
-        .populate("astrologer", "firstName lastName displayName profilePicture");
-    yield (0, sendSingleNotification_1.sendSingleNotification)((_b = consultation === null || consultation === void 0 ? void 0 : consultation.astrologer) === null || _b === void 0 ? void 0 : _b.accountId, `${(_c = consultation === null || consultation === void 0 ? void 0 : consultation.user) === null || _c === void 0 ? void 0 : _c.fullName} has left a review for you with rating ${payload.rating}`, payload === null || payload === void 0 ? void 0 : payload.review);
+        .populate("user", "firstName lastName fullName email profilePicture accountId")
+        .populate("astrologer", "firstName lastName displayName profilePicture accountId");
+    yield (0, sendSingleNotification_1.sendSingleNotification)((_b = consultation.astrologer) === null || _b === void 0 ? void 0 : _b.accountId, `${(_c = consultation.user) === null || _c === void 0 ? void 0 : _c.fullName} has left a review for you with rating ${payload.rating}`, payload.review);
     return {
         success: true,
         message: "Review added successfully",
@@ -524,206 +788,128 @@ const addReview = (consultationId, userId, payload) => __awaiter(void 0, void 0,
         },
     };
 });
-//Schedule a meeting for a consultation (Astrologer)
-const scheduleMeeting = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    // 1. Find astrologer
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId }).select("+googleCalendar.refreshToken +googleCalendar.accessToken +googleCalendar.tokenExpiry +googleCalendar.email +googleCalendar.calendarId +googleCalendar.isConnected");
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
-    // 2. Find consultation and populate slotId
-    const consultation = yield consultation_model_1.default.findOne({
-        _id: consultationId,
-        astrologer: astrologer._id,
-    })
-        .populate("user", "firstName lastName email")
-        .populate("slotId"); // Populates the entire Slot document
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
-    }
-    // 3. Verify method is call
-    if (consultation.method !== "call") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
-    }
-    // 4. Check if slot exists
-    if (!consultation.slotId) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No slot found for this consultation");
-    }
-    // 5. Check if bookedSlotId exists
-    if (!consultation.bookedSlotId) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No booked slot found for this consultation");
-    }
-    const slotDoc = consultation.slotId;
-    // 6. Find the specific booked slot using bookedSlotId
-    const bookedSlot = slotDoc.slots.find((slot) => { var _a; return slot._id.toString() === ((_a = consultation === null || consultation === void 0 ? void 0 : consultation.bookedSlotId) === null || _a === void 0 ? void 0 : _a.toString()); });
-    if (!bookedSlot) {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Booked slot not found in the slot document");
-    }
-    // 7. Get startTime and endTime from the booked slot
-    const slotDate = new Date(slotDoc.date);
-    const startTimeStr = bookedSlot.startTime; // "09:00"
-    const endTimeStr = bookedSlot.endTime; // "09:30"
-    // Parse the time strings to create Date objects
-    const [startHour, startMinute] = startTimeStr.split(':').map(Number);
-    const [endHour, endMinute] = endTimeStr.split(':').map(Number);
-    const scheduledAt = new Date(slotDate);
-    scheduledAt.setHours(startHour, startMinute, 0, 0);
-    const endTime = new Date(slotDate);
-    endTime.setHours(endHour, endMinute, 0, 0);
-    // 8. Get user email
-    const user = yield user_model_1.User.findById(consultation.user).populate("accountId", "email");
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
-    }
-    // 9. Create meeting in Google Calendar
-    const meeting = yield googleCalendar_service_1.default.createMeeting(astrologer, {
-        summary: `Astrology Consultation: ${consultation.consultationFor}`,
-        description: `
-        Consultation with ${astrologer.displayName || astrologer.firstName}
-        Slot: ${bookedSlot.startTime} - ${bookedSlot.endTime}
-        Consultation ID: ${consultation._id}
-      `,
-        startTime: scheduledAt,
-        endTime: endTime,
-        attendeeEmail: (_a = user.accountId) === null || _a === void 0 ? void 0 : _a.email,
-        timezone: 'Asia/Kolkata',
-    });
-    // 10. Update consultation with meeting details
-    consultation.meeting.link = meeting.meetLink;
-    consultation.meeting.scheduledAt = scheduledAt;
-    consultation.status = "scheduled";
-    yield consultation.save();
-    // 11. Send notifications
-    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Meeting Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}. Join via: ${meeting.meetLink}`);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Meeting Scheduled Successfully", `You have scheduled a meeting with ${user.firstName} for ${scheduledAt.toLocaleString()}. Meet link: ${meeting.meetLink}`);
-    return {
-        success: true,
-        consultation,
-        meeting: {
-            link: meeting.meetLink,
-            scheduledAt: scheduledAt,
-            duration: (parseInt(endTimeStr.split(':')[0]) * 60 + parseInt(endTimeStr.split(':')[1])) -
-                (parseInt(startTimeStr.split(':')[0]) * 60 + parseInt(startTimeStr.split(':')[1])),
-        },
-    };
-});
-//Send reschedule request (User)
+// Send reschedule request
 const sendRescheduleRequest = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
-    // 1. Find user
-    const user = yield user_model_1.User.findOne({ accountId });
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
-    }
-    // 2. Find consultation
+    var _a, _b;
+    const user = yield getUserByAccountId(accountId);
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         user: user._id,
-    }).populate("astrologer", "accountId firstName lastName displayName email");
+    });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
-    // 3. Verify consultation is scheduled
-    if (consultation.status !== "scheduled") {
+    if (consultation.status !==
+        "scheduled") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
     }
-    // 4. Check if there's already a pending reschedule request
-    if ((_b = (_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.rescheduleRequest) === null || _b === void 0 ? void 0 : _b.isRescheduled) {
+    if (((_b = (_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.rescheduleRequest) === null || _b === void 0 ? void 0 : _b.status) === "pending") {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending reschedule request");
     }
-    // 5. Add reschedule request
-    consultation.meeting = Object.assign(Object.assign({}, consultation.meeting), { rescheduleRequest: {
+    if (!consultation.callSession) {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Call session not found");
+    }
+    consultation.callSession.rescheduleRequest =
+        {
             requestedTime: payload.requestedTime,
             reason: payload.reason,
-            isRescheduled: false,
-        } });
+            status: "pending",
+        };
     yield consultation.save();
-    // 6. Notify astrologer
     const astrologer = yield astrologer_model_1.Astrologer.findById(consultation.astrologer);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer === null || astrologer === void 0 ? void 0 : astrologer.accountId, "Reschedule Request Received", `${user.firstName} has requested to reschedule the meeting. Reason: ${payload.reason}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer === null || astrologer === void 0 ? void 0 : astrologer.accountId, "Reschedule Request Received", `${user.firstName} has requested to reschedule the consultation. Reason: ${payload.reason}`);
     return {
         success: true,
         message: "Reschedule request sent successfully",
-        rescheduleRequest: (_c = consultation.meeting) === null || _c === void 0 ? void 0 : _c.rescheduleRequest,
+        rescheduleRequest: consultation.callSession
+            .rescheduleRequest,
     };
 });
-//Accept or reject reschedule request (Astrologer)
-const rescheduleMeeting = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    // 1. Find astrologer
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
-    // 2. Find consultation
+// Accept or reject reschedule request
+const rescheduleConsultation = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    const astrologer = yield getAstrologerByAccountId(accountId);
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
-    }).populate("user", "accountId firstName lastName email");
+    });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
-    // 3. Verify consultation is scheduled
-    if (consultation.status !== "scheduled") {
+    if (consultation.status !==
+        "scheduled") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
     }
-    // 4. Verify there's a reschedule request
-    if (!((_a = consultation.meeting) === null || _a === void 0 ? void 0 : _a.rescheduleRequest)) {
+    const rescheduleRequest = (_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.rescheduleRequest;
+    if (!rescheduleRequest) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "No reschedule request found");
     }
-    const rescheduleRequest = consultation.meeting.rescheduleRequest;
-    // 5. Check if already processed
-    if (rescheduleRequest.isRescheduled === true) {
+    if (rescheduleRequest.status !==
+        "pending") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This reschedule request has already been processed");
     }
+    const user = yield user_model_1.User.findById(consultation.user);
     if (payload.action === "accept") {
-        // 6a. Update Google Calendar event
         const newStartTime = new Date(rescheduleRequest.requestedTime);
-        // 6b. Update consultation with new meeting time
-        consultation.meeting.scheduledAt = newStartTime;
-        consultation.meeting.rescheduleRequest.isRescheduled = true;
+        if (!consultation.callSession) {
+            throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Call session not found");
+        }
+        consultation.callSession.scheduledAt =
+            newStartTime;
+        rescheduleRequest.status =
+            "accepted";
+        rescheduleRequest.respondedAt =
+            new Date();
         yield consultation.save();
-        // 6c. Notify user
-        const user = yield user_model_1.User.findById(consultation.user);
-        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Meeting Rescheduled", `Your meeting has been rescheduled to ${newStartTime.toLocaleString()}.`);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Consultation Rescheduled", `Your consultation has been rescheduled to ${newStartTime.toLocaleString()}.`);
         return {
             success: true,
             message: "Reschedule request accepted",
             newTime: newStartTime,
         };
     }
-    else {
-        // 7. Reject reschedule
-        consultation.meeting.rescheduleRequest.isRescheduled = false;
-        yield consultation.save();
-        // 8. Notify user
-        const user = yield user_model_1.User.findById(consultation.user);
-        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Reschedule Request Rejected", "Your reschedule request was not approved. The original meeting time remains unchanged.");
-        return {
-            success: true,
-            message: "Reschedule request rejected",
-            originalTime: consultation.meeting.scheduledAt,
-        };
-    }
+    const originalTime = (_b = consultation.callSession) === null || _b === void 0 ? void 0 : _b.scheduledAt;
+    rescheduleRequest.status =
+        "rejected";
+    rescheduleRequest.respondedAt =
+        new Date();
+    yield consultation.save();
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, "Reschedule Request Rejected", "Your reschedule request was not approved. The original consultation time remains unchanged.");
+    return {
+        success: true,
+        message: "Reschedule request rejected",
+        originalTime,
+    };
 });
+// Add recommendations
 const addRecommendations = (consultationId, accountId, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // 1. Find astrologer
-    const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId });
-    if (!astrologer) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
-    }
-    // 2. Find consultation
+    const astrologer = yield getAstrologerByAccountId(accountId);
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         astrologer: astrologer._id,
     });
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found ");
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
-    // 4. Update consultation with recommendations
-    consultation.recommendations = payload.recommendations.trim();
+    if (consultation.status ===
+        "ended") {
+        consultation.recommendations =
+            payload.recommendations.trim();
+        yield consultation.save();
+        return {
+            success: true,
+            message: "Recommendations added successfully",
+            data: consultation,
+        };
+    }
+    consultation.recommendations =
+        payload.recommendations.trim();
     consultation.status = "ended";
+    consultation.endedAt =
+        consultation.endedAt ||
+            new Date();
+    consultation.endedBy =
+        astrologer._id;
     yield consultation.save();
     return {
         success: true,
@@ -733,14 +919,16 @@ const addRecommendations = (consultationId, accountId, payload) => __awaiter(voi
 });
 exports.ConsultationServices = {
     requestConsultation,
-    getMyConsultationBookings,
     getMyConsultationRequests,
+    getMyConsultationBookings,
     changeConsultationStatus,
     getSingleConsultation,
+    scheduleConsultation,
+    joinConsultation,
+    startConsultation,
     endConsultationSession,
     addReview,
-    scheduleMeeting,
     sendRescheduleRequest,
-    rescheduleMeeting,
+    rescheduleConsultation,
     addRecommendations,
 };
