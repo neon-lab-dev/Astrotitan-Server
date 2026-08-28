@@ -4,12 +4,13 @@ type ZoomRoleType = 0 | 1;
 
 interface IGenerateTokenParams {
   sessionName: string;
-  userKey: string;
   roleType: ZoomRoleType;
 }
 
 class ZoomVideoService {
-  private readonly sdkKey = process.env.ZOOM_VIDEO_SDK_KEY;
+  private readonly sdkKey =
+    process.env.ZOOM_VIDEO_SDK_KEY;
+
   private readonly sdkSecret =
     process.env.ZOOM_VIDEO_SDK_SECRET;
 
@@ -21,44 +22,40 @@ class ZoomVideoService {
     }
   }
 
-  generateSessionName(consultationId: string): string {
+  generateSessionName(
+    consultationId: string
+  ): string {
     return `astro_${consultationId}`;
-  }
-
-  generateSessionPassword(): string {
-    return Math.random()
-      .toString(36)
-      .substring(2, 12);
   }
 
   generateToken({
     sessionName,
-    userKey,
     roleType,
   }: IGenerateTokenParams): string {
     this.validateCredentials();
 
     const sdkSecret = this.sdkSecret;
-    if (!sdkSecret) {
+    const sdkKey = this.sdkKey;
+
+    if (!sdkSecret || !sdkKey) {
       throw new Error(
         "Zoom Video SDK credentials are not configured"
       );
     }
 
-    const issuedAt = Math.floor(
-      Date.now() / 1000
-    );
+    const iat =
+      Math.floor(Date.now() / 1000) - 30;
 
-    const expiration = issuedAt + 2 * 60 * 60;
+    const exp =
+      iat + 60 * 60 * 2;
 
     const payload = {
-      app_key: this.sdkKey,
-      role_type: roleType,
+      app_key: sdkKey,
       tpc: sessionName,
+      role_type: roleType,
       version: 1,
-      iat: issuedAt,
-      exp: expiration,
-      user_key: userKey,
+      iat,
+      exp,
     };
 
     return jwt.sign(

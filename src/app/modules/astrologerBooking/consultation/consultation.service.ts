@@ -47,7 +47,7 @@ const getBookedSlotDetails = async (
     bookedSlotId?: Types.ObjectId;
   }
 ) => {
- 
+
   if (!consultation.slotId) {
     throw new AppError(
       httpStatus.BAD_REQUEST,
@@ -902,7 +902,7 @@ const scheduleConsultation = async (
     );
   }
 
-   console.log(consultation);
+  console.log(consultation);
 
   const {
     slotDoc,
@@ -911,7 +911,7 @@ const scheduleConsultation = async (
     await getBookedSlotDetails(
       consultation as any
     );
-    console.log(bookedSlot);
+  console.log(bookedSlot);
 
   const scheduledAt = `${slotDoc.date} ${bookedSlot.startTime}-${bookedSlot.endTime}`;
 
@@ -922,15 +922,12 @@ const scheduleConsultation = async (
       consultation._id.toString()
     );
 
-  const sessionPassword =
-    zoomVideoService.generateSessionPassword();
 
   consultation.callSession = {
-    provider: "zoom_video_sdk",
-    sessionName,
-    sessionPassword,
-    scheduledAt,
-  };
+  provider: "zoom_video_sdk",
+  sessionName,
+  scheduledAt,
+};
 
   await consultation.save();
 
@@ -1003,7 +1000,6 @@ const joinConsultation = async (
     );
   }
 
-  let participantId: string;
   let participantName: string;
   let roleType: 0 | 1;
 
@@ -1012,8 +1008,6 @@ const joinConsultation = async (
     consultation.user.toString() ===
     user._id.toString()
   ) {
-    participantId =
-      user._id.toString();
 
     participantName =
       `${user.firstName || ""} ${user.lastName || ""
@@ -1025,8 +1019,6 @@ const joinConsultation = async (
     consultation.astrologer.toString() ===
     astrologer._id.toString()
   ) {
-    participantId =
-      astrologer._id.toString();
 
     participantName =
       astrologer.displayName ||
@@ -1074,7 +1066,7 @@ const joinConsultation = async (
       sessionName:
         consultation.callSession
           .sessionName,
-      userKey: participantId,
+
       roleType,
     });
 

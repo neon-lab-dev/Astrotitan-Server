@@ -553,11 +553,9 @@ const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, vo
     const scheduledAt = `${slotDoc.date} ${bookedSlot.startTime}-${bookedSlot.endTime}`;
     const duration = "30 mins";
     const sessionName = zoomVideo_service_1.default.generateSessionName(consultation._id.toString());
-    const sessionPassword = zoomVideo_service_1.default.generateSessionPassword();
     consultation.callSession = {
         provider: "zoom_video_sdk",
         sessionName,
-        sessionPassword,
         scheduledAt,
     };
     yield consultation.save();
@@ -596,14 +594,11 @@ const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found");
     }
-    let participantId;
     let participantName;
     let roleType;
     if (user &&
         consultation.user.toString() ===
             user._id.toString()) {
-        participantId =
-            user._id.toString();
         participantName =
             `${user.firstName || ""} ${user.lastName || ""}`.trim() || "User";
         roleType = 0;
@@ -611,8 +606,6 @@ const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0
     else if (astrologer &&
         consultation.astrologer.toString() ===
             astrologer._id.toString()) {
-        participantId =
-            astrologer._id.toString();
         participantName =
             astrologer.displayName ||
                 `${astrologer.firstName || ""} ${astrologer.lastName || ""}`.trim() ||
@@ -634,7 +627,6 @@ const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0
     const token = zoomVideo_service_1.default.generateToken({
         sessionName: consultation.callSession
             .sessionName,
-        userKey: participantId,
         roleType,
     });
     return {

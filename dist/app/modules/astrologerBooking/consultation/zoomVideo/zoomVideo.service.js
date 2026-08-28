@@ -17,27 +17,22 @@ class ZoomVideoService {
     generateSessionName(consultationId) {
         return `astro_${consultationId}`;
     }
-    generateSessionPassword() {
-        return Math.random()
-            .toString(36)
-            .substring(2, 12);
-    }
-    generateToken({ sessionName, userKey, roleType, }) {
+    generateToken({ sessionName, roleType, }) {
         this.validateCredentials();
         const sdkSecret = this.sdkSecret;
-        if (!sdkSecret) {
+        const sdkKey = this.sdkKey;
+        if (!sdkSecret || !sdkKey) {
             throw new Error("Zoom Video SDK credentials are not configured");
         }
-        const issuedAt = Math.floor(Date.now() / 1000);
-        const expiration = issuedAt + 2 * 60 * 60;
+        const iat = Math.floor(Date.now() / 1000) - 30;
+        const exp = iat + 60 * 60 * 2;
         const payload = {
-            app_key: this.sdkKey,
-            role_type: roleType,
+            app_key: sdkKey,
             tpc: sessionName,
+            role_type: roleType,
             version: 1,
-            iat: issuedAt,
-            exp: expiration,
-            user_key: userKey,
+            iat,
+            exp,
         };
         return jsonwebtoken_1.default.sign(payload, sdkSecret, {
             algorithm: "HS256",
