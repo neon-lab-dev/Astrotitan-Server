@@ -44,7 +44,7 @@ router.post(
   ConsultationControllers.scheduleConsultation
 );
 
-router.patch(
+router.post(
   "/reject/:consultationId",
   auth(UserRole.astrologer),
   ConsultationControllers.rejectConsultation

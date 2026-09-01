@@ -17,7 +17,7 @@ router.post("/review/add/:consultationId", (0, auth_1.default)(accounts_constant
 // Astrologer routes
 router.get("/my-bookings", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.getMyConsultationBookings);
 router.post("/schedule/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.scheduleConsultation);
-router.patch("/reject/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.rejectConsultation);
+router.post("/reject/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.rejectConsultation);
 router.patch("/start/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer, accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.startConsultation);
 router.patch("/reschedule/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.rescheduleConsultation);
 router.post("/add-recommendations/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.astrologer), consultation_controller_1.ConsultationControllers.addRecommendations);
