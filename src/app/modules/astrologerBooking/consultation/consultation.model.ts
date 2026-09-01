@@ -87,7 +87,7 @@ const ConsultationSchema = new Schema<TConsultation>(
         },
         status: {
             type: String,
-            enum: ["pending", "scheduled", "ongoing", "ended"],
+            enum: ["pending", "accepted", "rejected", "ended"],
             default: "pending",
             index: true,
         },

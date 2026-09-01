@@ -89,8 +89,6 @@ const getConsultationChatList = async (accountId: string) => {
                 consultationStatus: consultation.status,
                 method: consultation.method,
                 consultationFor: consultation.consultationFor,
-                startedAt: consultation.startedAt,
-                endedAt: consultation.endedAt,
                 participant: {
                     _id: otherUser._id,
                     name: otherUser.displayName || `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() || "User",

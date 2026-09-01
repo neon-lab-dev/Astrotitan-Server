@@ -7,7 +7,6 @@ import { UserRole } from "../../accounts/accounts.constants";
 const router = express.Router();
 
 // User routes
-
 router.post(
   "/request",
   auth(UserRole.user),
@@ -33,14 +32,11 @@ router.post(
 );
 
 // Astrologer routes
-
 router.get(
   "/my-bookings",
   auth(UserRole.astrologer),
   ConsultationControllers.getMyConsultationBookings
 );
-
-
 
 router.post(
   "/schedule/:consultationId",
@@ -73,7 +69,6 @@ router.post(
 );
 
 // Common routes
-
 router.get(
   "/join/:consultationId",
   auth(UserRole.user, UserRole.astrologer),

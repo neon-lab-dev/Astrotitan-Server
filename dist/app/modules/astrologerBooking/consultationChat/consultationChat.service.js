@@ -88,8 +88,6 @@ const getConsultationChatList = (accountId) => __awaiter(void 0, void 0, void 0,
             consultationStatus: consultation.status,
             method: consultation.method,
             consultationFor: consultation.consultationFor,
-            startedAt: consultation.startedAt,
-            endedAt: consultation.endedAt,
             participant: {
                 _id: otherUser._id,
                 name: otherUser.displayName || `${otherUser.firstName || ''} ${otherUser.lastName || ''}`.trim() || "User",
