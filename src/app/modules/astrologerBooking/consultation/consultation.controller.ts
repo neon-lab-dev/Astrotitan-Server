@@ -71,26 +71,6 @@ const getMyConsultationBookings = catchAsync(async (req, res) => {
   });
 });
 
-// Change consultation status - Astrologer
-const changeConsultationStatus = catchAsync(async (req, res) => {
-  const accountId = req.user._id;
-  const { consultationId } = req.params;
-  const { status } = req.body;
-
-  const result = await ConsultationServices.changeConsultationStatus(
-    consultationId,
-    accountId,
-    // { status }
-  );
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: `Consultation ${status} successfully`,
-    data: result,
-  });
-});
-
 // Get single consultation
 const getSingleConsultation = catchAsync(async (req, res) => {
   const accountId = req.user._id;
@@ -204,6 +184,24 @@ const scheduleConsultation = catchAsync(async (req, res) => {
   });
 });
 
+// Reject consultation - Astrologer
+const rejectConsultation = catchAsync(async (req, res) => {
+  const accountId = req.user._id;
+  const { consultationId } = req.params;
+
+  const result = await ConsultationServices.rejectConsultation(
+    consultationId,
+    accountId
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Consultation rejected successfully.",
+    data: result,
+  });
+});
+
 // Send reschedule request - User
 const sendRescheduleRequest = catchAsync(async (req, res) => {
   const userId = req.user._id;
@@ -282,9 +280,9 @@ export const ConsultationControllers = {
   requestConsultation,
   getMyConsultationRequests,
   getMyConsultationBookings,
-  changeConsultationStatus,
   getSingleConsultation,
   scheduleConsultation,
+  rejectConsultation,
   joinConsultation,
   startConsultation,
   endConsultationSession,

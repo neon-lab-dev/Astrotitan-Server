@@ -385,9 +385,6 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
                     date: 1,
                     slots: 1,
                 },
-                acceptedAt: 1,
-                startedAt: 1,
-                endedAt: 1,
                 createdAt: 1,
                 updatedAt: 1,
                 __v: 1,
@@ -448,27 +445,6 @@ const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, lim
         },
     };
 });
-// Change consultation status - Astrologer
-const changeConsultationStatus = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    const astrologer = yield getAstrologerByAccountId(accountId);
-    const consultation = yield consultation_model_1.default.findOne({
-        _id: consultationId,
-        astrologer: astrologer._id,
-    });
-    if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
-    }
-    if (consultation.status !== "pending") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `This consultation is already ${consultation.status}`);
-    }
-    consultation.status = "scheduled";
-    consultation.acceptedAt =
-        new Date();
-    yield consultation.save();
-    return consultation_model_1.default.findById(consultation._id)
-        .populate("user", "firstName lastName fullName email profilePicture accountId")
-        .populate("astrologer", "firstName lastName displayName profilePicture accountId");
-});
 // Get single consultation
 const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
@@ -521,10 +497,10 @@ const getSingleConsultation = (consultationId, accountId) => __awaiter(void 0, v
     consultationObj.isCallAvailable =
         !!(consultationObj.method === "call" &&
             ((_c = consultationObj.callSession) === null || _c === void 0 ? void 0 : _c.sessionName) &&
-            ["scheduled", "ongoing"].includes(consultationObj.status));
+            ["accepted"].includes(consultationObj.status));
     return consultationObj;
 });
-// Schedule Zoom consultation
+// Schedule consultation
 const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const astrologer = yield getAstrologerByAccountId(accountId);
@@ -533,36 +509,34 @@ const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, vo
         astrologer: astrologer._id,
     });
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found.");
     }
-    if (consultation.method !== "call") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
+    const user = yield user_model_1.User.findById(consultation.user);
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
-    // if (consultation.status !== "scheduled") {
-    //   throw new AppError(
-    //     httpStatus.BAD_REQUEST,
-    //     `Consultation must be scheduled before creating the call session`
-    //   );
-    // }
+    if (consultation.method === "chat") {
+        consultation.status = "accepted";
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Accepted!", `Your consultation with ${astrologer.displayName} has been accepted.`);
+        yield consultation.save();
+        return {
+            data: consultation,
+        };
+    }
     if ((_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.sessionName) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "Call session has already been created");
     }
-    console.log(consultation);
     const { slotDoc, bookedSlot, } = yield getBookedSlotDetails(consultation);
-    console.log(bookedSlot);
     const scheduledAt = `${slotDoc.date} ${bookedSlot.startTime}-${bookedSlot.endTime}`;
     const duration = "30 mins";
     const sessionName = zoomVideo_service_1.default.generateSessionName(consultation._id.toString());
+    consultation.status = "accepted";
     consultation.callSession = {
         provider: "zoom_video_sdk",
         sessionName,
         scheduledAt,
     };
     yield consultation.save();
-    const user = yield user_model_1.User.findById(consultation.user);
-    if (!user) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
-    }
     yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
     yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled Successfully", `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
     return {
@@ -574,6 +548,27 @@ const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, vo
             scheduledAt,
             duration,
         },
+    };
+});
+// Reject consultation
+const rejectConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
+    const astrologer = yield getAstrologerByAccountId(accountId);
+    const consultation = yield consultation_model_1.default.findOne({
+        _id: consultationId,
+        astrologer: astrologer._id,
+    });
+    if (!consultation) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found.");
+    }
+    const user = yield user_model_1.User.findById(consultation.user);
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
+    consultation.status = "rejected";
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Rejected!", `Your consultation with ${astrologer.displayName} has been rejected.`);
+    yield consultation.save();
+    return {
+        data: consultation,
     };
 });
 // Generate Zoom Video SDK credentials for joining
@@ -621,7 +616,7 @@ const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0
     if (!((_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.sessionName)) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Call session has not been scheduled yet");
     }
-    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+    if (consultation.status !== "accepted") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation cannot be joined while status is ${consultation.status}`);
     }
     const token = zoomVideo_service_1.default.generateToken({
@@ -650,10 +645,21 @@ const joinConsultation = (consultationId, accountId) => __awaiter(void 0, void 0
 });
 // Start consultation
 const startConsultation = (consultationId, accountId) => __awaiter(void 0, void 0, void 0, function* () {
-    const astrologer = yield getAstrologerByAccountId(accountId);
+    const [user, astrologer] = yield Promise.all([
+        user_model_1.User.findOne({ accountId }),
+        astrologer_model_1.Astrologer.findOne({ accountId }),
+    ]);
+    if (!user && !astrologer) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User or astrologer not found");
+    }
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
-        astrologer: astrologer._id,
+        $or: [
+            ...(user ? [{ user: user._id }] : []),
+            ...(astrologer
+                ? [{ astrologer: astrologer._id }]
+                : []),
+        ],
     });
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
@@ -661,15 +667,9 @@ const startConsultation = (consultationId, accountId) => __awaiter(void 0, void 
     if (consultation.method !== "call") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This consultation is not a call session");
     }
-    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+    if (consultation.status !== "accepted") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Consultation cannot be started while status is ${consultation.status}`);
     }
-    if (!consultation.startedAt) {
-        consultation.startedAt =
-            new Date();
-    }
-    consultation.status = "ongoing";
-    yield consultation.save();
     return consultation;
 });
 // End consultation session
@@ -701,12 +701,10 @@ const endConsultationSession = (consultationId, accountId) => __awaiter(void 0, 
     if (!consultation) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or you are not authorized");
     }
-    if (!["scheduled", "ongoing"].includes(consultation.status)) {
+    if (consultation.status !== "accepted") {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot end consultation with status ${consultation.status}`);
     }
     consultation.status = "ended";
-    consultation.endedAt =
-        new Date();
     yield consultation.save();
     return consultation;
 });
@@ -792,8 +790,8 @@ const sendRescheduleRequest = (consultationId, accountId, payload) => __awaiter(
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
     if (consultation.status !==
-        "scheduled") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
+        "rejected") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Can't reschedule the consultation.`);
     }
     if (((_b = (_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.rescheduleRequest) === null || _b === void 0 ? void 0 : _b.status) === "pending") {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending reschedule request");
@@ -829,8 +827,8 @@ const rescheduleConsultation = (consultationId, accountId, payload) => __awaiter
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not authorized");
     }
     if (consultation.status !==
-        "scheduled") {
-        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Cannot reschedule: consultation status is ${consultation.status}`);
+        "rejected") {
+        throw new AppError_1.default(http_status_1.default.BAD_REQUEST, `Can't reschedule the consultation.`);
     }
     const rescheduleRequest = (_a = consultation.callSession) === null || _a === void 0 ? void 0 : _a.rescheduleRequest;
     if (!rescheduleRequest) {
@@ -897,11 +895,6 @@ const addRecommendations = (consultationId, accountId, payload) => __awaiter(voi
     consultation.recommendations =
         payload.recommendations.trim();
     consultation.status = "ended";
-    consultation.endedAt =
-        consultation.endedAt ||
-            new Date();
-    consultation.endedBy =
-        astrologer._id;
     yield consultation.save();
     return {
         success: true,
@@ -913,9 +906,9 @@ exports.ConsultationServices = {
     requestConsultation,
     getMyConsultationRequests,
     getMyConsultationBookings,
-    changeConsultationStatus,
     getSingleConsultation,
     scheduleConsultation,
+    rejectConsultation,
     joinConsultation,
     startConsultation,
     endConsultationSession,

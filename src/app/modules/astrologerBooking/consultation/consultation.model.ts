@@ -108,26 +108,6 @@ const ConsultationSchema = new Schema<TConsultation>(
             trim: true,
         },
 
-        acceptedAt: {
-            type: Date,
-        },
-
-        declinedAt: {
-            type: Date,
-        },
-
-        startedAt: {
-            type: Date,
-        },
-
-        endedAt: {
-            type: Date,
-        },
-
-        endedBy: {
-            type: Types.ObjectId,
-        },
-
         rating: {
             type: Number,
             min: 1,

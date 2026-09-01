@@ -4,8 +4,8 @@ export type ConsultationMethod = "chat" | "call";
 
 export type ConsultationStatus =
     | "pending"
-    | "scheduled"
-    | "ongoing"
+    | "accepted"
+    | "rejected"
     | "ended";
 
 export type RescheduleStatus =
@@ -45,15 +45,6 @@ export type TConsultation = {
     status: ConsultationStatus;
     consultationFor: string;
     requestMessage?: string;
-
-    // Consultation lifecycle timestamps
-    acceptedAt?: Date;
-    declinedAt?: Date;
-    startedAt?: Date;
-    endedAt?: Date;
-
-    // Participant who ended the consultation
-    endedBy?: ObjectId;
 
     // Post-consultation review
     rating?: number;

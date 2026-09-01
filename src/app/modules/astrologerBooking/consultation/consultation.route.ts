@@ -40,11 +40,7 @@ router.get(
   ConsultationControllers.getMyConsultationBookings
 );
 
-router.patch(
-  "/change-status/:consultationId",
-  auth(UserRole.astrologer),
-  ConsultationControllers.changeConsultationStatus
-);
+
 
 router.post(
   "/schedule/:consultationId",
@@ -53,8 +49,14 @@ router.post(
 );
 
 router.patch(
-  "/start/:consultationId",
+  "/reject/:consultationId",
   auth(UserRole.astrologer),
+  ConsultationControllers.rejectConsultation
+);
+
+router.patch(
+  "/start/:consultationId",
+  auth(UserRole.astrologer, UserRole.user),
   ConsultationControllers.startConsultation
 );
 

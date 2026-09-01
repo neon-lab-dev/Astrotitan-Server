@@ -60,19 +60,6 @@ const getMyConsultationBookings = (0, catchAsync_1.default)((req, res) => __awai
         data: result,
     });
 }));
-// Change consultation status - Astrologer
-const changeConsultationStatus = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const accountId = req.user._id;
-    const { consultationId } = req.params;
-    const { status } = req.body;
-    const result = yield consultation_service_1.ConsultationServices.changeConsultationStatus(consultationId, accountId);
-    (0, sendResponse_1.default)(res, {
-        statusCode: http_status_1.default.OK,
-        success: true,
-        message: `Consultation ${status} successfully`,
-        data: result,
-    });
-}));
 // Get single consultation
 const getSingleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
@@ -149,6 +136,18 @@ const scheduleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(v
         data: result,
     });
 }));
+// Reject consultation - Astrologer
+const rejectConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const accountId = req.user._id;
+    const { consultationId } = req.params;
+    const result = yield consultation_service_1.ConsultationServices.rejectConsultation(consultationId, accountId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Consultation rejected successfully.",
+        data: result,
+    });
+}));
 // Send reschedule request - User
 const sendRescheduleRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
@@ -205,9 +204,9 @@ exports.ConsultationControllers = {
     requestConsultation,
     getMyConsultationRequests,
     getMyConsultationBookings,
-    changeConsultationStatus,
     getSingleConsultation,
     scheduleConsultation,
+    rejectConsultation,
     joinConsultation,
     startConsultation,
     endConsultationSession,

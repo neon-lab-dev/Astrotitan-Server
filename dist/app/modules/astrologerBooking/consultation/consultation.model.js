@@ -87,21 +87,6 @@ const ConsultationSchema = new mongoose_1.Schema({
         type: String,
         trim: true,
     },
-    acceptedAt: {
-        type: Date,
-    },
-    declinedAt: {
-        type: Date,
-    },
-    startedAt: {
-        type: Date,
-    },
-    endedAt: {
-        type: Date,
-    },
-    endedBy: {
-        type: mongoose_1.Types.ObjectId,
-    },
     rating: {
         type: Number,
         min: 1,
