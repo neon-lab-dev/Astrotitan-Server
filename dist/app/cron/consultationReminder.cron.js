@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.registerCrons = void 0;
+exports.runConsultationReminderCron = void 0;
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const node_cron_1 = __importDefault(require("node-cron"));
@@ -76,12 +76,9 @@ const sendConsultationReminder = (consultation) => __awaiter(void 0, void 0, voi
             timeZone: 'Asia/Kolkata',
         });
         // Send notification to USER
-        yield (0, sendSingleNotification_1.sendSingleNotification)(consultation.user.toString(), // Convert to string
-        '🔔 Consultation Reminder', `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, '🔔 Consultation Reminder', `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
         // Send notification to ASTROLOGER
-        yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer.accountId.toString(), // Convert to string
-        '🔔 Upcoming Consultation Reminder', `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
-        console.log(`Reminder sent for consultation: ${consultation._id}`);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer.accountId, '🔔 Upcoming Consultation Reminder', `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
     }
     catch (error) {
         console.error(`❌ Failed to send reminder for consultation ${consultation._id}:`, error);
@@ -121,7 +118,6 @@ const runConsultationReminderCron = () => {
                     const timeDiff = scheduledDate.getTime() - now.getTime();
                     const isWithin30Minutes = timeDiff > 0 && timeDiff <= 30 * 60 * 1000;
                     if (isWithin30Minutes) {
-                        console.log(`📢 Sending reminder for consultation ${consultation._id}`);
                         yield sendConsultationReminder(consultation);
                     }
                 }
@@ -136,12 +132,5 @@ const runConsultationReminderCron = () => {
     }), {
         timezone: 'Asia/Kolkata', // India timezone
     });
-    console.log('Consultation reminder cron job scheduled (runs every minute) [IST]');
 };
-const registerCrons = () => {
-    // Runs every day at 12:00 AM
-    node_cron_1.default.schedule("0 0 * * *", () => __awaiter(void 0, void 0, void 0, function* () {
-        yield runConsultationReminderCron();
-    }));
-};
-exports.registerCrons = registerCrons;
+exports.runConsultationReminderCron = runConsultationReminderCron;

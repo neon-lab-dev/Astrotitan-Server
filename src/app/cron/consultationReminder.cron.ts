@@ -77,26 +77,24 @@ const sendConsultationReminder = async (consultation: any) => {
 
         // Send notification to USER
         await sendSingleNotification(
-            consultation.user.toString(), // Convert to string
+            user?.accountId as any,
             '🔔 Consultation Reminder',
             `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`,
         );
 
         // Send notification to ASTROLOGER
         await sendSingleNotification(
-            astrologer.accountId.toString(), // Convert to string
+            astrologer.accountId as any,
             '🔔 Upcoming Consultation Reminder',
             `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`,
         );
-
-        console.log(`Reminder sent for consultation: ${consultation._id}`);
     } catch (error) {
         console.error(`❌ Failed to send reminder for consultation ${consultation._id}:`, error);
     }
 };
 
 // Main cron job - runs every minute to check for upcoming consultations
-const runConsultationReminderCron = () => {
+export const runConsultationReminderCron = () => {
     cron.schedule('* * * * *', async () => {
         console.log('🔄 Running consultation reminder check...');
 
@@ -137,7 +135,6 @@ const runConsultationReminderCron = () => {
                     const isWithin30Minutes = timeDiff > 0 && timeDiff <= 30 * 60 * 1000;
 
                     if (isWithin30Minutes) {
-                        console.log(`📢 Sending reminder for consultation ${consultation._id}`);
                         await sendConsultationReminder(consultation);
                     }
                 } catch (error) {
@@ -150,13 +147,4 @@ const runConsultationReminderCron = () => {
     }, {
         timezone: 'Asia/Kolkata', // India timezone
     });
-
-    console.log('Consultation reminder cron job scheduled (runs every minute) [IST]');
-};
-
-export const registerCrons = () => {
-  // Runs every day at 12:00 AM
-  cron.schedule("0 0 * * *", async () => {
-    await runConsultationReminderCron();
-  });
 };

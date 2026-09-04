@@ -4,7 +4,7 @@ import config from "./app/config";
 import mongoose from "mongoose";
 import { Server } from "http";
 import setupSocket from "./app/socket";
-import { registerCrons } from "./app/cron/consultationReminder.cron";
+import { runConsultationReminderCron } from "./app/cron/consultationReminder.cron";
 
 let server: Server;
 
@@ -14,7 +14,7 @@ async function main() {
 
     server = http.createServer(app);
 
-     registerCrons();
+     runConsultationReminderCron();
 
      setupSocket(server);
 

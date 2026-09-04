@@ -24,7 +24,7 @@ function main() {
         try {
             yield mongoose_1.default.connect(config_1.default.db_url);
             server = http_1.default.createServer(app_1.default);
-            (0, consultationReminder_cron_1.registerCrons)();
+            (0, consultationReminder_cron_1.runConsultationReminderCron)();
             (0, socket_1.default)(server);
             server.listen(config_1.default.port, () => {
                 console.log(`🚀 Server running on port ${config_1.default.port}`);
