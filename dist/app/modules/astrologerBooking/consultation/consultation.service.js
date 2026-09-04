@@ -139,7 +139,7 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
     const populatedConsultation = yield consultation_model_1.default.findById(consultation._id)
         .populate("user", "firstName lastName fullName email profilePicture accountId")
         .populate("astrologer", "firstName lastName displayName profilePicture accountId");
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent Successfully", `Your consultation request with ${astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent", `Your consultation request with ${astrologer.displayName} has been successfully submitted. You will be notified once the astrologer accepts your request.`);
     return populatedConsultation;
 });
 // Get my consultation requests - User
@@ -538,7 +538,7 @@ const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, vo
     };
     yield consultation.save();
     yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled Successfully", `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled", `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
     return {
         success: true,
         consultation,

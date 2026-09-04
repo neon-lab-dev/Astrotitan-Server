@@ -17,12 +17,14 @@ const app_1 = __importDefault(require("./app"));
 const config_1 = __importDefault(require("./app/config"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const socket_1 = __importDefault(require("./app/socket"));
+const consultationReminder_cron_1 = require("./app/cron/consultationReminder.cron");
 let server;
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield mongoose_1.default.connect(config_1.default.db_url);
             server = http_1.default.createServer(app_1.default);
+            (0, consultationReminder_cron_1.registerCrons)();
             (0, socket_1.default)(server);
             server.listen(config_1.default.port, () => {
                 console.log(`🚀 Server running on port ${config_1.default.port}`);

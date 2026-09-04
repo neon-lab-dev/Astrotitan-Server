@@ -4,6 +4,7 @@ import config from "./app/config";
 import mongoose from "mongoose";
 import { Server } from "http";
 import setupSocket from "./app/socket";
+import { registerCrons } from "./app/cron/consultationReminder.cron";
 
 let server: Server;
 
@@ -12,6 +13,8 @@ async function main() {
     await mongoose.connect(config.db_url as string);
 
     server = http.createServer(app);
+
+     registerCrons();
 
      setupSocket(server);
 

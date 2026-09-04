@@ -255,8 +255,8 @@ const requestConsultation = async (
 
   await sendSingleNotification(
     accountId as any,
-    "Consultation Request Sent Successfully",
-    `Your consultation request with ${astrologer.displayName} has been sent successfully. You will be notified once they accept your request.`
+    "Consultation Request Sent",
+    `Your consultation request with ${astrologer.displayName} has been successfully submitted. You will be notified once the astrologer accepts your request.`
   );
 
   return populatedConsultation;
@@ -896,7 +896,7 @@ const scheduleConsultation = async (
 
   await sendSingleNotification(
     accountId as any,
-    "Consultation Scheduled Successfully",
+    "Consultation Scheduled",
     `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`
   );
 
