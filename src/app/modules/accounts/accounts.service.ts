@@ -979,7 +979,7 @@ const getMe = async (accountId: string) => {
 
   // Fetch role-specific profile
   if (account.role === "user") {
-    const userProfile = await User.findOne({ accountId: account._id });
+    const userProfile = await User.findOne({ accountId: account._id }).populate("accountId");
     if (userProfile) {
       profileData = userProfile;
       isProfileComplete = userProfile.isProfileCompleted || false;

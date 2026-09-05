@@ -716,7 +716,7 @@ const getMe = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
     let isProfileComplete = false;
     // Fetch role-specific profile
     if (account.role === "user") {
-        const userProfile = yield user_model_1.User.findOne({ accountId: account._id });
+        const userProfile = yield user_model_1.User.findOne({ accountId: account._id }).populate("accountId");
         if (userProfile) {
             profileData = userProfile;
             isProfileComplete = userProfile.isProfileCompleted || false;
