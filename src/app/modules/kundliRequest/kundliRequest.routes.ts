@@ -37,14 +37,14 @@ router.get(
 
 // Accept Kundli Request
 router.put(
-    "/accept/requestId",
+    "/accept/:requestId",
     auth(UserRole.astrologer),
     KundliRequestControllers.acceptRequest
 );
 
 // Reject Kundli Request
 router.put(
-    "/reject/requestId",
+    "/reject/:requestId",
     auth(UserRole.astrologer),
     KundliRequestControllers.rejectRequest
 );
