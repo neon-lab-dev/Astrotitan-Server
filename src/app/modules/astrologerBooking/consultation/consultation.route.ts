@@ -13,6 +13,13 @@ router.post(
   ConsultationControllers.requestConsultation
 );
 
+// For admin
+router.get(
+  "/",
+  auth(UserRole.admin),
+  ConsultationControllers.getAllConsultations
+);
+
 router.get(
   "/my-requests",
   auth(UserRole.user),

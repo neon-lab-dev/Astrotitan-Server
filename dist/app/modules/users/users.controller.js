@@ -19,11 +19,12 @@ const sendResponse_1 = __importDefault(require("../../utils/sendResponse"));
 const http_status_1 = __importDefault(require("http-status"));
 const catchAsync_1 = __importDefault(require("../../utils/catchAsync"));
 const getAllUser = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { keyword, gender, country, skip = "0", limit = "10", } = req.query;
+    const { keyword, gender, country, isPremiumUser, skip = "0", limit = "10", } = req.query;
     const filters = {
         keyword: keyword,
         gender: gender,
         country: country,
+        isPremiumUser: isPremiumUser,
     };
     const result = yield users_services_1.UserServices.getAllUser(filters, Number(skip), Number(limit));
     (0, sendResponse_1.default)(res, {

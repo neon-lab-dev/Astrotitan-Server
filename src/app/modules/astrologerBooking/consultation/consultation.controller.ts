@@ -71,6 +71,30 @@ const getMyConsultationBookings = catchAsync(async (req, res) => {
   });
 });
 
+// Get all consultations - Admin
+const getAllConsultations = catchAsync(async (req, res) => {
+  const { status, date, method, skip = "0", limit = "10" } = req.query;
+
+  const filters = {
+    status: status as string,
+    method: method as string,
+    date: date as string,
+  };
+
+  const result = await ConsultationServices.getAllConsultations(
+    filters,
+    Number(skip),
+    Number(limit)
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Consultation bookings fetched successfully",
+    data: result,
+  });
+});
+
 // Get single consultation
 const getSingleConsultation = catchAsync(async (req, res) => {
   const accountId = req.user._id;
@@ -277,6 +301,7 @@ const addRecommendations = catchAsync(async (req, res) => {
 });
 
 export const ConsultationControllers = {
+  getAllConsultations,
   requestConsultation,
   getMyConsultationRequests,
   getMyConsultationBookings,

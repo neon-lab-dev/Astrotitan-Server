@@ -8,6 +8,7 @@ const getAllUser = async (
     keyword?: string;
     gender?: string;
     country?: string;
+    isPremiumUser ?: any
   } = {},
   skip = 0,
   limit = 10
@@ -30,6 +31,11 @@ const getAllUser = async (
   // Filter by country
   if (filters.country) {
     query.country = { $regex: filters.country, $options: "i" };
+  }
+
+  // Filter by isPremiumUser
+  if (filters.isPremiumUser) {
+    query.isPremiumUser = filters.isPremiumUser;
   }
 
   // Get paginated results

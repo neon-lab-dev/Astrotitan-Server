@@ -33,7 +33,6 @@ const bookPuja = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 
 /* User: Get My Bookings */
 const getMyBookings = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = req.user._id;
-    console.log(userId);
     const { status, skip = "0", limit = "10" } = req.query;
     const filters = {
         status: status,

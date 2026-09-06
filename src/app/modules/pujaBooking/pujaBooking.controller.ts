@@ -21,7 +21,6 @@ const bookPuja = catchAsync(async (req, res) => {
 /* User: Get My Bookings */
 const getMyBookings = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  console.log(userId);
   const { status, skip = "0", limit = "10" } = req.query;
 
   const filters = {

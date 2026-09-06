@@ -11,6 +11,8 @@ const accounts_constants_1 = require("../../accounts/accounts.constants");
 const router = express_1.default.Router();
 // User routes
 router.post("/request", (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.requestConsultation);
+// For admin
+router.get("/", (0, auth_1.default)(accounts_constants_1.UserRole.admin), consultation_controller_1.ConsultationControllers.getAllConsultations);
 router.get("/my-requests", (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.getMyConsultationRequests);
 router.post("/send-reschedule-request/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.sendRescheduleRequest);
 router.post("/review/add/:consultationId", (0, auth_1.default)(accounts_constants_1.UserRole.user), consultation_controller_1.ConsultationControllers.addReview);

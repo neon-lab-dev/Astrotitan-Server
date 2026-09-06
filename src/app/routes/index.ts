@@ -17,10 +17,15 @@ import { NotificationRoutes } from "../modules/notification/notification.route";
 import { GoogleCalendarRoutes } from "../modules/astrologerBooking/googleCalendar/googleCalendar.routes";
 import { SlotRoutes } from "../modules/astrologer/slot/slot.routes";
 import { KundliRequestRoutes } from "../modules/kundliRequest/kundliRequest.routes";
+import { AdminRoutes } from "../modules/admin/admin.route";
 
 const router = Router();
 
 const moduleRoutes = [
+  {
+    path: "/admin",
+    route: AdminRoutes,
+  },
   {
     path: "/account",
     route: AccountsRoutes,

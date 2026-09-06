@@ -19,8 +19,13 @@ const notification_route_1 = require("../modules/notification/notification.route
 const googleCalendar_routes_1 = require("../modules/astrologerBooking/googleCalendar/googleCalendar.routes");
 const slot_routes_1 = require("../modules/astrologer/slot/slot.routes");
 const kundliRequest_routes_1 = require("../modules/kundliRequest/kundliRequest.routes");
+const admin_route_1 = require("../modules/admin/admin.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
+    {
+        path: "/admin",
+        route: admin_route_1.AdminRoutes,
+    },
     {
         path: "/account",
         route: accounts_route_1.AccountsRoutes,

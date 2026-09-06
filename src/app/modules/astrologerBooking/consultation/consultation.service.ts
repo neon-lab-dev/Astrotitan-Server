@@ -474,6 +474,86 @@ const getMyConsultationBookings = async (
   return result;
 };
 
+// Get all consultations for admin
+const getAllConsultations = async (
+  filters: {
+    status?: string;
+    method?: string;
+    date?: string;
+    astrologerId?: string;
+    userId?: string;
+  } = {},
+  skip = 0,
+  limit = 10
+) => {
+  const query: Record<string, any> = {};
+
+  if (filters.status && filters.status !== "all") {
+    query.status = filters.status;
+  }
+
+  if (filters.method && filters.method !== "all") {
+    query.method = filters.method;
+  }
+
+  if (filters.astrologerId) {
+    query.astrologer = filters.astrologerId;
+  }
+
+  if (filters.userId) {
+    query.user = filters.userId;
+  }
+
+  if (filters.date) {
+    const parsedDate = new Date(filters.date);
+
+    if (!isNaN(parsedDate.getTime())) {
+      const startDate = new Date(parsedDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(parsedDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      return getConsultationsWithDateFilter(
+        query,
+        startDate,
+        endDate,
+        skip,
+        limit
+      );
+    }
+  }
+
+  const result = await infinitePaginate(
+    Consultation,
+    query,
+    skip,
+    limit,
+    [
+      {
+        path: "user",
+        select:
+          "firstName lastName fullName email profilePicture accountId",
+      },
+      {
+        path: "astrologer",
+        select:
+          "firstName lastName displayName profilePicture accountId",
+      },
+      {
+        path: "slotId",
+        select: "date slots",
+      },
+    ]
+  );
+
+  if (result.data && result.data.length > 0) {
+    result.data = result.data.map(addBookedSlotDetails);
+  }
+
+  return result;
+};
+
 const getConsultationsWithDateFilter =
   async (
     baseQuery: Record<string, any>,
@@ -1646,6 +1726,7 @@ const addRecommendations =
   };
 
 export const ConsultationServices = {
+  getAllConsultations,
   requestConsultation,
   getMyConsultationRequests,
   getMyConsultationBookings,

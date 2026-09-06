@@ -121,7 +121,7 @@ const getAllBookings = async (
     query,
     skip,
     limit,
-    ["userId",]
+    ["userId","pujaId"],
   );
 
   return result;

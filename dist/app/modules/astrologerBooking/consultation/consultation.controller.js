@@ -60,6 +60,22 @@ const getMyConsultationBookings = (0, catchAsync_1.default)((req, res) => __awai
         data: result,
     });
 }));
+// Get all consultations - Admin
+const getAllConsultations = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { status, date, method, skip = "0", limit = "10" } = req.query;
+    const filters = {
+        status: status,
+        method: method,
+        date: date,
+    };
+    const result = yield consultation_service_1.ConsultationServices.getAllConsultations(filters, Number(skip), Number(limit));
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Consultation bookings fetched successfully",
+        data: result,
+    });
+}));
 // Get single consultation
 const getSingleConsultation = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const accountId = req.user._id;
@@ -201,6 +217,7 @@ const addRecommendations = (0, catchAsync_1.default)((req, res) => __awaiter(voi
     });
 }));
 exports.ConsultationControllers = {
+    getAllConsultations,
     requestConsultation,
     getMyConsultationRequests,
     getMyConsultationBookings,

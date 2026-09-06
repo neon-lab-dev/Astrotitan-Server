@@ -81,7 +81,7 @@ const getAllBookings = (...args_1) => __awaiter(void 0, [...args_1], void 0, fun
     if (filters.pujaId) {
         query.pujaId = filters.pujaId;
     }
-    const result = yield (0, infinitePaginate_1.infinitePaginate)(pujaBooking_model_1.PujaBooking, query, skip, limit, ["userId",]);
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(pujaBooking_model_1.PujaBooking, query, skip, limit, ["userId", "pujaId"]);
     return result;
 });
 /* Admin: Get Single Booking by ID */

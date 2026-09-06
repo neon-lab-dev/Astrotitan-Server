@@ -9,6 +9,7 @@ const getAllUser = catchAsync(async (req, res) => {
     keyword,
     gender,
     country,
+    isPremiumUser,
     skip = "0",
     limit = "10",
   } = req.query;
@@ -17,6 +18,7 @@ const getAllUser = catchAsync(async (req, res) => {
     keyword: keyword as string,
     gender: gender as string,
     country: country as string,
+    isPremiumUser: isPremiumUser as string,
   };
 
   const result = await UserServices.getAllUser(

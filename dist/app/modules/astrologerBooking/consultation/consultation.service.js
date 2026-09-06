@@ -230,6 +230,50 @@ const getMyConsultationBookings = (accountId_1, ...args_1) => __awaiter(void 0, 
     }
     return result;
 });
+// Get all consultations for admin
+const getAllConsultations = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (filters = {}, skip = 0, limit = 10) {
+    const query = {};
+    if (filters.status && filters.status !== "all") {
+        query.status = filters.status;
+    }
+    if (filters.method && filters.method !== "all") {
+        query.method = filters.method;
+    }
+    if (filters.astrologerId) {
+        query.astrologer = filters.astrologerId;
+    }
+    if (filters.userId) {
+        query.user = filters.userId;
+    }
+    if (filters.date) {
+        const parsedDate = new Date(filters.date);
+        if (!isNaN(parsedDate.getTime())) {
+            const startDate = new Date(parsedDate);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(parsedDate);
+            endDate.setHours(23, 59, 59, 999);
+            return getConsultationsWithDateFilter(query, startDate, endDate, skip, limit);
+        }
+    }
+    const result = yield (0, infinitePaginate_1.infinitePaginate)(consultation_model_1.default, query, skip, limit, [
+        {
+            path: "user",
+            select: "firstName lastName fullName email profilePicture accountId",
+        },
+        {
+            path: "astrologer",
+            select: "firstName lastName displayName profilePicture accountId",
+        },
+        {
+            path: "slotId",
+            select: "date slots",
+        },
+    ]);
+    if (result.data && result.data.length > 0) {
+        result.data = result.data.map(addBookedSlotDetails);
+    }
+    return result;
+});
 const getConsultationsWithDateFilter = (baseQuery, startDate, endDate, skip, limit) => __awaiter(void 0, void 0, void 0, function* () {
     const pipeline = [
         {
@@ -903,6 +947,7 @@ const addRecommendations = (consultationId, accountId, payload) => __awaiter(voi
     };
 });
 exports.ConsultationServices = {
+    getAllConsultations,
     requestConsultation,
     getMyConsultationRequests,
     getMyConsultationBookings,

@@ -31,6 +31,10 @@ const getAllUser = (...args_1) => __awaiter(void 0, [...args_1], void 0, functio
     if (filters.country) {
         query.country = { $regex: filters.country, $options: "i" };
     }
+    // Filter by isPremiumUser
+    if (filters.isPremiumUser) {
+        query.isPremiumUser = filters.isPremiumUser;
+    }
     // Get paginated results
     const result = yield (0, infinitePaginate_1.infinitePaginate)(user_model_1.User, query, skip, limit, []);
     // Populate account details for each user
