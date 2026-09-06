@@ -90,7 +90,7 @@ const KundliRequestSchema = new Schema<TKundliRequest>(
         // Status
         status: {
             type: String,
-            enum: ["pending", "accepted", "completed", "cancelled"],
+            enum: ["pending", "accepted","rejected", "completed", "cancelled"],
             default: "pending",
             index: true,
         },

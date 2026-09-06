@@ -83,7 +83,7 @@ const KundliRequestSchema = new mongoose_1.Schema({
     // Status
     status: {
         type: String,
-        enum: ["pending", "accepted", "completed", "cancelled"],
+        enum: ["pending", "accepted", "rejected", "completed", "cancelled"],
         default: "pending",
         index: true,
     },

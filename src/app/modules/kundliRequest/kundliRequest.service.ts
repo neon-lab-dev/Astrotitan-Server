@@ -270,7 +270,27 @@ const assignAstrologer = async (requestId: string, astrologerId: any) => {
         message
     );
     return kundliRequest;
-}
+};
+
+const acceptRequest = async (requestId: string) => {
+    const kundliRequest = await KundliRequest.findById(requestId);
+    if (!kundliRequest) {
+        throw new AppError(httpStatus.NOT_FOUND, "Kundli request not found");
+    }
+    kundliRequest.status = "accepted";
+    await kundliRequest.save();
+    return kundliRequest;
+};
+
+const rejectRequest = async (requestId: string) => {
+    const kundliRequest = await KundliRequest.findById(requestId);
+    if (!kundliRequest) {
+        throw new AppError(httpStatus.NOT_FOUND, "Kundli request not found");
+    }
+    kundliRequest.status = "rejected";
+    await kundliRequest.save();
+    return kundliRequest;
+};
 
 export const KundliRequestServices = {
     sendKundliRequest,
@@ -280,4 +300,6 @@ export const KundliRequestServices = {
     getAstrologerKundliRequests,
     submitKundliReport,
     assignAstrologer,
+    acceptRequest,
+    rejectRequest
 };

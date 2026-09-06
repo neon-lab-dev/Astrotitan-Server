@@ -127,7 +127,29 @@ const assignAstrologer = catchAsync(async (req, res) => {
         message: "Astrologer assigned successfully",
         data: result,
     });
-})
+});
+
+const acceptRequest = catchAsync(async (req, res) => {
+    const { requestId } = req.params;
+    const result = await KundliRequestServices.acceptRequest(requestId);
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Request accepted successfully",
+        data: result,
+    });
+});
+
+const rejectRequest = catchAsync(async (req, res) => {
+    const { requestId } = req.params;
+    const result = await KundliRequestServices.rejectRequest(requestId);
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "Request rejected successfully",
+        data: result,
+    });
+});
 
 export const KundliRequestControllers = {
     sendKundliRequest,
@@ -136,5 +158,7 @@ export const KundliRequestControllers = {
     getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
-    assignAstrologer
+    assignAstrologer,
+    acceptRequest,
+    rejectRequest
 };

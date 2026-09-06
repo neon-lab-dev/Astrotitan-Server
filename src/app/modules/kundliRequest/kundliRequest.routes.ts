@@ -35,6 +35,20 @@ router.get(
     KundliRequestControllers.getAstrologerKundliRequests
 );
 
+// Accept Kundli Request
+router.put(
+    "/accept/requestId",
+    auth(UserRole.astrologer),
+    KundliRequestControllers.acceptRequest
+);
+
+// Reject Kundli Request
+router.put(
+    "/reject/requestId",
+    auth(UserRole.astrologer),
+    KundliRequestControllers.rejectRequest
+);
+
 router.get(
     "/:requestId",
     auth(UserRole.user, UserRole.astrologer, UserRole.admin),

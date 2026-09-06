@@ -101,6 +101,26 @@ const assignAstrologer = (0, catchAsync_1.default)((req, res) => __awaiter(void 
         data: result,
     });
 }));
+const acceptRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestId } = req.params;
+    const result = yield kundliRequest_service_1.KundliRequestServices.acceptRequest(requestId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Request accepted successfully",
+        data: result,
+    });
+}));
+const rejectRequest = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { requestId } = req.params;
+    const result = yield kundliRequest_service_1.KundliRequestServices.rejectRequest(requestId);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: "Request rejected successfully",
+        data: result,
+    });
+}));
 exports.KundliRequestControllers = {
     sendKundliRequest,
     getAllKundliRequests,
@@ -108,5 +128,7 @@ exports.KundliRequestControllers = {
     getSingleKundliRequestById,
     getAstrologerKundliRequests,
     submitKundliReport,
-    assignAstrologer
+    assignAstrologer,
+    acceptRequest,
+    rejectRequest
 };

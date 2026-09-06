@@ -43,6 +43,7 @@ export type TKundliRequest = {
     status:
     | "pending"
     | "accepted"
+    | "rejected"
     | "completed"
     | "cancelled";
 

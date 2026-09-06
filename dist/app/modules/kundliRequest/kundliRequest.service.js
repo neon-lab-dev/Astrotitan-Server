@@ -184,6 +184,24 @@ const assignAstrologer = (requestId, astrologerId) => __awaiter(void 0, void 0, 
     yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer === null || astrologer === void 0 ? void 0 : astrologer.accountId, title, message);
     return kundliRequest;
 });
+const acceptRequest = (requestId) => __awaiter(void 0, void 0, void 0, function* () {
+    const kundliRequest = yield kundliRequest_model_1.default.findById(requestId);
+    if (!kundliRequest) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Kundli request not found");
+    }
+    kundliRequest.status = "accepted";
+    yield kundliRequest.save();
+    return kundliRequest;
+});
+const rejectRequest = (requestId) => __awaiter(void 0, void 0, void 0, function* () {
+    const kundliRequest = yield kundliRequest_model_1.default.findById(requestId);
+    if (!kundliRequest) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Kundli request not found");
+    }
+    kundliRequest.status = "rejected";
+    yield kundliRequest.save();
+    return kundliRequest;
+});
 exports.KundliRequestServices = {
     sendKundliRequest,
     getMyKundliRequests,
@@ -192,4 +210,6 @@ exports.KundliRequestServices = {
     getAstrologerKundliRequests,
     submitKundliReport,
     assignAstrologer,
+    acceptRequest,
+    rejectRequest
 };
