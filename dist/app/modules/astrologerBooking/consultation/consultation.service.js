@@ -98,7 +98,7 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
     }
     // Check user's active subscription
     const activeSubscription = yield subscription_model_1.default.findOne({
-        user: accountId,
+        user: user._id,
         status: "active",
         endDate: { $gt: new Date() },
     }).populate("subscriptionPlanId");

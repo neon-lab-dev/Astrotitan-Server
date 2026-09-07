@@ -146,7 +146,7 @@ const requestConsultation = async (
 
   // Check user's active subscription
   const activeSubscription = await Subscription.findOne({
-    user: accountId,
+    user: user._id,
     status: "active",
     endDate: { $gt: new Date() },
   }).populate("subscriptionPlanId");
