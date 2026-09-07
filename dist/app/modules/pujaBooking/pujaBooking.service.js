@@ -21,6 +21,7 @@ const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const puja_model_1 = __importDefault(require("../puja/puja.model"));
 const sendSingleNotification_1 = require("../../utils/sendSingleNotification");
 const user_model_1 = require("../users/user.model");
+const accounts_model_1 = require("../accounts/accounts.model");
 /* User: Book a Puja */
 const bookPuja = (userId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     // Check if puja exists
@@ -42,10 +43,20 @@ const bookPuja = (userId, payload) => __awaiter(void 0, void 0, void 0, function
         purposeOfPuja: payload.purposeOfPuja,
         status: "pending",
     });
+    const formattedDate = new Date(payload.preferredDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
     // Send notification to user
     yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Puja Booking Request Received 🙏", `We have received your booking request for "${puja.name}" on ${new Date(payload.preferredDate).toLocaleDateString()}. Our team will contact you shortly to confirm the booking.`);
     // Populate puja details for response
     const bookingWithPuja = yield pujaBooking_model_1.PujaBooking.findById(booking._id).populate("pujaId", "name category price");
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Puja Booking Request", `${user.firstName} ${user.lastName} has requested ${puja.name} for ${formattedDate}.`, "pujaBooking");
     return bookingWithPuja;
 });
 /* User: Get My Bookings */

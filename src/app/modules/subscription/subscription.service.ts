@@ -8,6 +8,7 @@ import { User } from "../users/user.model";
 import { infinitePaginate } from "../../utils/infinitePaginate";
 import { Accounts } from "../accounts/accounts.model";
 import { sendSingleNotification } from "../../utils/sendSingleNotification";
+import SubscriptionPlan from "../subscriptionPlan/subscriptionPlan.model";
 
 
 const createRazorpayOrder = async (payload: any) => {
@@ -24,7 +25,16 @@ const createRazorpayOrder = async (payload: any) => {
 
 
 /* Create Subscription */
-const createSubscription = async (accountId: string) => {
+const createSubscription = async (accountId: string, payload: any) => {
+  const subscriptionPlan = await SubscriptionPlan.findById(payload.subscriptionPlanId);
+  if (!subscriptionPlan) {
+    throw new AppError(httpStatus.NOT_FOUND, "Subscription plan not found");
+  }
+
+  if (subscriptionPlan.isActive === false) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Subscription plan is not active");
+  };
+
   // Find user using accountId
   const user = await User.findOne({ accountId });
   if (!user) {
@@ -82,30 +92,30 @@ const createSubscription = async (accountId: string) => {
     endDate.setMonth(endDate.getMonth() + 1);
   }
 
-  const payload = {
+  const payloadData = {
     user: user._id,
+    subscriptionPlanId: subscriptionPlan._id,
     razorpaySubscriptionId: razorpaySubscription.id,
     status: "active",
     startDate,
     endDate,
   };
 
-  const subscription = await Subscription.create(payload);
+  const subscription = await Subscription.create(payloadData);
 
   await User.updateOne({ _id: user?._id }, { $set: { isPremiumUser: true } });
 
-  // const admin = await Accounts.findOne({ role: "admin" });
-  //   if (!admin) {
-  //       throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
-  //   }
+  const admin = await Accounts.findOne({ role: "admin" });
+  if (!admin) {
+    throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  }
 
 
-  //   await sendSingleNotification(
-  //       admin._id as any,
-  //       "New Kundli Request Received",
-  //       `You have received a new Kundli request from ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`,
-  //       "subscription"
-  //   );
+  await sendSingleNotification(
+    admin._id as any,
+    "Subscription Purchased",
+    `${user?.firstName} ${user?.lastName} has purchased subscription of ${subscriptionPlan.name}.`
+  );
 
   return subscription;
 };
@@ -161,7 +171,7 @@ const getAllSubscriptions = async (
     query,
     skip,
     limit,
-    ["user"] // Populate user field
+    ["user", "subscriptionPlanId"]
   );
 
   return result;
@@ -170,7 +180,7 @@ const getAllSubscriptions = async (
 /* Get Single Subscription By ID (Admin) */
 const getSingleSubscriptionById = async (subscriptionId: string) => {
   const subscription = await Subscription.findById(subscriptionId).populate(
-    "user",
+    "user subscriptionPlanId",
     "firstName lastName email profilePicture"
   );
 
@@ -190,7 +200,7 @@ const getMySubscription = async (accountId: string) => {
 
   const subscription = await Subscription.findOne({
     user: user._id, // Use User ObjectId
-  }).sort({ createdAt: -1 });
+  }).sort({ createdAt: -1 }).populate("subscriptionPlanId");
 
   return subscription;
 };

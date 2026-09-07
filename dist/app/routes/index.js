@@ -20,6 +20,7 @@ const googleCalendar_routes_1 = require("../modules/astrologerBooking/googleCale
 const slot_routes_1 = require("../modules/astrologer/slot/slot.routes");
 const kundliRequest_routes_1 = require("../modules/kundliRequest/kundliRequest.routes");
 const admin_route_1 = require("../modules/admin/admin.route");
+const subscriptionPlan_route_1 = require("../modules/subscriptionPlan/subscriptionPlan.route");
 const router = (0, express_1.Router)();
 const moduleRoutes = [
     {
@@ -97,6 +98,10 @@ const moduleRoutes = [
     {
         path: "/kundli-request",
         route: kundliRequest_routes_1.KundliRequestRoutes,
+    },
+    {
+        path: "/subscription-plan",
+        route: subscriptionPlan_route_1.SubscriptionPlanRoutes,
     },
 ];
 moduleRoutes.forEach((route) => router.use(route.path, route.route));

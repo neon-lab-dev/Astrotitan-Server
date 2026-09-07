@@ -58,7 +58,7 @@ const sendKundliRequest = (userId, payload, files) => __awaiter(void 0, void 0, 
     if (!admin) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
     }
-    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Kundli Request Received", `You have received a new Kundli request from ${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName}. Please check Kundli page for more details.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Kundli Request Received", `You have received a new Kundli request from ${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName}. Please check Kundli page for more details.`, "kundliRequest");
     return kundliRequest;
 });
 // Get My Kundli Requests (User)

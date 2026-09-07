@@ -9,6 +9,12 @@ const subscriptionSchema = new Schema<TSubscription>(
       required: true,
       index: true,
     },
+    subscriptionPlanId: {
+      type: Schema.Types.ObjectId,
+      ref: "SubscriptionPlan",
+      required: true,
+      index: true,
+    },
     startDate: {
       type: Date,
       required: true,

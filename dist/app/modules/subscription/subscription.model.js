@@ -8,6 +8,12 @@ const subscriptionSchema = new mongoose_1.Schema({
         required: true,
         index: true,
     },
+    subscriptionPlanId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "SubscriptionPlan",
+        required: true,
+        index: true,
+    },
     startDate: {
         type: Date,
         required: true,

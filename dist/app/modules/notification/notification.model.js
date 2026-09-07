@@ -7,6 +7,9 @@ const NotificationSchema = new mongoose_1.Schema({
     title: String,
     message: String,
     isRead: { type: Boolean, default: false },
+    type: {
+        type: String,
+    },
     data: Object,
     deliveryStatus: {
         type: String,

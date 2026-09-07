@@ -10,6 +10,7 @@ import { User } from "../../users/user.model";
 import Slot from "../../astrologer/slot/slot.model";
 import zoomVideoService from "./zoomVideo/zoomVideo.service";
 import { Accounts } from "../../accounts/accounts.model";
+import Subscription from "../../subscription/subscription.model";
 
 type ConsultationMethod = "chat" | "call";
 type RescheduleAction = "accept" | "reject";
@@ -136,27 +137,62 @@ const requestConsultation = async (
     bookedSlotId?: string;
   }
 ) => {
-  const user =
-    await getUserByAccountId(accountId);
+  const user = await getUserByAccountId(accountId);
 
-  const astrologer =
-    await Astrologer.findById(
-      payload.astrologer
-    );
-
+  const astrologer = await Astrologer.findById(payload.astrologer);
   if (!astrologer) {
+    throw new AppError(httpStatus.NOT_FOUND, "Astrologer not found");
+  }
+
+  // Check user's active subscription
+  const activeSubscription = await Subscription.findOne({
+    userId: user._id,
+    status: "active",
+    endDate: { $gt: new Date() },
+  }).populate("subscriptionPlanId");
+
+  if (!activeSubscription) {
     throw new AppError(
-      httpStatus.NOT_FOUND,
-      "Astrologer not found"
+      httpStatus.FORBIDDEN,
+      "You don't have an active subscription. Please subscribe to a plan to book consultations."
     );
   }
 
-  const existingConsultation =
-    await Consultation.findOne({
-      user: user._id,
-      astrologer: astrologer._id,
-      status: "pending",
-    });
+  // Check if plan allows consultation bookings
+  const plan = activeSubscription.subscriptionPlanId as any;
+
+  // Get consultation limit from plan
+  const consultationLimit = plan.numberOfConsultations || 0;
+  if (consultationLimit === 0) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      "Your current plan does not include any consultation bookings. Please upgrade your plan."
+    );
+  }
+
+  // Count consultations booked in the current subscription period
+  const subscriptionStartDate = activeSubscription.startDate;
+  const subscriptionEndDate = activeSubscription.endDate;
+
+  const consultationCount = await Consultation.countDocuments({
+    user: user._id,
+    status: { $in: ["pending", "accepted", "ended"] },
+    createdAt: { $gte: subscriptionStartDate, $lte: subscriptionEndDate },
+  });
+
+  if (consultationCount >= consultationLimit) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      `You have reached your consultation limit of ${consultationLimit} for this subscription period. Please upgrade your plan to book more consultations.`
+    );
+  }
+
+  // Check if user has a pending consultation with this astrologer
+  const existingConsultation = await Consultation.findOne({
+    user: user._id,
+    astrologer: astrologer._id,
+    status: "pending",
+  });
 
   if (existingConsultation) {
     throw new AppError(
@@ -165,6 +201,7 @@ const requestConsultation = async (
     );
   }
 
+  // Slot validation for call consultations
   let slotDoc: any = null;
   let slotIndex = -1;
 
@@ -183,97 +220,65 @@ const requestConsultation = async (
     });
 
     if (!slotDoc) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        "Slot not found"
-      );
+      throw new AppError(httpStatus.NOT_FOUND, "Slot not found");
     }
 
     slotIndex = slotDoc.slots.findIndex(
-      (slot: any) =>
-        slot._id.toString() ===
-        payload.bookedSlotId
+      (slot: any) => slot._id.toString() === payload.bookedSlotId
     );
 
     if (slotIndex === -1) {
-      throw new AppError(
-        httpStatus.NOT_FOUND,
-        "Booked slot not found"
-      );
+      throw new AppError(httpStatus.NOT_FOUND, "Booked slot not found");
     }
 
     if (slotDoc.slots[slotIndex].isBooked) {
-      throw new AppError(
-        httpStatus.BAD_REQUEST,
-        "This slot is already booked"
-      );
+      throw new AppError(httpStatus.BAD_REQUEST, "This slot is already booked");
     }
   }
 
-  const consultation =
-    await Consultation.create({
-      user: user._id,
-      astrologer: astrologer._id,
-      method: payload.method,
-      consultationFor:
-        payload.consultationFor,
-      requestMessage:
-        payload.requestMessage,
-      status: "pending",
-      ...(payload.method === "call" && {
-        slotId: new Types.ObjectId(
-          payload.slotId
-        ),
-        bookedSlotId: new Types.ObjectId(
-          payload.bookedSlotId
-        ),
-      }),
-    });
+  // Create consultation
+  const consultation = await Consultation.create({
+    user: user._id,
+    astrologer: astrologer._id,
+    method: payload.method,
+    consultationFor: payload.consultationFor,
+    requestMessage: payload.requestMessage,
+    status: "pending",
+    ...(payload.method === "call" && {
+      slotId: new Types.ObjectId(payload.slotId),
+      bookedSlotId: new Types.ObjectId(payload.bookedSlotId),
+    }),
+  });
 
-  if (
-    payload.method === "call" &&
-    slotDoc &&
-    slotIndex !== -1
-  ) {
-    slotDoc.slots[slotIndex].isBooked =
-      true;
-
+  // Book slot
+  if (payload.method === "call" && slotDoc && slotIndex !== -1) {
+    slotDoc.slots[slotIndex].isBooked = true;
     await slotDoc.save();
   }
 
-  const populatedConsultation =
-    await Consultation.findById(
-      consultation._id
-    )
-      .populate(
-        "user",
-        "firstName lastName fullName email profilePicture accountId"
-      )
-      .populate(
-        "astrologer",
-        "firstName lastName displayName profilePicture accountId"
-      );
+  // Populate consultation
+  const populatedConsultation = await Consultation.findById(consultation._id)
+    .populate("user", "firstName lastName fullName email profilePicture accountId")
+    .populate("astrologer", "firstName lastName displayName profilePicture accountId");
 
-  // For user
+  // Send notification to user
+  const remaining = consultationLimit - consultationCount - 1;
   await sendSingleNotification(
     accountId as any,
     "Consultation Request Sent",
-    `Your consultation request with ${astrologer.displayName} has been successfully submitted. You will be notified once the astrologer accepts your request.`
+    `Your consultation request with ${astrologer.displayName} has been successfully submitted. You have ${remaining} consultation${remaining !== 1 ? "s" : ""} remaining in your current plan.`
   );
 
-
+  // Send notification to admin
   const admin = await Accounts.findOne({ role: "admin" });
-  if (!admin) {
-    throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  if (admin) {
+    await sendSingleNotification(
+      admin._id as any,
+      "New Consultation Booked",
+      `${user?.firstName} ${user?.lastName} booked a consultation with ${astrologer.displayName} (${consultationCount + 1}/${consultationLimit} used)`,
+      "consultation"
+    );
   }
-
-
-  await sendSingleNotification(
-    admin._id as any,
-    "New Consultation Booked",
-    `${user?.firstName} ${user?.lastName} booked a consultation with ${astrologer.displayName}`,
-    "consultation"
-  );
 
   return populatedConsultation;
 };

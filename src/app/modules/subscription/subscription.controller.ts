@@ -3,9 +3,6 @@ import sendResponse from "../../utils/sendResponse";
 import httpStatus from "http-status";
 import { SubscriptionServices } from "./subscription.service";
 
-
-
-
 const createRazorpayOrder = catchAsync(async (req, res) => {
   const result = await SubscriptionServices.createRazorpayOrder(
     req.body
@@ -20,9 +17,9 @@ const createRazorpayOrder = catchAsync(async (req, res) => {
 });
 
 const createSubscription = catchAsync(async (req, res) => {
-  const userId = req.user._id
+  const userId = req.user._id;
   const result = await SubscriptionServices.createSubscription(
-    userId
+    userId, req.body
   );
 
   sendResponse(res, {

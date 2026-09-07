@@ -36,7 +36,7 @@ if (!(0, app_1.getApps)().length) {
 // Get messaging instance
 const messaging = (0, messaging_1.getMessaging)();
 // Function to send notification to a specific device
-const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 0, void 0, void 0, function* () {
+const sendPushNotification = (fcmToken, title, message, type, data) => __awaiter(void 0, void 0, void 0, function* () {
     if (!fcmToken) {
         console.log('⚠️ No FCM token provided');
         return;
@@ -46,6 +46,7 @@ const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 
             title: title,
             body: message,
         },
+        type,
         data: data || {},
         token: fcmToken,
     };
@@ -67,7 +68,7 @@ const sendPushNotification = (fcmToken, title, message, data) => __awaiter(void 
 });
 exports.sendPushNotification = sendPushNotification;
 // Send a single-user notification
-const sendSingleNotification = (userId, title, message) => __awaiter(void 0, void 0, void 0, function* () {
+const sendSingleNotification = (userId, title, message, type) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const user = yield accounts_model_1.Accounts.findById(userId).select("pushToken");
         if (!user) {
@@ -75,18 +76,18 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
             return;
         }
         const token = user.pushToken;
-        console.log(`📱 Push Token: ${token}`);
         // Save notification to DB
-        yield notification_model_1.Notification.create({
+        const response = yield notification_model_1.Notification.create({
             to: [userId],
             title,
             message,
+            type,
             deliveryStatus: "pending",
         });
         // Send push notification (if token exists)
         if (token) {
             try {
-                yield (0, exports.sendPushNotification)(token, title, message, { userId: userId.toString() });
+                yield (0, exports.sendPushNotification)(token, title, type || "", message, { userId: userId.toString() });
                 console.log(`Push notification sent to: ${userId}`);
             }
             catch (pushError) {
@@ -97,8 +98,10 @@ const sendSingleNotification = (userId, title, message) => __awaiter(void 0, voi
         const socketId = socket_1.userSocketMap.get(userId.toString());
         if (socketId && socket_1.io) {
             socket_1.io.to(socketId).emit("new-notification", {
+                _id: response._id,
                 title,
                 message,
+                type,
                 createdAt: new Date().toISOString(),
                 userId: userId.toString(),
             });

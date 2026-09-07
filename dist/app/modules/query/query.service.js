@@ -20,6 +20,8 @@ const AppError_1 = __importDefault(require("../../errors/AppError"));
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const sendSingleNotification_1 = require("../../utils/sendSingleNotification");
 const infinitePaginate_1 = require("../../utils/infinitePaginate");
+const accounts_model_1 = require("../accounts/accounts.model");
+const user_model_1 = require("../users/user.model");
 const generateTicketId = () => {
     const prefix = "AT";
     // Generate 6 random alphanumeric characters (uppercase)
@@ -29,6 +31,12 @@ const generateTicketId = () => {
 exports.generateTicketId = generateTicketId;
 /* User: Raise a Query */
 const raiseQuery = (userId, payload, files) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    const user = yield user_model_1.User.findOne({ accountId: userId }).populate("accountId");
+    console.log(user);
+    if (!user) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
+    }
     // Upload attachments to Cloudinary
     let attachmentUrls = [];
     if (files && files.length > 0) {
@@ -50,9 +58,12 @@ const raiseQuery = (userId, payload, files) => __awaiter(void 0, void 0, void 0,
         status: "pending",
     });
     // Send notification to user
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Query Received! 📝", `We have received your query "${payload.subject}". Our support team will get back to you within 24 hours. Query ID: ${query._id}`);
-    // Also send notification to admins (you can implement admin notification if needed)
-    // await sendNotificationToAdmins(`New query raised by user`, query._id);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Query Received! 📝", `We have received your query. Our support team will get back to you within 24 hours. Query ID: ${query._id}`);
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Support Query Received", `${(_a = user === null || user === void 0 ? void 0 : user.firstName) !== null && _a !== void 0 ? _a : ""} ${(_b = user === null || user === void 0 ? void 0 : user.lastName) !== null && _b !== void 0 ? _b : ""} has raised a new support query regarding "${payload.issueType}". Ticket ID: ${query.ticketId}. Please check the support panel for more details.`, "query");
     return query;
 });
 /* User: Get My Queries */

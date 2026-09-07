@@ -22,6 +22,8 @@ const product_model_1 = __importDefault(require("../../product/product.model"));
 const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const config_1 = __importDefault(require("../../../config"));
 const crypto_1 = __importDefault(require("crypto"));
+const accounts_model_1 = require("../../accounts/accounts.model");
+const sendSingleNotification_1 = require("../../../utils/sendSingleNotification");
 const checkout = (amount) => __awaiter(void 0, void 0, void 0, function* () {
     if (!amount || amount <= 0) {
         throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "Invalid payment amount");
@@ -129,6 +131,11 @@ const createProductOrder = (user, payload) => __awaiter(void 0, void 0, void 0, 
         paymentStatus: "pending",
         razorpayOrderId: razorpayOrder.id,
     });
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Order Placed", `A new product order has been placed. Order ID: ${order._id}`, "productOrder");
     // Return both: Razorpay order (for app) and redirect URL (for web)
     return {
         order,

@@ -24,6 +24,8 @@ const infinitePaginate_1 = require("../../../utils/infinitePaginate");
 const user_model_1 = require("../../users/user.model");
 const slot_model_1 = __importDefault(require("../../astrologer/slot/slot.model"));
 const zoomVideo_service_1 = __importDefault(require("./zoomVideo/zoomVideo.service"));
+const accounts_model_1 = require("../../accounts/accounts.model");
+const subscription_model_1 = __importDefault(require("../../subscription/subscription.model"));
 const getUserByAccountId = (accountId) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield user_model_1.User.findOne({ accountId });
     if (!user) {
@@ -94,6 +96,34 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
     if (!astrologer) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Astrologer not found");
     }
+    // Check user's active subscription
+    const activeSubscription = yield subscription_model_1.default.findOne({
+        userId: user._id,
+        status: "active",
+        endDate: { $gt: new Date() },
+    }).populate("subscriptionPlanId");
+    if (!activeSubscription) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "You don't have an active subscription. Please subscribe to a plan to book consultations.");
+    }
+    // Check if plan allows consultation bookings
+    const plan = activeSubscription.subscriptionPlanId;
+    // Get consultation limit from plan
+    const consultationLimit = plan.numberOfConsultations || 0;
+    if (consultationLimit === 0) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, "Your current plan does not include any consultation bookings. Please upgrade your plan.");
+    }
+    // Count consultations booked in the current subscription period
+    const subscriptionStartDate = activeSubscription.startDate;
+    const subscriptionEndDate = activeSubscription.endDate;
+    const consultationCount = yield consultation_model_1.default.countDocuments({
+        user: user._id,
+        status: { $in: ["pending", "accepted", "ended"] },
+        createdAt: { $gte: subscriptionStartDate, $lte: subscriptionEndDate },
+    });
+    if (consultationCount >= consultationLimit) {
+        throw new AppError_1.default(http_status_1.default.FORBIDDEN, `You have reached your consultation limit of ${consultationLimit} for this subscription period. Please upgrade your plan to book more consultations.`);
+    }
+    // Check if user has a pending consultation with this astrologer
     const existingConsultation = yield consultation_model_1.default.findOne({
         user: user._id,
         astrologer: astrologer._id,
@@ -102,6 +132,7 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
     if (existingConsultation) {
         throw new AppError_1.default(http_status_1.default.CONFLICT, "You already have a pending consultation request with this astrologer");
     }
+    // Slot validation for call consultations
     let slotDoc = null;
     let slotIndex = -1;
     if (payload.method === "call") {
@@ -116,8 +147,7 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
         if (!slotDoc) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Slot not found");
         }
-        slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() ===
-            payload.bookedSlotId);
+        slotIndex = slotDoc.slots.findIndex((slot) => slot._id.toString() === payload.bookedSlotId);
         if (slotIndex === -1) {
             throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Booked slot not found");
         }
@@ -125,21 +155,28 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
             throw new AppError_1.default(http_status_1.default.BAD_REQUEST, "This slot is already booked");
         }
     }
+    // Create consultation
     const consultation = yield consultation_model_1.default.create(Object.assign({ user: user._id, astrologer: astrologer._id, method: payload.method, consultationFor: payload.consultationFor, requestMessage: payload.requestMessage, status: "pending" }, (payload.method === "call" && {
         slotId: new mongoose_1.Types.ObjectId(payload.slotId),
         bookedSlotId: new mongoose_1.Types.ObjectId(payload.bookedSlotId),
     })));
-    if (payload.method === "call" &&
-        slotDoc &&
-        slotIndex !== -1) {
-        slotDoc.slots[slotIndex].isBooked =
-            true;
+    // Book slot
+    if (payload.method === "call" && slotDoc && slotIndex !== -1) {
+        slotDoc.slots[slotIndex].isBooked = true;
         yield slotDoc.save();
     }
+    // Populate consultation
     const populatedConsultation = yield consultation_model_1.default.findById(consultation._id)
         .populate("user", "firstName lastName fullName email profilePicture accountId")
         .populate("astrologer", "firstName lastName displayName profilePicture accountId");
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent", `Your consultation request with ${astrologer.displayName} has been successfully submitted. You will be notified once the astrologer accepts your request.`);
+    // Send notification to user
+    const remaining = consultationLimit - consultationCount - 1;
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent", `Your consultation request with ${astrologer.displayName} has been successfully submitted. You have ${remaining} consultation${remaining !== 1 ? "s" : ""} remaining in your current plan.`);
+    // Send notification to admin
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (admin) {
+        yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, "New Consultation Booked", `${user === null || user === void 0 ? void 0 : user.firstName} ${user === null || user === void 0 ? void 0 : user.lastName} booked a consultation with ${astrologer.displayName} (${consultationCount + 1}/${consultationLimit} used)`, "consultation");
+    }
     return populatedConsultation;
 });
 // Get my consultation requests - User

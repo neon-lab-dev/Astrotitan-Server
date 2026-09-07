@@ -21,6 +21,8 @@ const infinitePaginate_1 = require("../../utils/infinitePaginate");
 const sendImageToCloudinary_1 = require("../../utils/sendImageToCloudinary");
 const deleteImageFromCloudinary_1 = require("../../utils/deleteImageFromCloudinary");
 const astrologer_model_1 = require("../astrologer/astrologer.model");
+const accounts_model_1 = require("../accounts/accounts.model");
+const sendSingleNotification_1 = require("../../utils/sendSingleNotification");
 /* Add Blog */
 const addBlog = (userId, payload, file) => __awaiter(void 0, void 0, void 0, function* () {
     const astrologer = yield astrologer_model_1.Astrologer.findOne({ accountId: userId });
@@ -45,6 +47,11 @@ const addBlog = (userId, payload, file) => __awaiter(void 0, void 0, void 0, fun
     const blog = yield blog_model_1.Blog.create(Object.assign(Object.assign({}, payload), { addedBy: astrologer === null || astrologer === void 0 ? void 0 : astrologer._id, thumbnail: thumbnailUrl, zodiacSpecific }));
     // Populate astrologer details
     const blogWithAstrologer = yield blog_model_1.Blog.findById(blog._id).populate("addedBy", "firstName lastName displayName profilePicture");
+    const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
+    }
+    yield (0, sendSingleNotification_1.sendSingleNotification)(admin._id, `New Blog Published`, `${astrologer === null || astrologer === void 0 ? void 0 : astrologer.displayName} has published a new blog: ${payload.title}.`, "blog");
     return blogWithAstrologer;
 });
 /* Get All Blogs (Public) */
