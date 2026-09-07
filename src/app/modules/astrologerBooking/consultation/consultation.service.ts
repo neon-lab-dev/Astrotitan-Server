@@ -9,6 +9,7 @@ import { infinitePaginate } from "../../../utils/infinitePaginate";
 import { User } from "../../users/user.model";
 import Slot from "../../astrologer/slot/slot.model";
 import zoomVideoService from "./zoomVideo/zoomVideo.service";
+import { Accounts } from "../../accounts/accounts.model";
 
 type ConsultationMethod = "chat" | "call";
 type RescheduleAction = "accept" | "reject";
@@ -253,10 +254,25 @@ const requestConsultation = async (
         "firstName lastName displayName profilePicture accountId"
       );
 
+  // For user
   await sendSingleNotification(
     accountId as any,
     "Consultation Request Sent",
     `Your consultation request with ${astrologer.displayName} has been successfully submitted. You will be notified once the astrologer accepts your request.`
+  );
+
+
+  const admin = await Accounts.findOne({ role: "admin" });
+  if (!admin) {
+    throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  }
+
+
+  await sendSingleNotification(
+    admin._id as any,
+    "New Consultation Booked",
+    `${user?.firstName} ${user?.lastName} booked a consultation with ${astrologer.displayName}`,
+    "consultation"
   );
 
   return populatedConsultation;
@@ -1725,7 +1741,9 @@ const addRecommendations =
     };
   };
 
-export const ConsultationServices = {
+
+
+  export const ConsultationServices = {
   getAllConsultations,
   requestConsultation,
   getMyConsultationRequests,

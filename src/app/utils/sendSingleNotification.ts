@@ -33,6 +33,7 @@ export const sendPushNotification = async (
   fcmToken: string,
   title: string,
   message: string,
+  type?: string,
   data?: any,
 ) => {
   if (!fcmToken) {
@@ -45,6 +46,7 @@ export const sendPushNotification = async (
       title: title,
       body: message,
     },
+    type,
     data: data || {},
     token: fcmToken,
   };
@@ -55,10 +57,10 @@ export const sendPushNotification = async (
     return response;
   } catch (error: any) {
     console.error('❌ Error sending notification:', error);
-    
+
     // Handle specific FCM errors
-    if (error.code === 'messaging/invalid-registration-token' || 
-        error.code === 'messaging/registration-token-not-registered') {
+    if (error.code === 'messaging/invalid-registration-token' ||
+      error.code === 'messaging/registration-token-not-registered') {
       console.log('⚠️ Invalid FCM token, removing from database');
       await Accounts.findOneAndUpdate(
         { pushToken: fcmToken },
@@ -73,7 +75,8 @@ export const sendPushNotification = async (
 export const sendSingleNotification = async (
   userId: mongoose.Types.ObjectId | string,
   title: string,
-  message: string
+  message: string,
+  type?: string
 ) => {
   try {
     const user = await Accounts.findById(userId).select("pushToken");
@@ -83,20 +86,20 @@ export const sendSingleNotification = async (
     }
 
     const token = user.pushToken;
-    console.log(`📱 Push Token: ${token}`);
 
     // Save notification to DB
-    await Notification.create({
+  const response =  await Notification.create({
       to: [userId],
       title,
       message,
+      type,
       deliveryStatus: "pending",
     });
 
     // Send push notification (if token exists)
     if (token) {
       try {
-        await sendPushNotification(token, title, message, { userId: userId.toString() });
+        await sendPushNotification(token, title, type || "", message, { userId: userId.toString() });
         console.log(`Push notification sent to: ${userId}`);
       } catch (pushError) {
         console.error(`❌ Push notification failed:`, pushError);
@@ -107,8 +110,10 @@ export const sendSingleNotification = async (
     const socketId = userSocketMap.get(userId.toString());
     if (socketId && io) {
       io.to(socketId).emit("new-notification", {
+        _id: response._id,
         title,
         message,
+        type,
         createdAt: new Date().toISOString(),
         userId: userId.toString(),
       });

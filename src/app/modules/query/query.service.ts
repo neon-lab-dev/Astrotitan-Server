@@ -5,6 +5,8 @@ import AppError from "../../errors/AppError";
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import { sendSingleNotification } from "../../utils/sendSingleNotification";
 import { infinitePaginate } from "../../utils/infinitePaginate";
+import { Accounts } from "../accounts/accounts.model";
+import { User } from "../users/user.model";
 
 export const generateTicketId = (): string => {
     const prefix = "AT";
@@ -23,6 +25,11 @@ const raiseQuery = async (
     },
     files?: Express.Multer.File[]
 ) => {
+    const user = await User.findOne({accountId:userId}).populate("accountId");
+    console.log(user);
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User not found");
+    }
     // Upload attachments to Cloudinary
     let attachmentUrls: string[] = [];
     if (files && files.length > 0) {
@@ -52,11 +59,20 @@ const raiseQuery = async (
     await sendSingleNotification(
         userId as any,
         "Query Received! 📝",
-        `We have received your query "${payload.subject}". Our support team will get back to you within 24 hours. Query ID: ${query._id}`
+        `We have received your query. Our support team will get back to you within 24 hours. Query ID: ${query._id}`
     );
 
-    // Also send notification to admins (you can implement admin notification if needed)
-    // await sendNotificationToAdmins(`New query raised by user`, query._id);
+    const admin = await Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+    }
+
+    await sendSingleNotification(
+        admin._id as any,
+        "New Support Query Received",
+        `${user?.firstName ?? ""} ${user?.lastName ?? ""} has raised a new support query regarding "${payload.issueType}". Ticket ID: ${query.ticketId}. Please check the support panel for more details.`,
+        "query"
+    );
 
     return query;
 };
@@ -139,63 +155,63 @@ const addAttachment = async (
 
 /* User: Delete My Query (Soft Delete or Hard Delete) */
 const deleteMyQuery = async (queryId: string, userId: string) => {
-  // Find the query and check if it belongs to the user
-  const query = await Query.findOne({ _id: queryId, userId });
+    // Find the query and check if it belongs to the user
+    const query = await Query.findOne({ _id: queryId, userId });
 
-  if (!query) {
-    throw new AppError(httpStatus.NOT_FOUND, "Query not found or you are not authorized");
-  }
+    if (!query) {
+        throw new AppError(httpStatus.NOT_FOUND, "Query not found or you are not authorized");
+    }
 
-  // Optional: Prevent deletion of already resolved/closed queries
-  if (query.status === "resolved") {
-    throw new AppError(
-      httpStatus.BAD_REQUEST,
-      "Cannot delete a resolved or closed query. Please contact support."
+    // Optional: Prevent deletion of already resolved/closed queries
+    if (query.status === "resolved") {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Cannot delete a resolved or closed query. Please contact support."
+        );
+    }
+
+    // Option 1: Hard Delete (completely remove from database)
+    await Query.findByIdAndDelete(queryId);
+
+    // Option 2: Soft Delete (add isDeleted flag - recommended)
+    // await Query.findByIdAndUpdate(queryId, { isDeleted: true });
+
+    // Send notification
+    await sendSingleNotification(
+        userId as any,
+        "Query Deleted 🗑️",
+        `Your query "${query.subject}" has been successfully deleted from our system.`
     );
-  }
 
-  // Option 1: Hard Delete (completely remove from database)
-  await Query.findByIdAndDelete(queryId);
-
-  // Option 2: Soft Delete (add isDeleted flag - recommended)
-  // await Query.findByIdAndUpdate(queryId, { isDeleted: true });
-
-  // Send notification
-  await sendSingleNotification(
-    userId as any,
-    "Query Deleted 🗑️",
-    `Your query "${query.subject}" has been successfully deleted from our system.`
-  );
-
-  return { message: "Query deleted successfully" };
+    return { message: "Query deleted successfully" };
 };
 
 /* Admin: Get All Queries */
 const getAllQueries = async (
-  filters: any = {},
-  skip = 0,
-  limit = 10
+    filters: any = {},
+    skip = 0,
+    limit = 10
 ) => {
 
-  const query: any = {};
+    const query: any = {};
 
-  // Status filter
-  if (filters.status) {
-    query.status = filters.status;
-  }
+    // Status filter
+    if (filters.status) {
+        query.status = filters.status;
+    }
 
-  // Issue type filter
-  if (filters.issueType) {
-    query.issueType = filters.issueType;
-  }
+    // Issue type filter
+    if (filters.issueType) {
+        query.issueType = filters.issueType;
+    }
 
     if (filters.keyword) {
-    query.$text = {
-      $search: filters.keyword,
-    };
-  }
+        query.$text = {
+            $search: filters.keyword,
+        };
+    }
 
-  return infinitePaginate(Query, query, skip, limit, []);
+    return infinitePaginate(Query, query, skip, limit, []);
 };
 
 /* Admin: Get Single Query (with user details) */

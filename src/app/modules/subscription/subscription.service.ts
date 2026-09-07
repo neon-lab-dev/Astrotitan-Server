@@ -6,6 +6,8 @@ import config from "../../config";
 import Subscription from "./subscription.model";
 import { User } from "../users/user.model";
 import { infinitePaginate } from "../../utils/infinitePaginate";
+import { Accounts } from "../accounts/accounts.model";
+import { sendSingleNotification } from "../../utils/sendSingleNotification";
 
 
 const createRazorpayOrder = async (payload: any) => {
@@ -92,8 +94,18 @@ const createSubscription = async (accountId: string) => {
 
   await User.updateOne({ _id: user?._id }, { $set: { isPremiumUser: true } });
 
-  // Send subscription created email (optional)
-  // await sendSubscriptionEmails(user, subscription);
+  // const admin = await Accounts.findOne({ role: "admin" });
+  //   if (!admin) {
+  //       throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  //   }
+
+
+  //   await sendSingleNotification(
+  //       admin._id as any,
+  //       "New Kundli Request Received",
+  //       `You have received a new Kundli request from ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`,
+  //       "subscription"
+  //   );
 
   return subscription;
 };

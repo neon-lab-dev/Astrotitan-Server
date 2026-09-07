@@ -8,6 +8,8 @@ import Product from "../../product/product.model";
 import { infinitePaginate } from "../../../utils/infinitePaginate";
 import config from "../../../config";
 import crypto from "crypto";
+import { Accounts } from "../../accounts/accounts.model";
+import { sendSingleNotification } from "../../../utils/sendSingleNotification";
 
 const checkout = async (amount: number) => {
   if (!amount || amount <= 0) {
@@ -147,6 +149,19 @@ const createProductOrder = async (user: any, payload: TProductOrder) => {
     paymentStatus: "pending",
     razorpayOrderId: razorpayOrder.id,
   });
+
+
+  const admin = await Accounts.findOne({ role: "admin" });
+  if (!admin) {
+    throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  }
+
+  await sendSingleNotification(
+    admin._id as any,
+    "New Order Placed",
+    `A new product order has been placed. Order ID: ${order._id}`,
+    "productOrder"
+  );
 
   // Return both: Razorpay order (for app) and redirect URL (for web)
   return {

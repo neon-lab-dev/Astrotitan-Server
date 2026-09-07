@@ -70,7 +70,8 @@ const sendKundliRequest = async (
     await sendSingleNotification(
         admin._id as any,
         "New Kundli Request Received",
-        `You have received a new Kundli request from ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`
+        `You have received a new Kundli request from ${user?.firstName} ${user?.lastName}. Please check Kundli page for more details.`,
+        "kundliRequest"
     );
 
     return kundliRequest;

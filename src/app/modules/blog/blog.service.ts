@@ -6,6 +6,8 @@ import { infinitePaginate } from "../../utils/infinitePaginate";
 import { sendImageToCloudinary } from "../../utils/sendImageToCloudinary";
 import { deleteImageFromCloudinary } from "../../utils/deleteImageFromCloudinary";
 import { Astrologer } from "../astrologer/astrologer.model";
+import { Accounts } from "../accounts/accounts.model";
+import { sendSingleNotification } from "../../utils/sendSingleNotification";
 
 /* Add Blog */
 const addBlog = async (
@@ -54,6 +56,20 @@ const addBlog = async (
         "firstName lastName displayName profilePicture"
     );
 
+
+    const admin = await Accounts.findOne({ role: "admin" });
+    if (!admin) {
+        throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+    }
+
+
+    await sendSingleNotification(
+        admin._id as any,
+        `New Blog Published`,
+        `${astrologer?.displayName} has published a new blog: ${payload.title}.`,
+        "blog"
+    );
+
     return blogWithAstrologer;
 };
 
@@ -68,7 +84,7 @@ const getAllBlogs = async (
     skip = 0,
     limit = 10
 ) => {
-    const query: any = { };
+    const query: any = {};
 
     if (filters.category) {
         query.category = filters.category;

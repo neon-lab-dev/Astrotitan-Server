@@ -6,6 +6,7 @@ import { infinitePaginate } from "../../utils/infinitePaginate";
 import Puja from "../puja/puja.model";
 import { sendSingleNotification } from "../../utils/sendSingleNotification";
 import { User } from "../users/user.model";
+import { Accounts } from "../accounts/accounts.model";
 
 /* User: Book a Puja */
 const bookPuja = async (
@@ -39,6 +40,12 @@ const bookPuja = async (
     status: "pending",
   });
 
+  const formattedDate = new Date(payload.preferredDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   // Send notification to user
   await sendSingleNotification(
     userId as any,
@@ -48,6 +55,19 @@ const bookPuja = async (
 
   // Populate puja details for response
   const bookingWithPuja = await PujaBooking.findById(booking._id).populate("pujaId", "name category price");
+
+  const admin = await Accounts.findOne({ role: "admin" });
+  if (!admin) {
+    throw new AppError(httpStatus.NOT_FOUND, "Admin not found");
+  }
+
+
+  await sendSingleNotification(
+    admin._id as any,
+    "New Puja Booking Request",
+    `${user.firstName} ${user.lastName} has requested ${puja.name} for ${formattedDate}.`,
+    "pujaBooking"
+);
 
   return bookingWithPuja;
 };
@@ -121,7 +141,7 @@ const getAllBookings = async (
     query,
     skip,
     limit,
-    ["userId","pujaId"],
+    ["userId", "pujaId"],
   );
 
   return result;
