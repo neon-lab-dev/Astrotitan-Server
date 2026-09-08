@@ -170,8 +170,7 @@ const requestConsultation = (accountId, payload) => __awaiter(void 0, void 0, vo
         .populate("user", "firstName lastName fullName email profilePicture accountId")
         .populate("astrologer", "firstName lastName displayName profilePicture accountId");
     // Send notification to user
-    const remaining = consultationLimit - consultationCount - 1;
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent", `Your consultation request with ${astrologer.displayName} has been successfully submitted. You have ${remaining} consultation${remaining !== 1 ? "s" : ""} remaining in your current plan.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Request Sent", `Your consultation request with ${astrologer.displayName} has been successfully submitted.`);
     // Send notification to admin
     const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
     if (admin) {

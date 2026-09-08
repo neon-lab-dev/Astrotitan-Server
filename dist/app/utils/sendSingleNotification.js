@@ -43,11 +43,10 @@ const sendPushNotification = (fcmToken, title, message, type, data) => __awaiter
     }
     const payload = {
         notification: {
-            title: title,
+            title,
             body: message,
         },
-        type,
-        data: data || {},
+        data: Object.assign(Object.assign({}, (data || {})), (type ? { type } : {})),
         token: fcmToken,
     };
     try {
@@ -57,7 +56,6 @@ const sendPushNotification = (fcmToken, title, message, type, data) => __awaiter
     }
     catch (error) {
         console.error('❌ Error sending notification:', error);
-        // Handle specific FCM errors
         if (error.code === 'messaging/invalid-registration-token' ||
             error.code === 'messaging/registration-token-not-registered') {
             console.log('⚠️ Invalid FCM token, removing from database');
@@ -87,7 +85,7 @@ const sendSingleNotification = (userId, title, message, type) => __awaiter(void 
         // Send push notification (if token exists)
         if (token) {
             try {
-                yield (0, exports.sendPushNotification)(token, title, type || "", message, { userId: userId.toString() });
+                yield (0, exports.sendPushNotification)(token, title, message, type || "", { userId: userId.toString() });
                 console.log(`Push notification sent to: ${userId}`);
             }
             catch (pushError) {

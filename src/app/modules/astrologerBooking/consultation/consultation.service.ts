@@ -262,11 +262,10 @@ const requestConsultation = async (
     .populate("astrologer", "firstName lastName displayName profilePicture accountId");
 
   // Send notification to user
-  const remaining = consultationLimit - consultationCount - 1;
   await sendSingleNotification(
     accountId as any,
     "Consultation Request Sent",
-    `Your consultation request with ${astrologer.displayName} has been successfully submitted. You have ${remaining} consultation${remaining !== 1 ? "s" : ""} remaining in your current plan.`
+    `Your consultation request with ${astrologer.displayName} has been successfully submitted.`
   );
 
   // Send notification to admin

@@ -43,11 +43,13 @@ export const sendPushNotification = async (
 
   const payload = {
     notification: {
-      title: title,
+      title,
       body: message,
     },
-    type,
-    data: data || {},
+    data: {
+      ...(data || {}),
+      ...(type ? { type } : {}),
+    },
     token: fcmToken,
   };
 
@@ -58,9 +60,10 @@ export const sendPushNotification = async (
   } catch (error: any) {
     console.error('❌ Error sending notification:', error);
 
-    // Handle specific FCM errors
-    if (error.code === 'messaging/invalid-registration-token' ||
-      error.code === 'messaging/registration-token-not-registered') {
+    if (
+      error.code === 'messaging/invalid-registration-token' ||
+      error.code === 'messaging/registration-token-not-registered'
+    ) {
       console.log('⚠️ Invalid FCM token, removing from database');
       await Accounts.findOneAndUpdate(
         { pushToken: fcmToken },
@@ -99,7 +102,7 @@ export const sendSingleNotification = async (
     // Send push notification (if token exists)
     if (token) {
       try {
-        await sendPushNotification(token, title, type || "", message, { userId: userId.toString() });
+        await sendPushNotification(token, title, message, type || "", { userId: userId.toString() });
         console.log(`Push notification sent to: ${userId}`);
       } catch (pushError) {
         console.error(`❌ Push notification failed:`, pushError);
