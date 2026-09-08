@@ -991,13 +991,13 @@ const scheduleConsultation = async (
   await sendSingleNotification(
     user.accountId as any,
     "Consultation Scheduled!",
-    `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}.`
+    `Your consultation with ${astrologer.displayName} has been confirmed.`
   );
 
   await sendSingleNotification(
     accountId as any,
     "Consultation Scheduled",
-    `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`
+    `Your consultation with ${user.firstName} has been confirmed.`
   );
 
   return {
@@ -1050,7 +1050,7 @@ const rejectConsultation = async (
   await sendSingleNotification(
     user.accountId as any,
     "Consultation Rejected!",
-    `Your consultation with ${astrologer.displayName} has been rejected.`
+    `Your consultation with ${astrologer.displayName} has been rejected. Contact to support to know more.`
   );
   await consultation.save();
   return {

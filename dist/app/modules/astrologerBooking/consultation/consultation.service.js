@@ -617,8 +617,8 @@ const scheduleConsultation = (consultationId, accountId) => __awaiter(void 0, vo
         scheduledAt,
     };
     yield consultation.save();
-    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Scheduled!", `Your consultation with ${astrologer.displayName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
-    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled", `Your consultation with ${user.firstName} has been scheduled for ${scheduledAt.toLocaleString()}.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Scheduled!", `Your consultation with ${astrologer.displayName} has been confirmed.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(accountId, "Consultation Scheduled", `Your consultation with ${user.firstName} has been confirmed.`);
     return {
         success: true,
         consultation,
@@ -645,7 +645,7 @@ const rejectConsultation = (consultationId, accountId) => __awaiter(void 0, void
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "User not found");
     }
     consultation.status = "rejected";
-    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Rejected!", `Your consultation with ${astrologer.displayName} has been rejected.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(user.accountId, "Consultation Rejected!", `Your consultation with ${astrologer.displayName} has been rejected. Contact to support to know more.`);
     yield consultation.save();
     return {
         data: consultation,
