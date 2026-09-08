@@ -1336,7 +1336,6 @@ const addReview = async (
     await Consultation.findOne({
       _id: consultationId,
       user: user._id,
-      status: "ended",
     })
       .populate(
         "astrologer",
@@ -1350,7 +1349,7 @@ const addReview = async (
   if (!consultation) {
     throw new AppError(
       httpStatus.NOT_FOUND,
-      "Consultation not found or not ended yet. You can only review ended consultations."
+      "Consultation not found."
     );
   }
 

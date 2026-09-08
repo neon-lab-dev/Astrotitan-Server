@@ -799,12 +799,11 @@ const addReview = (consultationId, accountId, payload) => __awaiter(void 0, void
     const consultation = yield consultation_model_1.default.findOne({
         _id: consultationId,
         user: user._id,
-        status: "ended",
     })
         .populate("astrologer", "accountId")
         .populate("user", "fullName");
     if (!consultation) {
-        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found or not ended yet. You can only review ended consultations.");
+        throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Consultation not found.");
     }
     if (consultation.review &&
         consultation.rating) {
