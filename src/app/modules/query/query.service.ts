@@ -58,7 +58,7 @@ const raiseQuery = async (
     // Send notification to user
     await sendSingleNotification(
         userId as any,
-        "Query Received! 📝",
+        "Query Received",
         `We have received your query. Our support team will get back to you within 24 hours. Query ID: ${query._id}`
     );
 
@@ -146,7 +146,7 @@ const addAttachment = async (
     // Send notification
     await sendSingleNotification(
         userId as any,
-        "Attachment Added 📎",
+        "Attachment Added",
         `New attachment added to your query: ${query.subject}`
     );
 
@@ -172,17 +172,6 @@ const deleteMyQuery = async (queryId: string, userId: string) => {
 
     // Option 1: Hard Delete (completely remove from database)
     await Query.findByIdAndDelete(queryId);
-
-    // Option 2: Soft Delete (add isDeleted flag - recommended)
-    // await Query.findByIdAndUpdate(queryId, { isDeleted: true });
-
-    // Send notification
-    await sendSingleNotification(
-        userId as any,
-        "Query Deleted 🗑️",
-        `Your query "${query.subject}" has been successfully deleted from our system.`
-    );
-
     return { message: "Query deleted successfully" };
 };
 
@@ -308,13 +297,6 @@ const deleteQuery = async (queryId: string) => {
     if (!query) {
         throw new AppError(httpStatus.NOT_FOUND, "Query not found");
     }
-
-    // Send notification
-    await sendSingleNotification(
-        query.userId as any,
-        "Query Deleted 🗑️",
-        `Your query "${query.subject}" has been removed from our system. If this was a mistake, please raise a new query.`
-    );
 
     return query;
 };

@@ -49,7 +49,7 @@ const bookPuja = (userId, payload) => __awaiter(void 0, void 0, void 0, function
         day: 'numeric'
     });
     // Send notification to user
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Puja Booking Request Received 🙏", `We have received your booking request for "${puja.name}" on ${new Date(payload.preferredDate).toLocaleDateString()}. Our team will contact you shortly to confirm the booking.`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Puja Booking Request Received", `We have received your booking request for "${puja.name}" on ${new Date(payload.preferredDate).toLocaleDateString()}. Our team will contact you shortly to confirm the booking.`);
     // Populate puja details for response
     const bookingWithPuja = yield pujaBooking_model_1.PujaBooking.findById(booking._id).populate("pujaId", "name category price");
     const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
@@ -124,7 +124,7 @@ const updateBookingStatus = (bookingId, payload) => __awaiter(void 0, void 0, vo
     if (oldStatus !== newStatus) {
         switch (newStatus) {
             case "contacted":
-                notificationTitle = "Booking Update 📞";
+                notificationTitle = "Booking Update";
                 notificationMessage = `Our team has contacted you regarding your puja booking. ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
                 break;
             case "booked":
@@ -132,7 +132,7 @@ const updateBookingStatus = (bookingId, payload) => __awaiter(void 0, void 0, vo
                 notificationMessage = `Your puja booking has been confirmed! ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
                 break;
             case "notInterested":
-                notificationTitle = "Booking Cancelled ❌";
+                notificationTitle = "Booking Cancelled";
                 notificationMessage = `Your puja booking request has been cancelled. ${payload.adminNotes ? `Reason: ${payload.adminNotes}` : ""}`;
                 break;
             default:

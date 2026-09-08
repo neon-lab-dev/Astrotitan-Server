@@ -49,7 +49,7 @@ const bookPuja = async (
   // Send notification to user
   await sendSingleNotification(
     userId as any,
-    "Puja Booking Request Received 🙏",
+    "Puja Booking Request Received",
     `We have received your booking request for "${puja.name}" on ${new Date(payload.preferredDate).toLocaleDateString()}. Our team will contact you shortly to confirm the booking.`
   );
 
@@ -190,7 +190,7 @@ const updateBookingStatus = async (
   if (oldStatus !== newStatus) {
     switch (newStatus) {
       case "contacted":
-        notificationTitle = "Booking Update 📞";
+        notificationTitle = "Booking Update";
         notificationMessage = `Our team has contacted you regarding your puja booking. ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
         break;
       case "booked":
@@ -198,7 +198,7 @@ const updateBookingStatus = async (
         notificationMessage = `Your puja booking has been confirmed! ${payload.adminNotes ? `Note: ${payload.adminNotes}` : ""}`;
         break;
       case "notInterested":
-        notificationTitle = "Booking Cancelled ❌";
+        notificationTitle = "Booking Cancelled";
         notificationMessage = `Your puja booking request has been cancelled. ${payload.adminNotes ? `Reason: ${payload.adminNotes}` : ""}`;
         break;
       default:

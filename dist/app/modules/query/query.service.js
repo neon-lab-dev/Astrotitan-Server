@@ -58,7 +58,7 @@ const raiseQuery = (userId, payload, files) => __awaiter(void 0, void 0, void 0,
         status: "pending",
     });
     // Send notification to user
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Query Received! 📝", `We have received your query. Our support team will get back to you within 24 hours. Query ID: ${query._id}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Query Received", `We have received your query. Our support team will get back to you within 24 hours. Query ID: ${query._id}`);
     const admin = yield accounts_model_1.Accounts.findOne({ role: "admin" });
     if (!admin) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Admin not found");
@@ -105,7 +105,7 @@ const addAttachment = (queryId, userId, files) => __awaiter(void 0, void 0, void
     query.attachments = [...(query.attachments || []), ...attachmentUrls];
     yield query.save();
     // Send notification
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Attachment Added 📎", `New attachment added to your query: ${query.subject}`);
+    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Attachment Added", `New attachment added to your query: ${query.subject}`);
     return query;
 });
 /* User: Delete My Query (Soft Delete or Hard Delete) */
@@ -121,10 +121,6 @@ const deleteMyQuery = (queryId, userId) => __awaiter(void 0, void 0, void 0, fun
     }
     // Option 1: Hard Delete (completely remove from database)
     yield query_model_1.Query.findByIdAndDelete(queryId);
-    // Option 2: Soft Delete (add isDeleted flag - recommended)
-    // await Query.findByIdAndUpdate(queryId, { isDeleted: true });
-    // Send notification
-    yield (0, sendSingleNotification_1.sendSingleNotification)(userId, "Query Deleted 🗑️", `Your query "${query.subject}" has been successfully deleted from our system.`);
     return { message: "Query deleted successfully" };
 });
 /* Admin: Get All Queries */
@@ -206,8 +202,6 @@ const deleteQuery = (queryId) => __awaiter(void 0, void 0, void 0, function* () 
     if (!query) {
         throw new AppError_1.default(http_status_1.default.NOT_FOUND, "Query not found");
     }
-    // Send notification
-    yield (0, sendSingleNotification_1.sendSingleNotification)(query.userId, "Query Deleted 🗑️", `Your query "${query.subject}" has been removed from our system. If this was a mistake, please raise a new query.`);
     return query;
 });
 exports.QueryServices = {

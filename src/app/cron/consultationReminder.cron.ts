@@ -78,14 +78,14 @@ const sendConsultationReminder = async (consultation: any) => {
         // Send notification to USER
         await sendSingleNotification(
             user?.accountId as any,
-            '🔔 Consultation Reminder',
+            'Consultation Reminder',
             `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`,
         );
 
         // Send notification to ASTROLOGER
         await sendSingleNotification(
             astrologer.accountId as any,
-            '🔔 Upcoming Consultation Reminder',
+            'Upcoming Consultation Reminder',
             `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`,
         );
     } catch (error) {

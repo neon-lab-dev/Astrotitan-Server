@@ -76,9 +76,9 @@ const sendConsultationReminder = (consultation) => __awaiter(void 0, void 0, voi
             timeZone: 'Asia/Kolkata',
         });
         // Send notification to USER
-        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, '🔔 Consultation Reminder', `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(user === null || user === void 0 ? void 0 : user.accountId, 'Consultation Reminder', `Your consultation with ${astrologer.displayName || astrologer.firstName} is scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
         // Send notification to ASTROLOGER
-        yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer.accountId, '🔔 Upcoming Consultation Reminder', `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
+        yield (0, sendSingleNotification_1.sendSingleNotification)(astrologer.accountId, 'Upcoming Consultation Reminder', `You have a consultation with ${user.firstName} ${user.lastName} scheduled for ${formattedDate} at ${formattedTime}. Please be ready.`);
     }
     catch (error) {
         console.error(`❌ Failed to send reminder for consultation ${consultation._id}:`, error);
